@@ -1,7 +1,7 @@
 use crate::{
     Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
-    Path, PathBuilder, Point2, PointClassification, Scalar, Segment, Tolerance,
-    Vector2, classify_point, intersect_segments,
+    Path, PathBuilder, Point2, PointClassification, Scalar, Segment, Tolerance, Vector2,
+    classify_point, intersect_segments,
 };
 
 const PARAMETER_EPSILON: Scalar = 1.0e-10;
