@@ -385,7 +385,6 @@ fn invalid_split_parameter_and_address_are_rejected() {
     );
 }
 
-
 #[test]
 fn extract_segment_and_subpath_return_source_geometry() {
     let path = line_path(&[
