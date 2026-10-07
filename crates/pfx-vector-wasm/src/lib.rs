@@ -231,11 +231,7 @@ fn mesh_json(mesh: &Mesh2D) -> String {
 }
 
 #[wasm_bindgen]
-pub fn tessellate_fill_svg(
-    data: &str,
-    even_odd: bool,
-    flatness: f64,
-) -> Result<String, JsValue> {
+pub fn tessellate_fill_svg(data: &str, even_odd: bool, flatness: f64) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
     let tolerance = Tolerance {
         flatness: flatness.max(1.0e-12),
@@ -281,4 +277,3 @@ pub fn tessellate_stroke_svg(
 
     Ok(mesh_json(&mesh))
 }
-
