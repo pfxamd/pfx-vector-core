@@ -228,8 +228,7 @@ fn split_contour_returns_complementary_open_pieces() {
     let path = rect_to_path(Rect::new(0.0, 0.0, 10.0, 10.0).unwrap()).unwrap();
     let tolerance = Tolerance::default();
 
-    let (before, after) =
-        split_contour_at_length(only_subpath(&path), 15.0, tolerance).unwrap();
+    let (before, after) = split_contour_at_length(only_subpath(&path), 15.0, tolerance).unwrap();
 
     assert!(!only_subpath(&before).is_closed());
     assert!(!only_subpath(&after).is_closed());
