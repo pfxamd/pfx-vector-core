@@ -1,7 +1,10 @@
-use super::trim::{contour_trace_with_lengths, slice_trace_interval};
+use super::{
+    offset::stroke_components,
+    trim::{contour_trace_with_lengths, slice_trace_interval},
+};
 use crate::{
-    Bounds, CoreError, CoreResult, FillRule, Path, PathBuilder, PathSpatialIndex, Point2, Scalar,
-    Segment, Subpath, Tolerance, outline_path, path_bounds,
+    Bounds, CoreError, CoreResult, FillRule, Path, PathBuilder, Point2, Scalar, Segment,
+    SpatialIndex, Subpath, Tolerance, contains_point, path_bounds,
 };
 
 const MAX_DASH_STEPS: usize = 262_144;
@@ -269,21 +272,28 @@ fn append_segment(builder: &mut PathBuilder, segment: Segment) -> CoreResult<()>
 
 #[derive(Clone, Debug)]
 pub struct StrokeHitIndex {
-    outline: Path,
-    spatial: PathSpatialIndex,
+    components: Vec<Path>,
+    spatial: SpatialIndex,
+    tolerance: Tolerance,
 }
 
 impl StrokeHitIndex {
     pub fn build(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Self> {
         style.validate()?;
-        let outline = outline_path(path, style, tolerance)?;
-        let spatial = PathSpatialIndex::build(&outline, tolerance)?;
-        Ok(Self { outline, spatial })
+        let components = stroke_components(path, style, tolerance)?;
+        let bounds: Vec<_> = components.iter().map(path_bounds).collect();
+        let spatial = SpatialIndex::new(&bounds);
+
+        Ok(Self {
+            components,
+            spatial,
+            tolerance,
+        })
     }
 
     #[must_use]
-    pub fn outline(&self) -> &Path {
-        &self.outline
+    pub fn component_count(&self) -> usize {
+        self.components.len()
     }
 
     #[must_use]
@@ -292,11 +302,26 @@ impl StrokeHitIndex {
     }
 
     pub fn contains_point(&self, point: Point2) -> CoreResult<bool> {
-        if self.outline.is_empty() {
+        if self.components.is_empty() {
             return Ok(false);
         }
 
-        self.spatial.contains_point(point, FillRule::NonZero)
+        let query = Bounds::Finite {
+            min: point,
+            max: point,
+        };
+        for index in self.spatial.query_bounds(query, self.tolerance.absolute)? {
+            if contains_point(
+                &self.components[index],
+                point,
+                FillRule::NonZero,
+                self.tolerance,
+            )? {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 }
 
@@ -306,7 +331,7 @@ pub fn stroke_bounds(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> 
         return Ok(Bounds::Empty);
     }
 
-    Ok(path_bounds(&outline_path(path, style, tolerance)?))
+    Ok(StrokeHitIndex::build(path, style, tolerance)?.bounds())
 }
 
 pub(crate) fn stroke_query_radius(style: &StrokeStyle, tolerance: Tolerance) -> Scalar {
