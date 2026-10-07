@@ -82,8 +82,8 @@ pub fn boolean_paths_with_fill_rules(
         return boolean_with_empty(a, b, operation);
     }
 
-    let mut segments_a = collect_segments(a, tolerance);
-    let mut segments_b = collect_segments(b, tolerance);
+    let segments_a = collect_segments(a, tolerance);
+    let segments_b = collect_segments(b, tolerance);
     let mut splits_a = vec![vec![0.0, 1.0]; segments_a.len()];
     let mut splits_b = vec![vec![0.0, 1.0]; segments_b.len()];
 
@@ -419,7 +419,7 @@ fn stitch_fragments(
             let Some(index) =
                 best_continuation(&fragments, current, chain.last().copied(), tolerance)
             else {
-                return Err(CoreError::NumericalFailure);
+                return Err(CoreError::NonConvergent);
             };
 
             let next = fragments.swap_remove(index);
