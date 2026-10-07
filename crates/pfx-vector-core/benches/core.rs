@@ -52,7 +52,8 @@ fn bench_core(c: &mut Criterion) {
     });
 
     let contour = &path.subpaths()[0];
-    let contour_total = contour_length(contour, tolerance).unwrap();
+    let contour_tolerance = Tolerance::default();
+    let contour_total = contour_length(contour, contour_tolerance).unwrap();
     c.bench_function("slice cubic contour", |b| {
         b.iter(|| {
             slice_contour(
@@ -60,7 +61,7 @@ fn bench_core(c: &mut Criterion) {
                 black_box(contour_total * 0.2),
                 black_box(contour_total * 0.8),
                 black_box(ContourSliceMode::Clamp),
-                black_box(tolerance),
+                black_box(contour_tolerance),
             )
             .unwrap()
         })
