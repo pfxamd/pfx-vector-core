@@ -274,3 +274,126 @@ fn invalid_cleanup_and_fit_tolerances_are_rejected() {
         Err(CoreError::InvalidNumber)
     );
 }
+
+
+#[test]
+fn cleanup_closed_dense_rectangle_keeps_four_vertices() {
+    let points = [
+        Point2::new(0.0, 0.0),
+        Point2::new(2.0, 0.0),
+        Point2::new(5.0, 0.0),
+        Point2::new(10.0, 0.0),
+        Point2::new(10.0, 4.0),
+        Point2::new(10.0, 10.0),
+        Point2::new(6.0, 10.0),
+        Point2::new(0.0, 10.0),
+        Point2::new(0.0, 7.0),
+        Point2::new(0.0, 0.0),
+    ];
+    let path = path_from_points(&points, true);
+    let cleaned = cleanup_path(
+        &path,
+        CleanupOptions {
+            point_tolerance: 1.0e-8,
+            collinear_tolerance: 1.0e-8,
+        },
+        Tolerance::default(),
+    )
+    .unwrap();
+
+    let flattened = flatten_path(&cleaned, Tolerance::default()).unwrap();
+    assert!(flattened[0].closed);
+    assert_eq!(flattened[0].points.len(), 4);
+}
+
+#[test]
+fn simplification_keeps_original_samples_within_requested_deviation() {
+    let points: Vec<_> = (0..=160)
+        .map(|index| {
+            let x = index as f64 * 0.1;
+            Point2::new(x, (x * 0.9).sin() * 2.0 + (x * 3.1).sin() * 0.03)
+        })
+        .collect();
+    let source = path_from_points(&points, false);
+    let simplified = simplify_path(&source, 0.08, Tolerance::default()).unwrap();
+
+    assert!(simplified.segment_count() < source.segment_count() / 3);
+    assert!(max_sample_distance(&simplified, &points, Tolerance::default()) <= 0.081);
+    assert_eq!(simplified.subpaths()[0].start(), points[0]);
+    assert_eq!(simplified.subpaths()[0].end(), *points.last().unwrap());
+}
+
+#[test]
+fn fitting_respects_sharp_corner_by_splitting() {
+    let points = [
+        Point2::new(0.0, 0.0),
+        Point2::new(2.0, 0.0),
+        Point2::new(4.0, 0.0),
+        Point2::new(6.0, 0.0),
+        Point2::new(8.0, 0.0),
+        Point2::new(10.0, 0.0),
+        Point2::new(10.0, 2.0),
+        Point2::new(10.0, 4.0),
+        Point2::new(10.0, 6.0),
+        Point2::new(10.0, 8.0),
+        Point2::new(10.0, 10.0),
+    ];
+    let fitted =
+        fit_path_curves(&path_from_points(&points, false), 0.01, Tolerance::default()).unwrap();
+
+    assert!(fitted.segment_count() >= 2);
+    assert!(max_sample_distance(&fitted, &points, Tolerance::default()) <= 0.011);
+}
+
+#[test]
+fn cubic_fitting_remains_stable_after_large_translation() {
+    let offset = 1.0e9;
+    let source = CubicBezier::new(
+        Point2::new(offset, -offset),
+        Point2::new(offset + 20.0, -offset + 40.0),
+        Point2::new(offset + 80.0, -offset - 40.0),
+        Point2::new(offset + 100.0, -offset),
+    );
+    let samples: Vec<_> = (0..=100)
+        .map(|index| source.point_at(index as f64 / 100.0))
+        .collect();
+    let fitted =
+        fit_path_curves(&path_from_points(&samples, false), 0.1, Tolerance::default()).unwrap();
+
+    assert!(max_sample_distance(&fitted, &samples, Tolerance::default()) <= 0.11);
+    assert!(fitted.segment_count() < 12);
+}
+
+#[test]
+fn reversed_samples_fit_with_same_error_contract() {
+    let points: Vec<_> = (0..=100)
+        .map(|index| {
+            let x = index as f64 * 0.15;
+            Point2::new(x, (x * 0.7).sin() * 4.0)
+        })
+        .collect();
+    let reversed: Vec<_> = points.iter().copied().rev().collect();
+
+    let forward =
+        fit_path_curves(&path_from_points(&points, false), 0.08, Tolerance::default()).unwrap();
+    let backward =
+        fit_path_curves(&path_from_points(&reversed, false), 0.08, Tolerance::default()).unwrap();
+
+    assert!(max_sample_distance(&forward, &points, Tolerance::default()) <= 0.09);
+    assert!(max_sample_distance(&backward, &reversed, Tolerance::default()) <= 0.09);
+}
+
+#[test]
+fn fitting_reduces_dense_wave_to_far_fewer_segments() {
+    let points: Vec<_> = (0..=400)
+        .map(|index| {
+            let x = index as f64 * 0.04;
+            Point2::new(x, (x * 0.8).sin() * 2.5)
+        })
+        .collect();
+    let source = path_from_points(&points, false);
+    let fitted = fit_path_curves(&source, 0.05, Tolerance::default()).unwrap();
+
+    assert!(fitted.segment_count() < source.segment_count() / 8);
+    assert!(max_sample_distance(&fitted, &points, Tolerance::default()) <= 0.06);
+}
