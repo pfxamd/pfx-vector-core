@@ -125,7 +125,16 @@ fn simplify_preserves_closed_square_corners() {
 
     assert_eq!(simplified.subpaths().len(), 1);
     assert!(simplified.subpaths()[0].is_closed());
-    assert_eq!(simplified.segment_count(), 4);
+    let flattened = flatten_path(&simplified, Tolerance::default()).unwrap();
+    assert_eq!(flattened[0].points.len(), 4);
+    for corner in [
+        Point2::new(0.0, 0.0),
+        Point2::new(10.0, 0.0),
+        Point2::new(10.0, 10.0),
+        Point2::new(0.0, 10.0),
+    ] {
+        assert!(flattened[0].points.contains(&corner));
+    }
 }
 
 #[test]
