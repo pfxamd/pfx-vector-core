@@ -51,10 +51,11 @@ pub fn classify_point(
             }
         }
 
+        let ray_y = point.y + winding_ray_offset(point, tolerance);
         let mut endpoint_events: Vec<(Scalar, i8)> = Vec::new();
 
         for (segment_index, &segment) in segments.iter().enumerate() {
-            let mut roots = horizontal_ray_parameters(segment, point.y, tolerance);
+            let mut roots = horizontal_ray_parameters(segment, ray_y, tolerance);
             dedup_sorted(&mut roots, tolerance);
 
             for root in roots {
@@ -71,7 +72,7 @@ pub fn classify_point(
                     &segments,
                     segment_index,
                     parameter,
-                    point.y,
+                    ray_y,
                     subpath.is_closed(),
                     tolerance,
                 );
@@ -79,7 +80,7 @@ pub fn classify_point(
                     &segments,
                     segment_index,
                     parameter,
-                    point.y,
+                    ray_y,
                     subpath.is_closed(),
                     tolerance,
                 );
@@ -311,6 +312,10 @@ fn segment_derivative_y(segment: Segment, parameter: Scalar) -> Scalar {
         Segment::Cubic(curve) => curve.derivative_at(parameter).y,
         Segment::Arc(arc) => arc.derivative_at(parameter).y,
     }
+}
+
+fn winding_ray_offset(point: Point2, tolerance: Tolerance) -> Scalar {
+    point_tolerance(point, tolerance) * 0.25
 }
 
 fn point_tolerance(point: Point2, tolerance: Tolerance) -> Scalar {

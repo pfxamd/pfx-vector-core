@@ -227,3 +227,31 @@ fn full_circle_near_endpoint_ray_keeps_correct_winding() {
         PointClassification::Outside
     );
 }
+
+
+#[test]
+fn horizontal_vertex_alignment_does_not_corrupt_winding() {
+    let path = rect_to_path(Rect::new(0.0, 0.0, 10.0, 10.0).unwrap()).unwrap();
+    let tolerance = Tolerance::default();
+
+    assert_eq!(
+        classify_point(
+            &path,
+            Point2::new(-1.0, 0.0),
+            FillRule::NonZero,
+            tolerance
+        )
+        .unwrap(),
+        PointClassification::Outside
+    );
+    assert_eq!(
+        classify_point(
+            &path,
+            Point2::new(11.0, 0.0),
+            FillRule::NonZero,
+            tolerance
+        )
+        .unwrap(),
+        PointClassification::Outside
+    );
+}
