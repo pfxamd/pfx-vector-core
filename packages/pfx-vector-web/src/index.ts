@@ -15,6 +15,15 @@ export interface VectorWasmBindings {
   path_bounds_svg(data: string): string;
   point_at_length_svg(data: string, distance: number): string;
   hit_test_fill_svg(data: string, x: number, y: number, evenOdd: boolean): boolean;
+  hit_test_stroke_svg(
+    data: string,
+    x: number,
+    y: number,
+    width: number,
+    cap: StrokeCap,
+    join: StrokeJoin,
+    miterLimit: number,
+  ): boolean;
   flatten_path_svg(data: string, flatness: number): string;
   normalize_path_svg(data: string): string;
   normalize_fill_contours_svg(data: string, evenOdd: boolean): string;
@@ -175,6 +184,28 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       y: number,
       rule: "nonzero" | "evenodd" = "nonzero",
     ) => wasm.hit_test_fill_svg(data, x, y, rule === "evenodd"),
+    hitStroke: (
+      data: string,
+      x: number,
+      y: number,
+      width: number,
+      options: OutlineOptions = {},
+    ) => {
+      const dashArray = options.dashArray ?? [];
+      const strokeData =
+        dashArray.length > 0
+          ? wasm.dash_path_svg(data, dashArray.join(","), options.dashOffset ?? 0)
+          : data;
+      return wasm.hit_test_stroke_svg(
+        strokeData,
+        x,
+        y,
+        width,
+        options.cap ?? "butt",
+        options.join ?? "miter",
+        options.miterLimit ?? 4,
+      );
+    },
     flattenPath: (data: string, flatness = 1e-4) =>
       wasm.flatten_path_svg(data, flatness),
     normalizePath: (data: string) => wasm.normalize_path_svg(data),
