@@ -24,13 +24,7 @@ fn bounds_tuple(path: &Path) -> (f64, f64, f64, f64) {
 #[test]
 fn outward_rectangle_offset_expands_all_sides() {
     let path = rect_path(0.0, 0.0, 10.0, 10.0);
-    let result = offset_path(
-        &path,
-        2.0,
-        OffsetStyle::default(),
-        Tolerance::default(),
-    )
-    .unwrap();
+    let result = offset_path(&path, 2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     let bounds = bounds_tuple(&result);
     assert!((bounds.0 + 2.0).abs() < 1.0e-7);
@@ -44,13 +38,7 @@ fn outward_rectangle_offset_expands_all_sides() {
 #[test]
 fn inward_rectangle_offset_contracts_shape() {
     let path = rect_path(0.0, 0.0, 10.0, 10.0);
-    let result = offset_path(
-        &path,
-        -2.0,
-        OffsetStyle::default(),
-        Tolerance::default(),
-    )
-    .unwrap();
+    let result = offset_path(&path, -2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     let bounds = bounds_tuple(&result);
     assert!((bounds.0 - 2.0).abs() < 1.0e-7);
@@ -78,11 +66,13 @@ fn circle_offset_preserves_arc_geometry() {
     let bounds = bounds_tuple(&result);
     assert!((bounds.0 + 13.0).abs() < 1.0e-7);
     assert!((bounds.2 - 13.0).abs() < 1.0e-7);
-    assert!(result
-        .subpaths()
-        .iter()
-        .flat_map(|subpath| subpath.segments())
-        .any(|segment| matches!(segment, Segment::Arc(_))));
+    assert!(
+        result
+            .subpaths()
+            .iter()
+            .flat_map(|subpath| subpath.segments())
+            .any(|segment| matches!(segment, Segment::Arc(_)))
+    );
 }
 
 #[test]
@@ -238,11 +228,13 @@ fn cubic_outline_uses_cubic_offset_approximation() {
     };
     let result = outline_path(&path, &style, Tolerance::default()).unwrap();
 
-    assert!(result
-        .subpaths()
-        .iter()
-        .flat_map(|subpath| subpath.segments())
-        .any(|segment| matches!(segment, Segment::Cubic(_))));
+    assert!(
+        result
+            .subpaths()
+            .iter()
+            .flat_map(|subpath| subpath.segments())
+            .any(|segment| matches!(segment, Segment::Cubic(_)))
+    );
 }
 
 #[test]
@@ -271,12 +263,7 @@ fn open_path_offset_is_rejected() {
     let path = builder.finish().unwrap();
 
     assert_eq!(
-        offset_path(
-            &path,
-            2.0,
-            OffsetStyle::default(),
-            Tolerance::default(),
-        ),
+        offset_path(&path, 2.0, OffsetStyle::default(), Tolerance::default(),),
         Err(CoreError::UnsupportedCase)
     );
 }

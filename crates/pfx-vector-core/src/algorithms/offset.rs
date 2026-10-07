@@ -85,19 +85,11 @@ pub fn offset_path_with_fill_rule(
     )
 }
 
-pub fn stroke_to_path(
-    path: &Path,
-    style: &StrokeStyle,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+pub fn stroke_to_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Path> {
     outline_path(path, style, tolerance)
 }
 
-pub fn outline_path(
-    path: &Path,
-    style: &StrokeStyle,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Path> {
     style.validate()?;
 
     if style.width == 0.0 || path.is_empty() {
@@ -114,9 +106,7 @@ pub fn outline_path(
     for subpath in path.subpaths() {
         let mut segments = subpath.segments().to_vec();
 
-        if subpath.is_closed()
-            && !subpath.end().almost_eq(subpath.start(), tolerance)
-        {
+        if subpath.is_closed() && !subpath.end().almost_eq(subpath.start(), tolerance) {
             segments.push(Segment::Line(LineSegment::new(
                 subpath.end(),
                 subpath.start(),
@@ -156,13 +146,7 @@ pub fn outline_path(
         }
 
         if !subpath.is_closed() {
-            if let Some(cap) = cap_component(
-                segments[0],
-                true,
-                half_width,
-                style.cap,
-                tolerance,
-            )? {
+            if let Some(cap) = cap_component(segments[0], true, half_width, style.cap, tolerance)? {
                 result = union_component(result, cap, tolerance)?;
             }
 
@@ -194,11 +178,7 @@ fn union_component(mut result: Path, component: Path, tolerance: Tolerance) -> C
     Ok(result)
 }
 
-fn segment_ribbon(
-    segment: Segment,
-    half_width: Scalar,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+fn segment_ribbon(segment: Segment, half_width: Scalar, tolerance: Tolerance) -> CoreResult<Path> {
     if let Segment::Arc(arc) = segment
         && is_full_circle(arc, tolerance)
         && tolerance.almost_eq(arc.radius_x, arc.radius_y)
@@ -445,11 +425,7 @@ fn segment_derivative(segment: Segment, t: Scalar) -> Vector2 {
     }
 }
 
-fn offset_error_tolerance(
-    segment: Segment,
-    distance: Scalar,
-    tolerance: Tolerance,
-) -> Scalar {
+fn offset_error_tolerance(segment: Segment, distance: Scalar, tolerance: Tolerance) -> Scalar {
     let bounds = segment.bounds();
     let scale = bounds
         .width()
@@ -484,26 +460,15 @@ fn join_component(
     }
 
     let turn_angle = cross.atan2(dot);
-    let side_distance = if cross > 0.0 {
-        -half_width
-    } else {
-        half_width
-    };
+    let side_distance = if cross > 0.0 { -half_width } else { half_width };
     let previous_outer = vertex + previous_tangent.perpendicular() * side_distance;
     let next_outer = vertex + next_tangent.perpendicular() * side_distance;
 
     let path = match join {
-        StrokeJoin::Bevel => polygon_path(
-            &[vertex, previous_outer, next_outer],
-            tolerance,
-        )?,
-        StrokeJoin::Round => round_sector(
-            vertex,
-            previous_outer,
-            half_width,
-            turn_angle,
-            tolerance,
-        )?,
+        StrokeJoin::Bevel => polygon_path(&[vertex, previous_outer, next_outer], tolerance)?,
+        StrokeJoin::Round => {
+            round_sector(vertex, previous_outer, half_width, turn_angle, tolerance)?
+        }
         StrokeJoin::Miter => {
             if let Some(miter) = line_intersection(
                 previous_outer,
@@ -514,21 +479,12 @@ fn join_component(
             ) {
                 let ratio = vertex.distance_to(miter) / half_width.max(tolerance.absolute);
                 if ratio <= miter_limit {
-                    polygon_path(
-                        &[vertex, previous_outer, miter, next_outer],
-                        tolerance,
-                    )?
+                    polygon_path(&[vertex, previous_outer, miter, next_outer], tolerance)?
                 } else {
-                    polygon_path(
-                        &[vertex, previous_outer, next_outer],
-                        tolerance,
-                    )?
+                    polygon_path(&[vertex, previous_outer, next_outer], tolerance)?
                 }
             } else {
-                polygon_path(
-                    &[vertex, previous_outer, next_outer],
-                    tolerance,
-                )?
+                polygon_path(&[vertex, previous_outer, next_outer], tolerance)?
             }
         }
     };
@@ -569,21 +525,9 @@ fn cap_component(
         }
         StrokeCap::Round => {
             if at_start {
-                round_sector(
-                    center,
-                    right,
-                    half_width,
-                    -core::f64::consts::PI,
-                    tolerance,
-                )?
+                round_sector(center, right, half_width, -core::f64::consts::PI, tolerance)?
             } else {
-                round_sector(
-                    center,
-                    left,
-                    half_width,
-                    -core::f64::consts::PI,
-                    tolerance,
-                )?
+                round_sector(center, left, half_width, -core::f64::consts::PI, tolerance)?
             }
         }
     };
@@ -678,6 +622,5 @@ fn append_segment(builder: &mut PathBuilder, segment: Segment) -> CoreResult<()>
 }
 
 fn is_full_circle(arc: EllipticalArc, tolerance: Tolerance) -> bool {
-    arc.sweep_angle.as_radians().abs()
-        >= core::f64::consts::TAU - tolerance.angular.max(1.0e-12)
+    arc.sweep_angle.as_radians().abs() >= core::f64::consts::TAU - tolerance.angular.max(1.0e-12)
 }
