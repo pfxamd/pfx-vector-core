@@ -58,8 +58,7 @@ fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Sca
     let coordinate_scale = controls.iter().fold(1.0_f64, |scale, point| {
         scale.max(point.x.abs()).max(point.y.abs())
     });
-    let geometric_tolerance =
-        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+    let geometric_tolerance = (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
 
     if controls
         .iter()
@@ -88,18 +87,12 @@ fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Sca
             let linear = 3.0 * (p1 - p0);
             let quadratic = 3.0 * (p0 - 2.0 * p1 + p2);
             let cubic = -p0 + 3.0 * p1 - 3.0 * p2 + p3;
-            parameters.extend(solve_quadratic(
-                3.0 * cubic,
-                2.0 * quadratic,
-                linear,
-            ));
+            parameters.extend(solve_quadratic(3.0 * cubic, 2.0 * quadratic, linear));
         }
         _ => unreachable!("line-like length is only used for Bézier segments"),
     }
 
-    parameters.retain(|parameter| {
-        parameter.is_finite() && *parameter > 0.0 && *parameter < 1.0
-    });
+    parameters.retain(|parameter| parameter.is_finite() && *parameter > 0.0 && *parameter < 1.0);
     parameters.sort_by(Scalar::total_cmp);
     parameters.dedup_by(|left, right| (*left - *right).abs() <= 1.0e-12);
 
