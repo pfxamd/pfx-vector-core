@@ -1,8 +1,9 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
-    BooleanOperation, Bounds, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap, StrokeJoin,
-    StrokeStyle, Tolerance, boolean_paths, contains_point, flatten_path, intersect_segments,
-    offset_path, outline_path, path_length, point_at_length, tessellate_fill, tessellate_stroke,
+    BooleanOperation, Bounds, CleanupOptions, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap,
+    StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point,
+    fit_path_curves, flatten_path, intersect_segments, offset_path, outline_path, path_length,
+    point_at_length, simplify_path, tessellate_fill, tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -277,3 +278,41 @@ pub fn tessellate_stroke_svg(
 
     Ok(mesh_json(&mesh))
 }
+
+#[wasm_bindgen]
+pub fn cleanup_path_svg(
+    data: &str,
+    point_tolerance: f64,
+    collinear_tolerance: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let cleaned = cleanup_path(
+        &path,
+        CleanupOptions {
+            point_tolerance,
+            collinear_tolerance,
+        },
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+
+    Ok(serialize_path(&cleaned, SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn simplify_path_svg(data: &str, max_deviation: f64) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let simplified =
+        simplify_path(&path, max_deviation, Tolerance::default()).map_err(js_err)?;
+
+    Ok(serialize_path(&simplified, SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn fit_path_curves_svg(data: &str, max_error: f64) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let fitted = fit_path_curves(&path, max_error, Tolerance::default()).map_err(js_err)?;
+
+    Ok(serialize_path(&fitted, SerializeOptions::default()))
+}
+

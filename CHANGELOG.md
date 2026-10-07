@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.6.0 - 2026-10-07
+
+### Added
+
+- Path cleanup through `cleanup_path` with explicit `CleanupOptions` for point and collinearity tolerances.
+- Duplicate-point removal and collinear line-chain reduction for open and closed polylines.
+- Conversion of nearly linear quadratic and cubic Bézier segments into exact line segments when their deviation is within the requested cleanup tolerance.
+- Path simplification through `simplify_path` using deterministic Ramer-Douglas-Peucker reduction.
+- Closed-contour simplification by splitting the ring across a deterministic farthest-point pair instead of treating closure as an ordinary duplicated endpoint.
+- Cubic Bézier fitting through `fit_polyline_cubics` and path-level `fit_path_curves`.
+- Chord-length parameterization, least-squares control-distance solving, Newton reparameterization, and recursive split fitting.
+- Defined recursion limits and explicit failure instead of unbounded fitting.
+- Stable fitting for translated large coordinates, reversed input samples, sharp corners, closed contours, and dense sampled curves.
+- WebAssembly exports for cleanup, simplification, and cubic curve fitting.
+- TypeScript `cleanupPath`, `simplifyPath`, and `fitPathCurves` APIs.
+- Criterion benchmarks for dense polyline cleanup, simplification, and cubic fitting.
+
+### Changed
+
+- Cleanup preserves existing non-degenerate curve primitives unless they are demonstrably line-like within the requested tolerance.
+- Simplification is explicitly a polyline operation: source curves are adaptively flattened before point reduction.
+- Curve fitting is explicitly approximate: source paths are sampled through adaptive flattening, then reconstructed as cubic Bézier segments within the requested fitting error.
+- Numerical distance tests use local geometry rather than world-coordinate magnitude where translation should not affect the result.
+
+### Scope limits
+
+- General topology-preserving simplification of arbitrary self-intersecting contours is not guaranteed.
+- `simplify_path` returns line geometry rather than attempting to preserve original Bézier or arc segment types.
+- `fit_path_curves` outputs cubic Bézier geometry; exact circles and elliptical arcs are not rediscovered as arc primitives.
+- The fitting error contract is validated against sampled source geometry; it is not a symbolic proof of Hausdorff distance between arbitrary analytical curves.
+- Smoothing/beautification rules that intentionally alter corners are outside the cleanup API.
+
 ## 0.5.0 - 2026-10-07
 
 ### Added

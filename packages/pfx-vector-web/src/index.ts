@@ -36,6 +36,13 @@ export interface VectorWasmBindings {
     miterLimit: number,
     flatness: number,
   ): string;
+  cleanup_path_svg(
+    data: string,
+    pointTolerance: number,
+    collinearTolerance: number,
+  ): string;
+  simplify_path_svg(data: string, maxDeviation: number): string;
+  fit_path_curves_svg(data: string, maxError: number): string;
 }
 
 export interface Bounds {
@@ -75,6 +82,11 @@ export interface OffsetOptions {
 
 export interface OutlineOptions extends OffsetOptions {
   cap?: StrokeCap;
+}
+
+export interface CleanupOptions {
+  pointTolerance?: number;
+  collinearTolerance?: number;
 }
 
 export function createVectorCore(wasm: VectorWasmBindings) {
@@ -152,5 +164,15 @@ export function createVectorCore(wasm: VectorWasmBindings) {
           options.flatness ?? 1e-4,
         ),
       ) as Mesh2D,
+    cleanupPath: (data: string, options: CleanupOptions = {}) =>
+      wasm.cleanup_path_svg(
+        data,
+        options.pointTolerance ?? 1e-9,
+        options.collinearTolerance ?? 1e-7,
+      ),
+    simplifyPath: (data: string, maxDeviation: number) =>
+      wasm.simplify_path_svg(data, maxDeviation),
+    fitPathCurves: (data: string, maxError: number) =>
+      wasm.fit_path_curves_svg(data, maxError),
   };
 }

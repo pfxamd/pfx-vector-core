@@ -1,8 +1,62 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, advanced intersections, Boolean operations, and offset/outline construction, and 2D tessellation. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, intersections, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.5.0`.
+**Status:** `v0.6.0`.
+
+## v0.6 cleanup, simplification, and curve fitting
+
+The core now separates three different path-reduction operations:
+
+```rust
+let cleaned = cleanup_path(
+    &path,
+    CleanupOptions::default(),
+    tolerance,
+)?;
+
+let simplified = simplify_path(
+    &path,
+    0.1,
+    tolerance,
+)?;
+
+let fitted = fit_path_curves(
+    &path,
+    0.1,
+    tolerance,
+)?;
+```
+
+### Cleanup
+
+`cleanup_path` is conservative. It removes duplicate/collinear line noise and converts only demonstrably line-like Bézier segments to lines. Real curves remain curves.
+
+### Simplification
+
+`simplify_path` adaptively flattens source geometry and applies deterministic Ramer-Douglas-Peucker reduction. Its output is intentionally line geometry.
+
+Closed contours are simplified as rings using a deterministic farthest-point split so the implicit close edge remains part of the error model.
+
+### Cubic fitting
+
+`fit_path_curves` reconstructs flattened path samples as cubic Bézier segments using:
+
+- chord-length parameterization
+- least-squares control-distance solving
+- Newton reparameterization
+- recursive error-driven splitting
+- explicit recursion limits
+
+It preserves open endpoints and closed contour state while reducing dense sampled paths to far fewer cubic segments.
+
+### Web API
+
+```text
+cleanupPath(data, { pointTolerance, collinearTolerance })
+simplifyPath(data, maxDeviation)
+fitPathCurves(data, maxError)
+```
 
 ## v0.5 tessellation and triangulation
 
@@ -179,6 +233,19 @@ Tolerance-sensitive operations include:
 - general curve offsets via adaptive cubic fitting
 - Boolean/offset topology through explicit geometric side classification and cleanup
 - tessellation through adaptive flattening, contour topology, hole bridging, and ear clipping
+- path simplification through explicit geometric deviation thresholds
+- cubic fitting through least-squares approximation and iterative reparameterization
+
+## Validated cleanup and fitting scope
+
+Validated cases include duplicate and collinear cleanup, nearly linear Bézier conversion, preservation of real curves, open and closed simplification, endpoint preservation, monotonic simplification under larger tolerances, sharp corners, sampled cubic reconstruction, closed circular samples, reversed point order, large translated coordinates, deterministic output, and dense-wave segment reduction.
+
+Current limits:
+
+- simplification does not promise topology preservation for arbitrary self-intersections
+- simplification outputs lines
+- fitting outputs cubic Bézier segments rather than rediscovering original primitive types
+- fitting error is numerical and sample-driven, with explicit tolerance and recursion bounds
 
 ## Validated tessellation scope
 

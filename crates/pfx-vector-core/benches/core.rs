@@ -142,6 +142,49 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    let mut dense_builder = PathBuilder::new();
+    dense_builder.move_to(Point2::new(0.0, 0.0)).unwrap();
+    for index in 1..=1000 {
+        let x = index as f64 * 0.02;
+        dense_builder
+            .line_to(Point2::new(x, (x * 0.9).sin() * 4.0))
+            .unwrap();
+    }
+    let dense_path = dense_builder.finish().unwrap();
+
+    c.bench_function("cleanup dense polyline", |b| {
+        b.iter(|| {
+            cleanup_path(
+                black_box(&dense_path),
+                black_box(CleanupOptions::default()),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("simplify dense polyline", |b| {
+        b.iter(|| {
+            simplify_path(
+                black_box(&dense_path),
+                black_box(0.05),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("fit dense polyline to cubics", |b| {
+        b.iter(|| {
+            fit_path_curves(
+                black_box(&dense_path),
+                black_box(0.05),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);
