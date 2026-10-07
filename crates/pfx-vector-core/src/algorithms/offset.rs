@@ -2,6 +2,7 @@ use crate::{
     Angle, BooleanOperation, Circle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule,
     LineSegment, Path, PathBuilder, Point2, Scalar, Segment, StrokeCap, StrokeJoin, StrokeStyle,
     Tolerance, Vector2, boolean_paths_with_fill_rules, boolean_union, circle_to_path,
+    normalize_self_intersections,
 };
 
 const MAX_OFFSET_DEPTH: u32 = 18;
@@ -61,6 +62,11 @@ pub fn offset_path_with_fill_rule(
         return Ok(path.clone());
     }
 
+    let normalized = normalize_self_intersections(path, fill_rule, tolerance)?;
+    if normalized.is_empty() {
+        return Ok(Path::new());
+    }
+
     let outline_style = StrokeStyle {
         width: distance.abs() * 2.0,
         cap: StrokeCap::Butt,
@@ -69,11 +75,11 @@ pub fn offset_path_with_fill_rule(
         dash_array: Vec::new(),
         dash_offset: 0.0,
     };
-    let outline = outline_path(path, &outline_style, tolerance)?;
+    let outline = outline_path(&normalized, &outline_style, tolerance)?;
 
     boolean_paths_with_fill_rules(
-        path,
-        fill_rule,
+        &normalized,
+        FillRule::NonZero,
         &outline,
         FillRule::NonZero,
         if distance > 0.0 {

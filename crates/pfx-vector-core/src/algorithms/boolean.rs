@@ -61,6 +61,204 @@ pub fn boolean_xor(a: &Path, b: &Path, tolerance: Tolerance) -> CoreResult<Path>
     boolean_paths(a, b, BooleanOperation::Xor, tolerance)
 }
 
+
+pub fn normalize_self_intersections(
+    path: &Path,
+    fill_rule: FillRule,
+    tolerance: Tolerance,
+) -> CoreResult<Path> {
+    validate_boolean_input(path)?;
+
+    if path.is_empty() {
+        return Ok(Path::new());
+    }
+
+    let segments = collect_segments(path, tolerance);
+    let mut splits = vec![vec![0.0, 1.0]; segments.len()];
+
+    for index_a in 0..segments.len() {
+        for index_b in index_a + 1..segments.len() {
+            let intersections = intersect_segments(
+                segments[index_a].segment,
+                segments[index_b].segment,
+                tolerance,
+            )?;
+
+            for intersection in intersections.intersections {
+                match intersection {
+                    Intersection::Point(point) => {
+                        add_parameter(&mut splits[index_a], point.parameter_a, tolerance);
+                        add_parameter(&mut splits[index_b], point.parameter_b, tolerance);
+                    }
+                    Intersection::Overlap(overlap) => {
+                        add_parameter(&mut splits[index_a], overlap.range_a.min, tolerance);
+                        add_parameter(&mut splits[index_a], overlap.range_a.max, tolerance);
+                        add_parameter(&mut splits[index_b], overlap.range_b.min, tolerance);
+                        add_parameter(&mut splits[index_b], overlap.range_b.max, tolerance);
+                    }
+                }
+            }
+        }
+    }
+
+    normalize_split_parameters(&mut splits, tolerance);
+
+    let mut fragments = Vec::new();
+    for (working, parameters) in segments.iter().zip(&splits) {
+        for pair in parameters.windows(2) {
+            let t0 = pair[0];
+            let t1 = pair[1];
+
+            if t1 - t0 <= parameter_tolerance(tolerance) {
+                continue;
+            }
+
+            let fragment = segment_subrange(working.segment, t0, t1);
+            if fragment.start().distance_to(fragment.end()) <= tolerance.absolute
+                && fragment.bounds().width() <= tolerance.absolute
+                && fragment.bounds().height() <= tolerance.absolute
+            {
+                continue;
+            }
+
+            if let Some(oriented) =
+                classify_single_path_boundary(fragment, path, fill_rule, tolerance)?
+            {
+                fragments.push(BoundaryFragment { segment: oriented });
+            }
+        }
+    }
+
+    deduplicate_fragments(&mut fragments, tolerance);
+    stitch_normalized_fragments(fragments, tolerance)
+}
+
+fn classify_single_path_boundary(
+    fragment: Segment,
+    path: &Path,
+    fill_rule: FillRule,
+    tolerance: Tolerance,
+) -> CoreResult<Option<Segment>> {
+    let midpoint = fragment.point_at(0.5);
+    let tangent = stable_tangent(fragment, tolerance)?;
+    let normal = tangent.perpendicular();
+    let probe = probe_distance(fragment, midpoint, tolerance);
+
+    let Some((left, right)) =
+        classify_sides(path, fill_rule, midpoint, normal, probe, tolerance)?
+    else {
+        return Err(CoreError::ToleranceNotMet);
+    };
+
+    if left == right {
+        Ok(None)
+    } else if left {
+        Ok(Some(fragment))
+    } else {
+        Ok(Some(fragment.reversed()))
+    }
+}
+
+fn stitch_normalized_fragments(
+    mut fragments: Vec<BoundaryFragment>,
+    tolerance: Tolerance,
+) -> CoreResult<Path> {
+    if fragments.is_empty() {
+        return Ok(Path::new());
+    }
+
+    let mut builder = PathBuilder::with_tolerance(tolerance);
+    let maximum_steps = fragments.len() + 1;
+
+    while !fragments.is_empty() {
+        let first = fragments.swap_remove(0);
+        let start = first.segment.start();
+        let mut current = first.segment.end();
+        let mut chain = vec![first.segment];
+        let mut steps = 0usize;
+
+        while !current.almost_eq(start, tolerance) {
+            steps += 1;
+            if steps > maximum_steps {
+                return Err(CoreError::IterationLimit);
+            }
+
+            let previous = *chain.last().expect("chain is never empty");
+            let Some(index) =
+                face_continuation(&fragments, current, previous, tolerance)
+            else {
+                return Err(CoreError::NonConvergent);
+            };
+
+            let next = fragments.swap_remove(index);
+            current = next.segment.end();
+            chain.push(next.segment);
+        }
+
+        builder.move_to(start)?;
+        for segment in chain {
+            append_segment(&mut builder, segment)?;
+        }
+        builder.close()?;
+    }
+
+    builder.finish()
+}
+
+fn face_continuation(
+    fragments: &[BoundaryFragment],
+    current: Point2,
+    previous: Segment,
+    tolerance: Tolerance,
+) -> Option<usize> {
+    let mut candidates: Vec<(usize, Scalar)> = fragments
+        .iter()
+        .enumerate()
+        .filter_map(|(index, fragment)| {
+            let distance = current.distance_to(fragment.segment.start());
+            if distance <= endpoint_tolerance(current, fragment.segment.start(), tolerance) {
+                Some((index, distance))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if candidates.len() <= 1 {
+        return candidates.first().map(|candidate| candidate.0);
+    }
+
+    let incoming = tangent_at_end(previous, tolerance).ok()?;
+    let reverse = -incoming;
+
+    candidates.sort_by(|left, right| {
+        let turn_left = clockwise_turn(
+            reverse,
+            tangent_at_start(fragments[left.0].segment, tolerance).ok(),
+        );
+        let turn_right = clockwise_turn(
+            reverse,
+            tangent_at_start(fragments[right.0].segment, tolerance).ok(),
+        );
+
+        turn_left
+            .total_cmp(&turn_right)
+            .then_with(|| left.1.total_cmp(&right.1))
+            .then_with(|| left.0.cmp(&right.0))
+    });
+
+    candidates.first().map(|candidate| candidate.0)
+}
+
+fn clockwise_turn(reference: Vector2, candidate: Option<Vector2>) -> Scalar {
+    let Some(candidate) = candidate else {
+        return Scalar::INFINITY;
+    };
+
+    let signed_ccw = reference.cross(candidate).atan2(reference.dot(candidate));
+    (-signed_ccw).rem_euclid(core::f64::consts::TAU)
+}
+
 pub fn boolean_paths(
     a: &Path,
     b: &Path,
@@ -88,10 +286,17 @@ pub fn boolean_paths_with_fill_rules(
     validate_boolean_input(a)?;
     validate_boolean_input(b)?;
 
+    let normalized_a = normalize_self_intersections(a, fill_a, tolerance)?;
+    let normalized_b = normalize_self_intersections(b, fill_b, tolerance)?;
+    let a = &normalized_a;
+    let b = &normalized_b;
+
     if a.is_empty() || b.is_empty() {
         return boolean_with_empty(a, b, operation);
     }
 
+    let fill_a = FillRule::NonZero;
+    let fill_b = FillRule::NonZero;
     let segments_a = collect_segments(a, tolerance);
     let segments_b = collect_segments(b, tolerance);
     let mut splits_a = vec![vec![0.0, 1.0]; segments_a.len()];

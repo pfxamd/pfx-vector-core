@@ -1,6 +1,6 @@
 use crate::{
     CoreError, CoreResult, FillRule, Path, Point2, PointClassification, Scalar, StrokeStyle,
-    Tolerance, classify_point, flatten_path, outline_path,
+    Tolerance, flatten_path, normalize_self_intersections, outline_path,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -36,18 +36,17 @@ pub fn tessellate_fill(
         return Err(CoreError::UnsupportedCase);
     }
 
+    let normalized = normalize_self_intersections(path, fill_rule, tolerance)?;
     let mut contours = Vec::new();
-    for subpath in flatten_path(path, tolerance)? {
+    for subpath in flatten_path(&normalized, tolerance)? {
         let points = sanitize_contour(subpath.points, tolerance);
         if points.len() < 3 {
             continue;
         }
 
-        if let Some(points) = orient_boundary(path, fill_rule, points, tolerance)? {
-            let area = signed_area(&points);
-            if area.abs() > area_epsilon(&points, tolerance) {
-                contours.push(BoundaryContour { points, area });
-            }
+        let area = signed_area(&points);
+        if area.abs() > area_epsilon(&points, tolerance) {
+            contours.push(BoundaryContour { points, area });
         }
     }
 
@@ -107,62 +106,6 @@ pub fn tessellate_stroke(
 ) -> CoreResult<Mesh2D> {
     let outline = outline_path(path, style, tolerance)?;
     tessellate_fill(&outline, FillRule::NonZero, tolerance)
-}
-
-fn orient_boundary(
-    path: &Path,
-    fill_rule: FillRule,
-    points: Vec<Point2>,
-    tolerance: Tolerance,
-) -> CoreResult<Option<Vec<Point2>>> {
-    let mut orientation: Option<bool> = None;
-
-    for index in 0..points.len() {
-        let a = points[index];
-        let b = points[(index + 1) % points.len()];
-        let edge = b - a;
-        let length = edge.length();
-        if tolerance.nearly_zero(length, length) {
-            continue;
-        }
-
-        let tangent = edge / length;
-        let normal = tangent.perpendicular();
-        let midpoint = a.lerp(b, 0.5);
-        let numerical = (tolerance.absolute
-            + tolerance.relative * midpoint.x.abs().max(midpoint.y.abs()).max(1.0))
-            * 32.0;
-        let probe = numerical
-            .max(tolerance.flatness.min(length * 1.0e-4))
-            .min(length * 0.02)
-            .max(numerical);
-
-        let left = classify_point(path, midpoint + normal * probe, fill_rule, tolerance)?;
-        let right = classify_point(path, midpoint - normal * probe, fill_rule, tolerance)?;
-
-        if left == PointClassification::Boundary || right == PointClassification::Boundary {
-            continue;
-        }
-
-        if left == right {
-            continue;
-        }
-
-        let left_is_inside = left == PointClassification::Inside;
-        if let Some(existing) = orientation {
-            if existing != left_is_inside {
-                return Err(CoreError::UnsupportedCase);
-            }
-        } else {
-            orientation = Some(left_is_inside);
-        }
-    }
-
-    match orientation {
-        None => Ok(None),
-        Some(true) => Ok(Some(points)),
-        Some(false) => Ok(Some(points.into_iter().rev().collect())),
-    }
 }
 
 fn sanitize_contour(mut points: Vec<Point2>, tolerance: Tolerance) -> Vec<Point2> {
