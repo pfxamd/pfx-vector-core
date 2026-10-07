@@ -215,8 +215,7 @@ fn classify_single_path_boundary(
     let normal = tangent.perpendicular();
     let probe = probe_distance(fragment, midpoint, tolerance);
 
-    let Some((left, right)) = classify_sides(path, fill_rule, midpoint, normal, probe)?
-    else {
+    let Some((left, right)) = classify_sides(path, fill_rule, midpoint, normal, probe)? else {
         return Err(CoreError::ToleranceNotMet);
     };
 

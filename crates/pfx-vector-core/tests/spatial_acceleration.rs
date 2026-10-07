@@ -123,9 +123,7 @@ fn path_spatial_fill_matches_regular_classifier() {
         for y in -2..=32 {
             let point = Point2::new(f64::from(x) + 0.31, f64::from(y) + 0.17);
             assert_eq!(
-                index
-                    .classify_point(point, FillRule::NonZero)
-                    .unwrap(),
+                index.classify_point(point, FillRule::NonZero).unwrap(),
                 classify_point(&path, point, FillRule::NonZero, Tolerance::default()).unwrap(),
                 "point=({},{})",
                 point.x,
@@ -191,15 +189,13 @@ fn spatial_queries_remain_stable_at_large_coordinates() {
         vec![(0, 1)]
     );
 
-    let path =
-        rect_to_path(Rect::new(offset, offset, 20.0, 10.0).unwrap()).unwrap();
+    let path = rect_to_path(Rect::new(offset, offset, 20.0, 10.0).unwrap()).unwrap();
     let index = PathSpatialIndex::build(&path, Tolerance::default()).unwrap();
-    assert!(index
-        .contains_point(
-            Point2::new(offset + 5.0, offset + 5.0),
-            FillRule::NonZero
-        )
-        .unwrap());
+    assert!(
+        index
+            .contains_point(Point2::new(offset + 5.0, offset + 5.0), FillRule::NonZero)
+            .unwrap()
+    );
 }
 
 #[test]
