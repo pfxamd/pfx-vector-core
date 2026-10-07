@@ -315,7 +315,6 @@ fn ordinary_non_looping_cubic_is_not_artificially_split() {
     assert_eq!(normalized.segment_count(), 2);
 }
 
-
 #[test]
 fn touching_lobes_are_separated_at_shared_vertex() {
     let mut builder = PathBuilder::new();
@@ -408,9 +407,10 @@ fn normalization_preserves_native_arc_segments_for_simple_circle() {
         normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
 
     assert_eq!(normalized.subpaths().len(), 1);
-    assert!(normalized
-        .subpaths()[0]
-        .segments()
-        .iter()
-        .all(|segment| matches!(segment, Segment::Arc(_))));
+    assert!(
+        normalized.subpaths()[0]
+            .segments()
+            .iter()
+            .all(|segment| matches!(segment, Segment::Arc(_)))
+    );
 }
