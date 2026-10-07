@@ -268,7 +268,6 @@ fn open_path_offset_is_rejected() {
     );
 }
 
-
 #[test]
 fn closed_rectangle_outline_is_a_ring() {
     let path = rect_path(0.0, 0.0, 20.0, 20.0);
@@ -295,20 +294,9 @@ fn offset_updates_outer_and_hole_boundaries() {
     let inner = rect_path(10.0, 10.0, 10.0, 10.0);
     let ring = boolean_difference(&outer, &inner, Tolerance::default()).unwrap();
 
-    let expanded = offset_path(
-        &ring,
-        2.0,
-        OffsetStyle::default(),
-        Tolerance::default(),
-    )
-    .unwrap();
-    let contracted = offset_path(
-        &ring,
-        -2.0,
-        OffsetStyle::default(),
-        Tolerance::default(),
-    )
-    .unwrap();
+    let expanded = offset_path(&ring, 2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
+    let contracted =
+        offset_path(&ring, -2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     assert!(inside(&expanded, -1.0, 15.0));
     assert!(!inside(&expanded, 15.0, 15.0));
@@ -364,13 +352,7 @@ fn evenodd_offset_handles_same_direction_hole() {
 #[test]
 fn ellipse_outline_uses_adaptive_cubic_offsets() {
     let ellipse = ellipse_to_path(
-        Ellipse::new(
-            Point2::new(0.0, 0.0),
-            10.0,
-            5.0,
-            Angle::radians(0.0),
-        )
-        .unwrap(),
+        Ellipse::new(Point2::new(0.0, 0.0), 10.0, 5.0, Angle::radians(0.0)).unwrap(),
     )
     .unwrap();
     let style = StrokeStyle {
@@ -389,11 +371,13 @@ fn ellipse_outline_uses_adaptive_cubic_offsets() {
     assert!((bounds.1 + 6.0).abs() < 5.0e-3);
     assert!((bounds.2 - 11.0).abs() < 5.0e-3);
     assert!((bounds.3 - 6.0).abs() < 5.0e-3);
-    assert!(result
-        .subpaths()
-        .iter()
-        .flat_map(|subpath| subpath.segments())
-        .any(|segment| matches!(segment, Segment::Cubic(_))));
+    assert!(
+        result
+            .subpaths()
+            .iter()
+            .flat_map(|subpath| subpath.segments())
+            .any(|segment| matches!(segment, Segment::Cubic(_)))
+    );
 }
 
 #[test]
