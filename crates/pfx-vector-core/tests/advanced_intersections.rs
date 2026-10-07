@@ -352,7 +352,6 @@ fn advanced_intersections_survive_large_translation() {
     assert!(hits[0].point.distance_to(Point2::new(offset, offset)) < 1.0e-4);
 }
 
-
 fn cubic_subcurve(curve: CubicBezier, t0: f64, t1: f64) -> CubicBezier {
     let (_, right) = curve.split(t0);
     let local = (t1 - t0) / (1.0 - t0);
