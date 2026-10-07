@@ -145,8 +145,9 @@ fn candidate_from_box(
     let point_a = a.point_at(parameter_a);
     let point_b = b.point_at(parameter_b);
     let distance = point_a.distance_to(point_b);
+    let residual_tolerance = intersection_residual_tolerance(point_a, point_b, tolerance);
 
-    if distance > spatial_tolerance * 4.0 {
+    if distance > residual_tolerance {
         return None;
     }
 
@@ -319,6 +320,22 @@ fn bounds_coordinate_scale(bounds: Bounds) -> Scalar {
             .max(max.x.abs())
             .max(max.y.abs()),
     }
+}
+
+fn intersection_residual_tolerance(
+    point_a: Point2,
+    point_b: Point2,
+    tolerance: Tolerance,
+) -> Scalar {
+    let scale = point_a
+        .x
+        .abs()
+        .max(point_a.y.abs())
+        .max(point_b.x.abs())
+        .max(point_b.y.abs())
+        .max(1.0);
+
+    tolerance.absolute + tolerance.relative * scale
 }
 
 fn push_unique(
