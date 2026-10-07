@@ -319,6 +319,10 @@ impl IncrementalPathSpatialIndex {
             return Ok(false);
         }
 
+        if !crate::normalized_dash_pattern(style).is_empty() {
+            return crate::stroke_contains_point(&self.snapshot, style, point, self.tolerance);
+        }
+
         let radius = style.width * 0.5 + self.tolerance.absolute;
         let query = square_bounds(point, radius);
         for edge_id in self.spatial.query_bounds(query, 0.0)? {

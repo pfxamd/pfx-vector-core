@@ -30,7 +30,7 @@ pub fn path_length(path: &Path, tolerance: Tolerance) -> CoreResult<Scalar> {
     Ok(length)
 }
 
-fn solve_t_for_length(
+pub(crate) fn segment_parameter_at_length_with_total(
     segment: Segment,
     target: Scalar,
     total: Scalar,
@@ -72,6 +72,24 @@ fn solve_t_for_length(
     Ok((low + high) * 0.5)
 }
 
+pub fn segment_parameter_at_length(
+    segment: Segment,
+    distance: Scalar,
+    tolerance: Tolerance,
+) -> CoreResult<Scalar> {
+    if !distance.is_finite() {
+        return Err(CoreError::InvalidNumber);
+    }
+
+    let total = segment_length(segment, tolerance)?;
+    segment_parameter_at_length_with_total(
+        segment,
+        distance.clamp(0.0, total),
+        total,
+        tolerance,
+    )
+}
+
 pub fn point_at_length(
     path: &Path,
     distance: Scalar,
@@ -94,7 +112,8 @@ pub fn point_at_length(
 
             if wanted <= accumulated + length || length == 0.0 {
                 let local = (wanted - accumulated).clamp(0.0, length);
-                let t = solve_t_for_length(segment, local, length, tolerance)?;
+                let t =
+                    segment_parameter_at_length_with_total(segment, local, length, tolerance)?;
                 return Ok((
                     segment.point_at(t),
                     PathLocation {

@@ -19,7 +19,8 @@ pub mod prelude {
     pub use crate::{
         Angle, Bounds, CubicBezier, DynamicSpatialIndex, EllipticalArc,
         IncrementalPathSpatialIndex, LineSegment, Path, PathBuilder, PathSpatialIndex, Point2,
-        QuadraticBezier, SpatialIndex, Tolerance, Transform2D, Vector2,
+        QuadraticBezier, SpatialIndex, StrokeCap, StrokeJoin, StrokeStyle, Tolerance, Transform2D,
+        Vector2, dash_path, segment_parameter_at_length,
     };
 }
 #[cfg(test)]

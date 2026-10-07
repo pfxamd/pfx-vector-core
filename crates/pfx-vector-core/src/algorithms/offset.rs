@@ -1,8 +1,8 @@
 use crate::{
     Angle, BooleanOperation, Circle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule,
     LineSegment, Path, PathBuilder, Point2, Scalar, Segment, StrokeCap, StrokeJoin, StrokeStyle,
-    Tolerance, Vector2, boolean_paths_with_fill_rules, boolean_union, circle_to_path,
-    normalize_self_intersections,
+    Tolerance, Vector2, boolean_paths_with_fill_rules, boolean_union, circle_to_path, dash_path,
+    normalize_self_intersections, normalized_dash_pattern,
 };
 
 const MAX_OFFSET_DEPTH: u32 = 18;
@@ -102,8 +102,12 @@ pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> C
         return Ok(Path::new());
     }
 
-    if !style.dash_array.is_empty() {
-        return Err(CoreError::UnsupportedCase);
+    if !normalized_dash_pattern(style).is_empty() {
+        let dashed = dash_path(path, style, tolerance)?;
+        let mut solid_style = style.clone();
+        solid_style.dash_array.clear();
+        solid_style.dash_offset = 0.0;
+        return outline_path(&dashed, &solid_style, tolerance);
     }
 
     let half_width = style.width * 0.5;

@@ -144,6 +144,7 @@ struct IndexedEdge {
 
 #[derive(Clone, Debug)]
 pub struct PathSpatialIndex {
+    path: Path,
     edges: Vec<IndexedEdge>,
     spatial: SpatialIndex,
     tolerance: Tolerance,
@@ -188,6 +189,7 @@ impl PathSpatialIndex {
         }
 
         Ok(Self {
+            path: path.clone(),
             spatial: SpatialIndex::new(&bounds),
             edges,
             tolerance,
@@ -277,6 +279,10 @@ impl PathSpatialIndex {
         style.validate()?;
         if style.width == 0.0 || self.edges.is_empty() {
             return Ok(false);
+        }
+
+        if !crate::normalized_dash_pattern(style).is_empty() {
+            return crate::stroke_contains_point(&self.path, style, point, self.tolerance);
         }
 
         let radius = style.width * 0.5 + self.tolerance.absolute;
