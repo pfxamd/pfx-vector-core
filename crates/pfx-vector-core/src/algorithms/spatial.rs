@@ -1,6 +1,8 @@
+use super::measure::segment_length_to_t;
 use crate::{
     Bounds, CoreError, CoreResult, FillRule, Path, PathLocation, Point2, PointClassification,
-    Scalar, StrokeStyle, Tolerance, flatten_path,
+    Scalar, Segment, SegmentClosestPoint, StrokeStyle, Tolerance, closest_point_on_segment,
+    flatten_path, segment_length,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -139,6 +141,12 @@ struct IndexedEdge {
     end: Point2,
     subpath_index: usize,
     segment_index: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct IndexedSegment {
+    subpath_index: usize,
+    segment_index: usize,
     distance_start: Scalar,
 }
 
@@ -147,6 +155,8 @@ pub struct PathSpatialIndex {
     path: Path,
     edges: Vec<IndexedEdge>,
     spatial: SpatialIndex,
+    segments: Vec<IndexedSegment>,
+    segment_spatial: SpatialIndex,
     tolerance: Tolerance,
     total_length: Scalar,
 }
@@ -156,7 +166,6 @@ impl PathSpatialIndex {
         let flattened = flatten_path(path, tolerance)?;
         let mut edges = Vec::new();
         let mut bounds = Vec::new();
-        let mut distance = 0.0;
 
         for (subpath_index, subpath) in flattened.iter().enumerate() {
             for (segment_index, window) in subpath.points.windows(2).enumerate() {
@@ -167,7 +176,6 @@ impl PathSpatialIndex {
                     window[1],
                     subpath_index,
                     segment_index,
-                    &mut distance,
                 );
             }
 
@@ -182,9 +190,24 @@ impl PathSpatialIndex {
                         start,
                         subpath_index,
                         subpath.points.len() - 1,
-                        &mut distance,
                     );
                 }
+            }
+        }
+
+        let mut segments = Vec::with_capacity(path.segment_count());
+        let mut segment_bounds = Vec::with_capacity(path.segment_count());
+        let mut total_length = 0.0;
+
+        for (subpath_index, subpath) in path.subpaths().iter().enumerate() {
+            for (segment_index, &segment) in subpath.segments().iter().enumerate() {
+                segments.push(IndexedSegment {
+                    subpath_index,
+                    segment_index,
+                    distance_start: total_length,
+                });
+                segment_bounds.push(segment.bounds());
+                total_length += segment_length(segment, tolerance)?;
             }
         }
 
@@ -192,8 +215,10 @@ impl PathSpatialIndex {
             path: path.clone(),
             spatial: SpatialIndex::new(&bounds),
             edges,
+            segments,
+            segment_spatial: SpatialIndex::new(&segment_bounds),
             tolerance,
-            total_length: distance,
+            total_length,
         })
     }
 
@@ -294,24 +319,31 @@ impl PathSpatialIndex {
     }
 
     pub fn closest_point(&self, point: Point2) -> CoreResult<crate::ClosestPointResult> {
-        if self.edges.is_empty() {
+        if !point.is_finite() {
+            return Err(CoreError::InvalidNumber);
+        }
+        if self.segments.is_empty() {
             return Err(CoreError::DegenerateOperation);
         }
 
-        let Bounds::Finite { min, max } = self.spatial.bounds() else {
+        let Bounds::Finite { min, max } = self.segment_spatial.bounds() else {
             return Err(CoreError::DegenerateOperation);
         };
         let scale = (max.x - min.x)
             .max(max.y - min.y)
             .max(self.tolerance.absolute)
             .max(1.0e-12);
-        let minimum = bounds_distance_squared_to_point(self.spatial.bounds(), point).sqrt();
+        let minimum = self
+            .segment_spatial
+            .bounds()
+            .distance_squared_to_point(point)
+            .sqrt();
         let mut radius = (scale / 64.0).max(minimum + self.tolerance.absolute);
         let mut candidates = Vec::new();
 
         for _ in 0..64 {
             candidates = self
-                .spatial
+                .segment_spatial
                 .query_bounds(square_bounds(point, radius), 0.0)?;
             if !candidates.is_empty() {
                 break;
@@ -323,35 +355,73 @@ impl PathSpatialIndex {
             return Err(CoreError::NonConvergent);
         }
 
-        let mut best = closest_from_candidates(&self.edges, &candidates, point)
+        let mut best = self
+            .closest_from_segment_candidates(&candidates, point)?
             .ok_or(CoreError::DegenerateOperation)?;
-        let final_radius = best.0.sqrt() + self.tolerance.absolute;
+        let final_radius = best.0.distance + self.tolerance.absolute;
         candidates = self
-            .spatial
+            .segment_spatial
             .query_bounds(square_bounds(point, final_radius), 0.0)?;
 
-        if let Some(candidate) = closest_from_candidates(&self.edges, &candidates, point) {
-            if candidate.0 < best.0 {
+        if let Some(candidate) = self.closest_from_segment_candidates(&candidates, point)? {
+            if candidate.0.distance_squared < best.0.distance_squared
+                || (candidate.0.distance_squared == best.0.distance_squared
+                    && (candidate.1.subpath_index, candidate.1.segment_index, candidate.0.t)
+                        < (best.1.subpath_index, best.1.segment_index, best.0.t))
+            {
                 best = candidate;
             }
         }
 
-        let (distance_squared, candidate, edge, t) = best;
-        let edge_length = edge.start.distance_to(edge.end);
+        let (candidate, source) = best;
+        let segment = self.path.subpaths()[source.subpath_index].segments()[source.segment_index];
+        let distance = source.distance_start
+            + segment_length_to_t(segment, candidate.t, self.tolerance)?;
 
         Ok(crate::ClosestPointResult {
-            point: candidate,
-            distance: distance_squared.sqrt(),
-            distance_squared,
+            point: candidate.point,
+            distance: candidate.distance,
+            distance_squared: candidate.distance_squared,
             location: PathLocation {
-                subpath_index: edge.subpath_index,
-                segment_index: edge.segment_index,
-                t,
-                distance: (edge.distance_start + t * edge_length).min(self.total_length),
+                subpath_index: source.subpath_index,
+                segment_index: source.segment_index,
+                t: candidate.t,
+                distance: distance.min(self.total_length),
             },
         })
     }
+
+    fn closest_from_segment_candidates(
+        &self,
+        candidates: &[usize],
+        point: Point2,
+    ) -> CoreResult<Option<(SegmentClosestPoint, IndexedSegment)>> {
+        let mut best = None;
+
+        for &index in candidates {
+            let source = self.segments[index];
+            let segment = self.path.subpaths()[source.subpath_index].segments()[source.segment_index];
+            let candidate = closest_point_on_segment(segment, point, self.tolerance)?;
+
+            if best.is_none_or(|(current, current_source): (SegmentClosestPoint, IndexedSegment)| {
+                candidate.distance_squared < current.distance_squared
+                    || (candidate.distance_squared == current.distance_squared
+                        && (source.subpath_index, source.segment_index, candidate.t)
+                            < (
+                                current_source.subpath_index,
+                                current_source.segment_index,
+                                current.t,
+                            ))
+            }) {
+                best = Some((candidate, source));
+            }
+        }
+
+        Ok(best)
+    }
 }
+
+fn push_edge}
 
 fn push_edge(
     edges: &mut Vec<IndexedEdge>,
@@ -360,50 +430,14 @@ fn push_edge(
     end: Point2,
     subpath_index: usize,
     segment_index: usize,
-    distance: &mut Scalar,
 ) {
-    let edge = IndexedEdge {
+    edges.push(IndexedEdge {
         start,
         end,
         subpath_index,
         segment_index,
-        distance_start: *distance,
-    };
-    edges.push(edge);
+    });
     bounds.push(Bounds::from_points(&[start, end]));
-    *distance += start.distance_to(end);
-}
-
-fn closest_from_candidates(
-    edges: &[IndexedEdge],
-    candidates: &[usize],
-    point: Point2,
-) -> Option<(Scalar, Point2, IndexedEdge, Scalar)> {
-    let mut best: Option<(Scalar, Point2, IndexedEdge, Scalar)> = None;
-
-    for &index in candidates {
-        let edge = edges[index];
-        let (candidate, t) = closest_line(edge.start, edge.end, point);
-        let distance_squared = candidate.distance_squared_to(point);
-
-        if best.is_none_or(|value| distance_squared < value.0) {
-            best = Some((distance_squared, candidate, edge, t));
-        }
-    }
-
-    best
-}
-
-fn closest_line(start: Point2, end: Point2, point: Point2) -> (Point2, Scalar) {
-    let direction = end - start;
-    let length_squared = direction.length_squared();
-
-    if length_squared == 0.0 {
-        return (start, 0.0);
-    }
-
-    let t = ((point - start).dot(direction) / length_squared).clamp(0.0, 1.0);
-    (start + direction * t, t)
 }
 
 fn square_bounds(center: Point2, radius: Scalar) -> Bounds {

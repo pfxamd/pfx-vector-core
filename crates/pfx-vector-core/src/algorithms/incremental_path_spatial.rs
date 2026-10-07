@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use super::flatten::{FlattenedSegmentEdge, flatten_segment_edges};
+use super::measure::segment_length_to_t;
 use crate::{
-    Angle, Bounds, CoreError, CoreResult, DynamicSpatialIndex, EllipticalArc, FillRule, Path,
-    PathLocation, Point2, PointClassification, Scalar, Segment, StrokeStyle, Subpath, Tolerance,
-    segment_length,
+    Bounds, CoreError, CoreResult, DynamicSpatialIndex, FillRule, Path, PathLocation, Point2,
+    PointClassification, Scalar, Segment, SegmentClosestPoint, StrokeStyle, Subpath, Tolerance,
+    closest_point_on_segment, segment_length,
 };
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -20,19 +21,12 @@ pub struct PathSpatialSync {
 struct IncrementalPathEdge {
     start: Point2,
     end: Point2,
-    subpath_index: usize,
-    segment_index: Option<usize>,
-    t_start: Scalar,
-    t_end: Scalar,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct PreparedEdge {
     start: Point2,
     end: Point2,
-    segment_index: Option<usize>,
-    t_start: Scalar,
-    t_end: Scalar,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +53,10 @@ pub struct IncrementalPathSpatialIndex {
     tolerance: Tolerance,
     edges: BTreeMap<usize, IncrementalPathEdge>,
     spatial: DynamicSpatialIndex,
+    segment_spatial: DynamicSpatialIndex,
+    segment_sources: BTreeMap<usize, (usize, usize)>,
+    segment_source_ids: Vec<Vec<usize>>,
+    next_segment_id: usize,
     segment_edge_ids: BTreeMap<(usize, usize), Vec<usize>>,
     closing_edge_ids: BTreeMap<usize, usize>,
     next_edge_id: usize,
@@ -77,6 +75,10 @@ impl IncrementalPathSpatialIndex {
             tolerance,
             edges: BTreeMap::new(),
             spatial: DynamicSpatialIndex::new(),
+            segment_spatial: DynamicSpatialIndex::new(),
+            segment_sources: BTreeMap::new(),
+            segment_source_ids: Vec::with_capacity(path.subpaths().len()),
+            next_segment_id: 0,
             segment_edge_ids: BTreeMap::new(),
             closing_edge_ids: BTreeMap::new(),
             next_edge_id: 0,
@@ -89,10 +91,16 @@ impl IncrementalPathSpatialIndex {
         };
 
         for (subpath_index, subpath) in path.subpaths().iter().enumerate() {
+            index
+                .segment_source_ids
+                .push(Vec::with_capacity(subpath.segments().len()));
             let prepared = prepare_all_segments(subpath, tolerance)?;
             index.ensure_edge_capacity(prepared_edge_count(&prepared))?;
             for (segment_index, edges) in prepared.into_iter().enumerate() {
                 index.insert_segment_edges(subpath_index, segment_index, &edges)?;
+            }
+            for (segment_index, &segment) in subpath.segments().iter().enumerate() {
+                index.insert_segment_bound(subpath_index, segment_index, segment)?;
             }
 
             if let Some(closing) = prepare_closing_edge(subpath) {
@@ -187,10 +195,12 @@ impl IncrementalPathSpatialIndex {
         let mut report = PathSpatialSync::default();
 
         for change in prepared_changes {
+            let new_subpath = &path.subpaths()[change.subpath_index];
             report.changed_subpaths += 1;
             report.changed_segments += change.changed_segments;
 
             if change.replace_all {
+                self.remove_subpath_segment_bounds(change.subpath_index)?;
                 for segment_index in 0..self.snapshot.subpaths()[change.subpath_index]
                     .segments()
                     .len()
@@ -203,6 +213,9 @@ impl IncrementalPathSpatialIndex {
                 for (segment_index, edges) in &change.segment_updates {
                     report.inserted_edges +=
                         self.insert_segment_edges(change.subpath_index, *segment_index, edges)?;
+                }
+                for (segment_index, &segment) in new_subpath.segments().iter().enumerate() {
+                    self.insert_segment_bound(change.subpath_index, segment_index, segment)?;
                 }
 
                 if let PreparedCloseUpdate::Set(Some(edge)) = change.close_update {
@@ -218,6 +231,11 @@ impl IncrementalPathSpatialIndex {
                         self.remove_segment_edges(change.subpath_index, *segment_index)?;
                     report.inserted_edges +=
                         self.insert_segment_edges(change.subpath_index, *segment_index, edges)?;
+                    self.update_segment_bound(
+                        change.subpath_index,
+                        *segment_index,
+                        new_subpath.segments()[*segment_index],
+                    )?;
                 }
 
                 match change.close_update {
@@ -336,94 +354,103 @@ impl IncrementalPathSpatialIndex {
     }
 
     pub fn closest_point(&self, point: Point2) -> CoreResult<crate::ClosestPointResult> {
-        if self.snapshot.is_empty() {
+        if !point.is_finite() {
+            return Err(CoreError::InvalidNumber);
+        }
+        if self.segment_sources.is_empty() {
             return Err(CoreError::DegenerateOperation);
         }
 
         let Bounds::Finite { min, max } = self.bounds else {
             return Err(CoreError::DegenerateOperation);
         };
-
         let scale = (max.x - min.x)
             .max(max.y - min.y)
             .max(self.tolerance.absolute)
             .max(1.0e-12);
         let minimum = self.bounds.distance_squared_to_point(point).sqrt();
         let mut radius = (scale / 64.0).max(minimum + self.tolerance.absolute);
-        let mut best = None;
+        let mut candidates = Vec::new();
 
         for _ in 0..64 {
-            let candidates = self
-                .spatial
+            candidates = self
+                .segment_spatial
                 .query_bounds(square_bounds(point, radius), 0.0)?;
-            best = self.closest_from_candidates(&candidates, point)?;
-            if best.is_some() {
+            if !candidates.is_empty() {
                 break;
             }
             radius *= 2.0;
         }
 
-        let mut best = best.ok_or(CoreError::NonConvergent)?;
-        let final_radius = best.0.sqrt() + self.tolerance.absolute;
-        let candidates = self
-            .spatial
+        if candidates.is_empty() {
+            return Err(CoreError::NonConvergent);
+        }
+
+        let mut best = self
+            .closest_from_segment_candidates(&candidates, point)?
+            .ok_or(CoreError::DegenerateOperation)?;
+        let final_radius = best.0.distance + self.tolerance.absolute;
+        candidates = self
+            .segment_spatial
             .query_bounds(square_bounds(point, final_radius), 0.0)?;
 
-        if let Some(candidate) = self.closest_from_candidates(&candidates, point)? {
-            if candidate.0 < best.0 {
+        if let Some(candidate) = self.closest_from_segment_candidates(&candidates, point)? {
+            if candidate.0.distance_squared < best.0.distance_squared
+                || (candidate.0.distance_squared == best.0.distance_squared
+                    && (candidate.1.0, candidate.1.1, candidate.0.t)
+                        < (best.1.0, best.1.1, best.0.t))
+            {
                 best = candidate;
             }
         }
 
-        let (distance_squared, candidate, edge, local_t) = best;
-        let segment_index = edge.segment_index.ok_or(CoreError::DegenerateOperation)?;
-        let source_t = edge.t_start + local_t * (edge.t_end - edge.t_start);
-        let distance = self.distance_to_location(edge.subpath_index, segment_index, source_t)?;
+        let (candidate, (subpath_index, segment_index)) = best;
+        let distance = self.distance_to_location(subpath_index, segment_index, candidate.t)?;
 
         Ok(crate::ClosestPointResult {
-            point: candidate,
-            distance: distance_squared.sqrt(),
-            distance_squared,
+            point: candidate.point,
+            distance: candidate.distance,
+            distance_squared: candidate.distance_squared,
             location: PathLocation {
-                subpath_index: edge.subpath_index,
+                subpath_index,
                 segment_index,
-                t: source_t,
+                t: candidate.t,
                 distance: distance.min(self.total_length),
             },
         })
     }
 
-    fn closest_from_candidates(
+    fn closest_from_segment_candidates(
         &self,
         candidates: &[usize],
         point: Point2,
-    ) -> CoreResult<Option<(Scalar, Point2, IncrementalPathEdge, Scalar)>> {
+    ) -> CoreResult<Option<(SegmentClosestPoint, (usize, usize))>> {
         let mut best = None;
 
-        for &edge_id in candidates {
-            let edge = self
-                .edges
-                .get(&edge_id)
-                .copied()
+        for &segment_id in candidates {
+            let source = *self
+                .segment_sources
+                .get(&segment_id)
                 .ok_or(CoreError::InvalidGeometry)?;
-            if edge.segment_index.is_none() {
-                continue;
-            }
+            let segment = self.snapshot.subpaths()[source.0].segments()[source.1];
+            let candidate = closest_point_on_segment(segment, point, self.tolerance)?;
 
-            let (candidate, t) = closest_line(edge.start, edge.end, point);
-            let distance_squared = candidate.distance_squared_to(point);
-
-            if best.is_none_or(|value: (Scalar, Point2, IncrementalPathEdge, Scalar)| {
-                distance_squared < value.0
-            }) {
-                best = Some((distance_squared, candidate, edge, t));
+            if best.is_none_or(
+                |(current, current_source): (SegmentClosestPoint, (usize, usize))| {
+                    candidate.distance_squared < current.distance_squared
+                        || (candidate.distance_squared == current.distance_squared
+                            && (source.0, source.1, candidate.t)
+                                < (current_source.0, current_source.1, current.t))
+                },
+            ) {
+                best = Some((candidate, source));
             }
         }
 
         Ok(best)
     }
 
-    fn distance_to_location(
+    fn distance_to_location(    fn distance_to_location(
         &self,
         subpath_index: usize,
         segment_index: usize,
@@ -433,6 +460,54 @@ impl IncrementalPathSpatialIndex {
         Ok(self.subpath_offsets[subpath_index]
             + self.segment_offsets[subpath_index][segment_index]
             + segment_length_to_t(segment, t, self.tolerance)?)
+    }
+
+    fn insert_segment_bound(
+        &mut self,
+        subpath_index: usize,
+        segment_index: usize,
+        segment: Segment,
+    ) -> CoreResult<()> {
+        let next = self
+            .next_segment_id
+            .checked_add(1)
+            .ok_or(CoreError::IterationLimit)?;
+        let segment_id = self.next_segment_id;
+        self.segment_spatial.insert(segment_id, segment.bounds())?;
+        self.segment_sources
+            .insert(segment_id, (subpath_index, segment_index));
+        self.segment_source_ids[subpath_index].push(segment_id);
+        self.next_segment_id = next;
+        Ok(())
+    }
+
+    fn update_segment_bound(
+        &mut self,
+        subpath_index: usize,
+        segment_index: usize,
+        segment: Segment,
+    ) -> CoreResult<()> {
+        let segment_id = *self
+            .segment_source_ids
+            .get(subpath_index)
+            .and_then(|ids| ids.get(segment_index))
+            .ok_or(CoreError::InvalidGeometry)?;
+        self.segment_spatial.update(segment_id, segment.bounds())
+    }
+
+    fn remove_subpath_segment_bounds(&mut self, subpath_index: usize) -> CoreResult<()> {
+        let ids = self
+            .segment_source_ids
+            .get_mut(subpath_index)
+            .ok_or(CoreError::InvalidGeometry)?;
+        let removed = core::mem::take(ids);
+        for segment_id in removed {
+            self.segment_spatial.remove(segment_id)?;
+            self.segment_sources
+                .remove(&segment_id)
+                .ok_or(CoreError::InvalidGeometry)?;
+        }
+        Ok(())
     }
 
     fn insert_segment_edges(
@@ -476,10 +551,6 @@ impl IncrementalPathSpatialIndex {
             IncrementalPathEdge {
                 start: prepared.start,
                 end: prepared.end,
-                subpath_index,
-                segment_index: prepared.segment_index,
-                t_start: prepared.t_start,
-                t_end: prepared.t_end,
             },
         );
         self.next_edge_id = next;
@@ -641,26 +712,20 @@ fn prepare_all_segments(
 
 fn prepare_segment(
     segment: Segment,
-    segment_index: usize,
+    _segment_index: usize,
     tolerance: Tolerance,
 ) -> CoreResult<Vec<PreparedEdge>> {
     flatten_segment_edges(segment, tolerance)?
         .into_iter()
-        .map(|edge| prepared_source_edge(edge, segment_index))
+        .map(prepared_source_edge)
         .collect()
 }
 
-fn prepared_source_edge(
-    edge: FlattenedSegmentEdge,
-    segment_index: usize,
-) -> CoreResult<PreparedEdge> {
+fn prepared_source_edge(edge: FlattenedSegmentEdge) -> CoreResult<PreparedEdge> {
     validate_edge_points(edge.start, edge.end)?;
     Ok(PreparedEdge {
         start: edge.start,
         end: edge.end,
-        segment_index: Some(segment_index),
-        t_start: edge.t_start,
-        t_end: edge.t_end,
     })
 }
 
@@ -678,9 +743,6 @@ fn prepare_closing_edge(subpath: &Subpath) -> Option<PreparedEdge> {
     Some(PreparedEdge {
         start: end,
         end: start,
-        segment_index: None,
-        t_start: 0.0,
-        t_end: 1.0,
     })
 }
 
@@ -724,56 +786,11 @@ fn subpath_bounds(subpath: &Subpath) -> Bounds {
     bounds
 }
 
-fn segment_length_to_t(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult<Scalar> {
-    let t = t.clamp(0.0, 1.0);
-    if t == 0.0 {
-        return Ok(0.0);
-    }
-    if t == 1.0 {
-        return segment_length(segment, tolerance);
-    }
-
-    match segment {
-        Segment::Line(line) => Ok(line.length() * t),
-        Segment::Quadratic(curve) => {
-            let (left, _) = curve.split(t);
-            segment_length(Segment::Quadratic(left), tolerance)
-        }
-        Segment::Cubic(curve) => {
-            let (left, _) = curve.split(t);
-            segment_length(Segment::Cubic(left), tolerance)
-        }
-        Segment::Arc(arc) => {
-            let partial = EllipticalArc::new(
-                arc.center,
-                arc.radius_x,
-                arc.radius_y,
-                arc.rotation,
-                arc.start_angle,
-                Angle::radians(arc.sweep_angle.as_radians() * t),
-            );
-            segment_length(Segment::Arc(partial), tolerance)
-        }
-    }
-}
-
 fn validate_edge_points(start: Point2, end: Point2) -> CoreResult<()> {
     if !start.is_finite() || !end.is_finite() {
         return Err(CoreError::InvalidNumber);
     }
     Ok(())
-}
-
-fn closest_line(start: Point2, end: Point2, point: Point2) -> (Point2, Scalar) {
-    let direction = end - start;
-    let length_squared = direction.length_squared();
-
-    if length_squared == 0.0 {
-        return (start, 0.0);
-    }
-
-    let t = ((point - start).dot(direction) / length_squared).clamp(0.0, 1.0);
-    (start + direction * t, t)
 }
 
 fn square_bounds(center: Point2, radius: Scalar) -> Bounds {

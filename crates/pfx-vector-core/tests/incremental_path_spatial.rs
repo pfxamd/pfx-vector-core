@@ -307,3 +307,36 @@ fn incremental_index_is_stable_at_large_coordinates() {
     let direct = closest_point(&changed, point, tolerance).unwrap();
     assert!(indexed.point.distance_to(direct.point) <= 1.0e-3);
 }
+
+
+#[test]
+fn incremental_nearest_refines_against_source_curve_after_sync() {
+    let tolerance = Tolerance {
+        flatness: 100.0,
+        ..Tolerance::default()
+    };
+    let mut first_builder = PathBuilder::new();
+    first_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .quad_to(Point2::new(5.0, 6.0), Point2::new(10.0, 0.0))
+        .unwrap();
+    let first = first_builder.finish().unwrap();
+
+    let mut second_builder = PathBuilder::new();
+    second_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .quad_to(Point2::new(5.0, 10.0), Point2::new(10.0, 0.0))
+        .unwrap();
+    let second = second_builder.finish().unwrap();
+
+    let mut index = IncrementalPathSpatialIndex::build(&first, tolerance).unwrap();
+    index.sync_path(&second).unwrap();
+    let result = index.closest_point(Point2::new(5.0, 8.0)).unwrap();
+
+    assert_eq!(result.location.segment_index, 0);
+    assert!((result.location.t - 0.5).abs() <= 1.0e-9);
+    assert!(result.point.distance_to(Point2::new(5.0, 5.0)) <= 1.0e-8);
+    assert!((result.distance - 3.0).abs() <= 1.0e-8);
+}
