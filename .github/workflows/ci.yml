@@ -12,7 +12,7 @@ jobs:
     name: Rust core
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -20,12 +20,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Verify architecture boundaries
         run: python3 scripts/verify_structure.py
-      - name: Rustfmt parse and normalize
-        run: cargo fmt --all
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
       - name: Check
         run: cargo check --workspace --all-targets --all-features
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: Tests
         run: cargo test --workspace --all-features
       - name: Build benchmark targets
@@ -40,7 +40,7 @@ jobs:
       run:
         working-directory: packages/pfx-vector-web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22

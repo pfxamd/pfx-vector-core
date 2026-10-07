@@ -2,7 +2,7 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, path mathematics, and an SVG geometry boundary. Rendering, DOM, UI, scene graphs, and editor state are intentionally outside the core.
 
-**Status:** `v0.1.0` pre-release.
+**Status:** `v0.1.0`.
 
 ## v0.1 scope
 
@@ -104,4 +104,4 @@ npm install
 npm run typecheck
 ```
 
-Rust `1.85` is the declared minimum version because the workspace uses Edition 2024. Current stable Rust is recommended.
+Rust `1.85` is the declared minimum version because the workspace uses Edition 2024. Current stable Rust is recommended.\n\n## License\n\nApache-2.0.

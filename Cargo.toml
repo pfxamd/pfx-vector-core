@@ -13,10 +13,13 @@ edition = "2024"
 rust-version = "1.85"
 authors = ["pfxamd"]
 repository = "https://github.com/pfxamd/pfx-vector-core"
+license = "Apache-2.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
-pedantic = "warn"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
