@@ -436,8 +436,7 @@ fn replace_subpath_updates_selected_contour_and_report() {
 #[test]
 fn replace_subpath_same_topology_reports_no_index_shift() {
     let path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 0.0)]);
-    let replacement_path =
-        line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 5.0)]);
+    let replacement_path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 5.0)]);
     let replacement = extract_subpath(&replacement_path, 0).unwrap();
 
     let edit = replace_subpath(&path, 0, replacement).unwrap();
