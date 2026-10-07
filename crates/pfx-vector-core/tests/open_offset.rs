@@ -427,3 +427,35 @@ fn high_curvature_offset_splits_before_curvature_singularity() {
             .all(|segment| { segment.start().is_finite() && segment.end().is_finite() })
     );
 }
+
+
+#[test]
+fn large_coordinate_cubic_offset_preserves_precision() {
+    let base = 1.0e9;
+    let curve = CubicBezier::new(
+        Point2::new(base, base),
+        Point2::new(base + 30.0, base + 70.0),
+        Point2::new(base + 90.0, base - 60.0),
+        Point2::new(base + 140.0, base + 15.0),
+    );
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(curve.p0)
+        .unwrap()
+        .cubic_to(curve.p1, curve.p2, curve.p3)
+        .unwrap();
+    let path = builder.finish().unwrap();
+    let tolerance = Tolerance {
+        flatness: 1.0e-3,
+        ..Tolerance::default()
+    };
+    let distance = 6.0;
+    let offset = offset_path(&path, distance, OffsetStyle::default(), tolerance).unwrap();
+
+    for step in 0..=80 {
+        let t = step as f64 / 80.0;
+        let expected = exact_offset_point(Segment::Cubic(curve), t, distance);
+        let nearest = closest_point(&offset, expected, tolerance).unwrap();
+        assert!(nearest.distance <= 2.0e-3, "t={t}, error={}", nearest.distance);
+    }
+}

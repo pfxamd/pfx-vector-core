@@ -154,6 +154,39 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    let precision_arc = EllipticalArc::new(
+        Point2::new(15.0, -8.0),
+        36.0,
+        11.0,
+        Angle::degrees(27.0),
+        Angle::degrees(-35.0),
+        Angle::degrees(250.0),
+    );
+    let mut precision_arc_builder = PathBuilder::new();
+    precision_arc_builder
+        .move_to(precision_arc.point_at(0.0))
+        .unwrap()
+        .arc_to(precision_arc)
+        .unwrap();
+    let precision_arc_path = precision_arc_builder.finish().unwrap();
+    let precision_tolerance = Tolerance {
+        flatness: 5.0e-4,
+        ..tolerance
+    };
+
+    c.bench_function("precision offset elliptical arc", |b| {
+        b.iter(|| {
+            offset_path(
+                black_box(&precision_arc_path),
+                black_box(2.0),
+                black_box(OffsetStyle::default()),
+                black_box(precision_tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+
     let outline_style = StrokeStyle {
         width: 8.0,
         cap: StrokeCap::Round,
