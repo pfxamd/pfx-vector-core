@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.0 - 2026-10-07
+
+### Added
+
+- Public `DynamicSpatialIndex` for mutable broad-phase geometry workloads.
+- Stable caller-provided item IDs across inserts, updates, removals, rebuilds, and queries.
+- Deterministic `query_bounds`, `self_candidate_pairs`, and `cross_candidate_pairs` operations for changing geometry sets.
+- A bounded mutation overlay that keeps recent changes queryable without rebuilding the immutable sweep index after every edit.
+- Automatic deterministic rebuilds after enough distinct items have changed, plus an explicit `rebuild` operation.
+- Mutation-focused differential tests against brute-force queries and pair generation, including sparse IDs, repeated updates, removals, and large translated coordinates.
+- Criterion benchmark coverage for dynamic queries and update-plus-query workloads on 10000 indexed bounds.
+- `DynamicSpatialIndex` in the core prelude.
+
+### Changed
+
+- Spatial acceleration now supports both immutable bulk indexing through `SpatialIndex` and mutation-heavy workloads through `DynamicSpatialIndex`.
+- Dynamic query results and candidate pairs are normalized to stable item-index order regardless of mutation history.
+
+### Scope limits
+
+- The dynamic index is a CPU broad phase; exact geometric decisions remain in the existing intersection and topology engines.
+- Indexed bounds must be finite and non-empty. Removing an item is explicit rather than represented by an empty bound.
+- Mutation tracking is single-process state and is not a concurrent scene graph or editor-state system.
+- Automatic rebuild thresholds are an internal performance policy and are not part of the public correctness contract.
+
 ## 0.8.0 - 2026-10-07
 
 ### Added

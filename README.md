@@ -2,7 +2,25 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.8.0`.
+**Status:** `v0.9.0`.
+
+## v0.9 dynamic spatial indexing
+
+For geometry sets that change during editing or interactive processing, the core now provides a mutable broad-phase index with stable caller-owned item IDs:
+
+```rust
+let mut index = DynamicSpatialIndex::from_bounds(&bounds)?;
+
+index.update(42, new_bounds)?;
+index.insert(5000, added_bounds)?;
+index.remove(7)?;
+
+let candidates = index.query_bounds(query_bounds, tolerance.absolute)?;
+```
+
+`DynamicSpatialIndex` combines the deterministic immutable sweep index with a bounded mutation overlay. Recent inserts, updates, and removals are visible immediately, while automatic rebuilds compact accumulated changes without forcing a full rebuild after every edit.
+
+The mutable index also provides deterministic self- and cross-index candidate-pair queries. It remains a broad phase only: exact intersections and topology decisions stay in the existing geometry engines.
 
 ## v0.8 spatial acceleration
 
