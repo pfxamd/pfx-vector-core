@@ -1,7 +1,7 @@
 use crate::{
     Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
-    Path, PathBuilder, Point2, PointClassification, Scalar, Segment, Tolerance, Vector2,
-    classify_point, intersect_segments, spatial_cross_candidate_pairs, spatial_self_candidate_pairs,
+    Path, PathBuilder, PathSpatialIndex, Point2, PointClassification, Scalar, Segment, Tolerance,
+    Vector2, intersect_segments, spatial_cross_candidate_pairs, spatial_self_candidate_pairs,
 };
 
 const PARAMETER_EPSILON: Scalar = 1.0e-10;
@@ -27,9 +27,9 @@ struct BoundaryFragment {
 
 #[derive(Clone, Copy)]
 struct BooleanContext<'a> {
-    a: &'a Path,
+    a: &'a PathSpatialIndex,
     fill_a: FillRule,
-    b: &'a Path,
+    b: &'a PathSpatialIndex,
     fill_b: FillRule,
     operation: BooleanOperation,
     tolerance: Tolerance,
@@ -115,6 +115,7 @@ pub fn normalize_self_intersections(
 
     normalize_split_parameters(&mut splits, tolerance);
 
+    let fill_index = PathSpatialIndex::build(path, tolerance)?;
     let mut fragments = Vec::new();
     for (working, parameters) in segments.iter().zip(&splits) {
         for pair in parameters.windows(2) {
@@ -134,7 +135,7 @@ pub fn normalize_self_intersections(
             }
 
             if let Some(oriented) =
-                classify_single_path_boundary(fragment, path, fill_rule, tolerance)?
+                classify_single_path_boundary(fragment, &fill_index, fill_rule, tolerance)?
             {
                 fragments.push(BoundaryFragment { segment: oriented });
             }
@@ -207,7 +208,7 @@ fn cubic_self_intersection_parameters(
 
 fn classify_single_path_boundary(
     fragment: Segment,
-    path: &Path,
+    path: &PathSpatialIndex,
     fill_rule: FillRule,
     tolerance: Tolerance,
 ) -> CoreResult<Option<Segment>> {
@@ -408,10 +409,12 @@ pub fn boolean_paths_with_fill_rules(
     normalize_split_parameters(&mut splits_a, tolerance);
     normalize_split_parameters(&mut splits_b, tolerance);
 
+    let index_a = PathSpatialIndex::build(a, tolerance)?;
+    let index_b = PathSpatialIndex::build(b, tolerance)?;
     let context = BooleanContext {
-        a,
+        a: &index_a,
         fill_a,
-        b,
+        b: &index_b,
         fill_b,
         operation,
         tolerance,
@@ -580,7 +583,7 @@ fn classify_fragment_boundary(
 }
 
 fn classify_sides(
-    path: &Path,
+    path: &PathSpatialIndex,
     fill_rule: FillRule,
     midpoint: Point2,
     normal: Vector2,
@@ -590,8 +593,8 @@ fn classify_sides(
     let mut distance = base_probe;
 
     for _ in 0..MAX_PROBE_ATTEMPTS {
-        let left = classify_point(path, midpoint + normal * distance, fill_rule, tolerance)?;
-        let right = classify_point(path, midpoint - normal * distance, fill_rule, tolerance)?;
+        let left = path.classify_point(midpoint + normal * distance, fill_rule)?;
+        let right = path.classify_point(midpoint - normal * distance, fill_rule)?;
 
         if left != PointClassification::Boundary && right != PointClassification::Boundary {
             return Ok(Some((
