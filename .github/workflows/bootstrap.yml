@@ -20,12 +20,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .pfx-bootstrap-payload.b64 > /tmp/pfx-vector-core.zip
+          cat .pfx-bootstrap-payload.part* | base64 --decode > /tmp/pfx-vector-core.zip
           rm -rf /tmp/pfx-vector-core
           mkdir -p /tmp/pfx-vector-core
           unzip -q /tmp/pfx-vector-core.zip -d /tmp/pfx-vector-core
           cp -a /tmp/pfx-vector-core/pfx-vector-core/. .
-          rm -f .pfx-bootstrap-payload.b64
+          rm -f .pfx-bootstrap-payload.b64 .pfx-bootstrap-payload.part*
           rm -f .github/workflows/bootstrap.yml
 
       - name: Commit source tree
