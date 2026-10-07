@@ -1,8 +1,8 @@
 use crate::{
     Angle, BooleanOperation, Circle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule,
     LineSegment, Path, PathBuilder, Point2, Scalar, Segment, StrokeCap, StrokeJoin, StrokeStyle,
-    Tolerance, Vector2, boolean_paths_with_fill_rules, boolean_union, circle_to_path, dash_path,
-    normalize_self_intersections, normalized_dash_pattern,
+    Subpath, Tolerance, Vector2, boolean_paths_with_fill_rules, boolean_union, circle_to_path,
+    dash_path, normalize_self_intersections, normalized_dash_pattern,
 };
 
 const MAX_OFFSET_DEPTH: u32 = 18;
@@ -54,14 +54,50 @@ pub fn offset_path_with_fill_rule(
     }
     style.validate()?;
 
-    if path.subpaths().iter().any(|subpath| !subpath.is_closed()) {
-        return Err(CoreError::UnsupportedCase);
-    }
-
     if distance == 0.0 || path.is_empty() {
         return Ok(path.clone());
     }
 
+    let mut closed_subpaths = Vec::new();
+    let mut open_subpaths = Vec::new();
+
+    for subpath in path.subpaths() {
+        if subpath.is_closed() {
+            closed_subpaths.push(subpath.clone());
+        } else {
+            open_subpaths.push(subpath);
+        }
+    }
+
+    let mut output = Vec::new();
+
+    if !closed_subpaths.is_empty() {
+        let closed = Path::from_subpaths(closed_subpaths);
+        let offset = offset_closed_path_with_fill_rule(
+            &closed,
+            fill_rule,
+            distance,
+            style,
+            tolerance,
+        )?;
+        output.extend(offset.subpaths().iter().cloned());
+    }
+
+    for subpath in open_subpaths {
+        let offset = offset_open_subpath(subpath, distance, style, tolerance)?;
+        output.extend(offset.subpaths().iter().cloned());
+    }
+
+    Ok(Path::from_subpaths(output))
+}
+
+fn offset_closed_path_with_fill_rule(
+    path: &Path,
+    fill_rule: FillRule,
+    distance: Scalar,
+    style: OffsetStyle,
+    tolerance: Tolerance,
+) -> CoreResult<Path> {
     let normalized = normalize_self_intersections(path, fill_rule, tolerance)?;
     if normalized.is_empty() {
         return Ok(Path::new());
@@ -89,6 +125,188 @@ pub fn offset_path_with_fill_rule(
         },
         tolerance,
     )
+}
+
+fn offset_open_subpath(
+    subpath: &Subpath,
+    distance: Scalar,
+    style: OffsetStyle,
+    tolerance: Tolerance,
+) -> CoreResult<Path> {
+    let source = subpath.segments();
+    if source.is_empty() {
+        return Ok(Path::new());
+    }
+
+    let mut output = offset_segments(source[0], distance, tolerance)?;
+    if output.is_empty() {
+        return Err(CoreError::DegenerateOperation);
+    }
+
+    for index in 1..source.len() {
+        let mut next = offset_segments(source[index], distance, tolerance)?;
+        if next.is_empty() {
+            return Err(CoreError::DegenerateOperation);
+        }
+
+        stitch_open_offset_join(
+            &mut output,
+            &mut next,
+            source[index - 1],
+            source[index],
+            distance,
+            style,
+            tolerance,
+        )?;
+        output.extend(next);
+    }
+
+    open_path_from_segments(output, tolerance)
+}
+
+fn stitch_open_offset_join(
+    output: &mut Vec<Segment>,
+    next: &mut [Segment],
+    previous_source: Segment,
+    next_source: Segment,
+    distance: Scalar,
+    style: OffsetStyle,
+    tolerance: Tolerance,
+) -> CoreResult<()> {
+    let previous_end = output
+        .last()
+        .copied()
+        .ok_or(CoreError::DegenerateOperation)?
+        .end();
+    let next_start = next
+        .first()
+        .copied()
+        .ok_or(CoreError::DegenerateOperation)?
+        .start();
+
+    if previous_end.almost_eq(next_start, tolerance) {
+        return Ok(());
+    }
+
+    let previous_tangent = stable_segment_tangent(previous_source, 1.0, tolerance)?;
+    let next_tangent = stable_segment_tangent(next_source, 0.0, tolerance)?;
+    let cross = previous_tangent.cross(next_tangent);
+    let dot = previous_tangent.dot(next_tangent).clamp(-1.0, 1.0);
+    let angular_tolerance = tolerance.angular.max(1.0e-12);
+
+    if cross.abs() <= angular_tolerance {
+        push_join_line(output, previous_end, next_start, tolerance);
+        return Ok(());
+    }
+
+    let vertex = previous_source.end();
+    let outer = cross * distance < 0.0;
+    let intersection = line_intersection(
+        previous_end,
+        previous_tangent,
+        next_start,
+        next_tangent,
+        tolerance,
+    );
+
+    if !outer {
+        if let Some(point) = intersection
+            && merge_line_join(output, next, point)
+        {
+            return Ok(());
+        }
+
+        push_join_line(output, previous_end, next_start, tolerance);
+        return Ok(());
+    }
+
+    match style.join {
+        StrokeJoin::Bevel => {
+            push_join_line(output, previous_end, next_start, tolerance);
+        }
+        StrokeJoin::Round => {
+            let turn_angle = cross.atan2(dot);
+            let radius = distance.abs();
+
+            if radius <= tolerance.absolute {
+                push_join_line(output, previous_end, next_start, tolerance);
+                return Ok(());
+            }
+
+            let vector = previous_end - vertex;
+            let arc = EllipticalArc::new(
+                vertex,
+                radius,
+                radius,
+                Angle::radians(0.0),
+                Angle::radians(vector.y.atan2(vector.x)),
+                Angle::radians(turn_angle),
+            );
+
+            output.push(Segment::Arc(arc));
+            let arc_end = arc.point_at(1.0);
+            if !arc_end.almost_eq(next_start, tolerance) {
+                push_join_line(output, arc_end, next_start, tolerance);
+            }
+        }
+        StrokeJoin::Miter => {
+            if let Some(point) = intersection {
+                let ratio =
+                    vertex.distance_to(point) / distance.abs().max(tolerance.absolute);
+
+                if ratio <= style.miter_limit {
+                    if !merge_line_join(output, next, point) {
+                        push_join_line(output, previous_end, point, tolerance);
+                        push_join_line(output, point, next_start, tolerance);
+                    }
+                } else {
+                    push_join_line(output, previous_end, next_start, tolerance);
+                }
+            } else {
+                push_join_line(output, previous_end, next_start, tolerance);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn merge_line_join(output: &mut [Segment], next: &mut [Segment], point: Point2) -> bool {
+    let Some(Segment::Line(previous)) = output.last_mut() else {
+        return false;
+    };
+    let Some(Segment::Line(following)) = next.first_mut() else {
+        return false;
+    };
+
+    previous.end = point;
+    following.start = point;
+    true
+}
+
+fn push_join_line(
+    output: &mut Vec<Segment>,
+    start: Point2,
+    end: Point2,
+    tolerance: Tolerance,
+) {
+    if !start.almost_eq(end, tolerance) {
+        output.push(Segment::Line(LineSegment::new(start, end)));
+    }
+}
+
+fn open_path_from_segments(
+    segments: Vec<Segment>,
+    tolerance: Tolerance,
+) -> CoreResult<Path> {
+    let Some(first) = segments.first().copied() else {
+        return Ok(Path::new());
+    };
+
+    let mut builder = PathBuilder::with_tolerance(tolerance);
+    builder.move_to(first.start())?;
+    append_chain(&mut builder, &segments)?;
+    builder.finish()
 }
 
 pub fn stroke_to_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Path> {
