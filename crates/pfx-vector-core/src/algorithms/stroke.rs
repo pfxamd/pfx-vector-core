@@ -164,11 +164,7 @@ fn dash_subpath(
     let mut fragment_segments = Vec::with_capacity(intervals.len());
     for &(start, end) in &intervals {
         fragment_segments.push(slice_trace_interval(
-            &trace,
-            &lengths,
-            start,
-            end,
-            tolerance,
+            &trace, &lengths, start, end, tolerance,
         )?);
     }
 
@@ -316,7 +312,9 @@ fn slice_segment(segment: Segment, t0: Scalar, t1: Scalar) -> Segment {
     let t1 = t1.clamp(t0, 1.0);
 
     match segment {
-        Segment::Line(line) => Segment::Line(LineSegment::new(line.point_at(t0), line.point_at(t1))),
+        Segment::Line(line) => {
+            Segment::Line(LineSegment::new(line.point_at(t0), line.point_at(t1)))
+        }
         Segment::Quadratic(curve) => Segment::Quadratic(curve.subcurve(t0, t1)),
         Segment::Cubic(curve) => {
             if t0 == 0.0 && t1 == 1.0 {

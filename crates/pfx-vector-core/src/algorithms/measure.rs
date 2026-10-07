@@ -82,12 +82,7 @@ pub fn segment_parameter_at_length(
     }
 
     let total = segment_length(segment, tolerance)?;
-    segment_parameter_at_length_with_total(
-        segment,
-        distance.clamp(0.0, total),
-        total,
-        tolerance,
-    )
+    segment_parameter_at_length_with_total(segment, distance.clamp(0.0, total), total, tolerance)
 }
 
 pub fn point_at_length(
@@ -112,8 +107,7 @@ pub fn point_at_length(
 
             if wanted <= accumulated + length || length == 0.0 {
                 let local = (wanted - accumulated).clamp(0.0, length);
-                let t =
-                    segment_parameter_at_length_with_total(segment, local, length, tolerance)?;
+                let t = segment_parameter_at_length_with_total(segment, local, length, tolerance)?;
                 return Ok((
                     segment.point_at(t),
                     PathLocation {

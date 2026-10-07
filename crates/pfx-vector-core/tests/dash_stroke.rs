@@ -117,7 +117,11 @@ fn arc_dashing_preserves_native_arc_segments() {
         Angle::radians(core::f64::consts::PI),
     );
     let mut builder = PathBuilder::new();
-    builder.move_to(arc.point_at(0.0)).unwrap().arc_to(arc).unwrap();
+    builder
+        .move_to(arc.point_at(0.0))
+        .unwrap()
+        .arc_to(arc)
+        .unwrap();
     let path = builder.finish().unwrap();
     let tolerance = Tolerance::default();
     let length = segment_length(Segment::Arc(arc), tolerance).unwrap();
@@ -161,8 +165,16 @@ fn dashed_hit_testing_excludes_gaps() {
     assert!(!stroke_contains_point(&path, &style, Point2::new(6.0, 0.0), tolerance).unwrap());
 
     let indexed = PathSpatialIndex::build(&path, tolerance).unwrap();
-    assert!(indexed.stroke_contains_point(&style, Point2::new(2.0, 0.0)).unwrap());
-    assert!(!indexed.stroke_contains_point(&style, Point2::new(6.0, 0.0)).unwrap());
+    assert!(
+        indexed
+            .stroke_contains_point(&style, Point2::new(2.0, 0.0))
+            .unwrap()
+    );
+    assert!(
+        !indexed
+            .stroke_contains_point(&style, Point2::new(6.0, 0.0))
+            .unwrap()
+    );
 
     let incremental = IncrementalPathSpatialIndex::build(&path, tolerance).unwrap();
     assert!(
