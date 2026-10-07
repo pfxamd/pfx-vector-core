@@ -205,11 +205,7 @@ impl PathSpatialIndex {
         self.spatial.bounds()
     }
 
-    pub fn classify_point(
-        &self,
-        point: Point2,
-        rule: FillRule,
-    ) -> CoreResult<PointClassification> {
+    pub fn classify_point(&self, point: Point2, rule: FillRule) -> CoreResult<PointClassification> {
         if self.edges.is_empty() {
             return Ok(PointClassification::Outside);
         }
@@ -312,7 +308,9 @@ impl PathSpatialIndex {
         let mut candidates = Vec::new();
 
         for _ in 0..64 {
-            candidates = self.spatial.query_bounds(square_bounds(point, radius), 0.0)?;
+            candidates = self
+                .spatial
+                .query_bounds(square_bounds(point, radius), 0.0)?;
             if !candidates.is_empty() {
                 break;
             }
@@ -418,8 +416,7 @@ fn square_bounds(center: Point2, radius: Scalar) -> Bounds {
 }
 
 fn point_tolerance(point: Point2, tolerance: Tolerance) -> Scalar {
-    tolerance.absolute
-        + tolerance.relative * point.x.abs().max(point.y.abs()).max(1.0)
+    tolerance.absolute + tolerance.relative * point.x.abs().max(point.y.abs()).max(1.0)
 }
 
 fn validate_padding(padding: Scalar) -> CoreResult<()> {

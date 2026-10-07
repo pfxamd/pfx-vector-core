@@ -88,9 +88,7 @@ pub fn normalize_self_intersections(
         .iter()
         .map(|working| working.segment.bounds())
         .collect();
-    for (index_a, index_b) in
-        spatial_self_candidate_pairs(&segment_bounds, tolerance.absolute)?
-    {
+    for (index_a, index_b) in spatial_self_candidate_pairs(&segment_bounds, tolerance.absolute)? {
         let intersections = intersect_segments(
             segments[index_a].segment,
             segments[index_b].segment,
@@ -98,19 +96,19 @@ pub fn normalize_self_intersections(
         )?;
 
         for intersection in intersections.intersections {
-                match intersection {
-                    Intersection::Point(point) => {
-                        add_parameter(&mut splits[index_a], point.parameter_a, tolerance);
-                        add_parameter(&mut splits[index_b], point.parameter_b, tolerance);
-                    }
-                    Intersection::Overlap(overlap) => {
-                        add_parameter(&mut splits[index_a], overlap.range_a.min, tolerance);
-                        add_parameter(&mut splits[index_a], overlap.range_a.max, tolerance);
-                        add_parameter(&mut splits[index_b], overlap.range_b.min, tolerance);
-                        add_parameter(&mut splits[index_b], overlap.range_b.max, tolerance);
-                    }
+            match intersection {
+                Intersection::Point(point) => {
+                    add_parameter(&mut splits[index_a], point.parameter_a, tolerance);
+                    add_parameter(&mut splits[index_b], point.parameter_b, tolerance);
+                }
+                Intersection::Overlap(overlap) => {
+                    add_parameter(&mut splits[index_a], overlap.range_a.min, tolerance);
+                    add_parameter(&mut splits[index_a], overlap.range_a.max, tolerance);
+                    add_parameter(&mut splits[index_b], overlap.range_b.min, tolerance);
+                    add_parameter(&mut splits[index_b], overlap.range_b.max, tolerance);
                 }
             }
+        }
     }
 
     normalize_split_parameters(&mut splits, tolerance);
@@ -391,19 +389,19 @@ pub fn boolean_paths_with_fill_rules(
         )?;
 
         for intersection in intersections.intersections {
-                match intersection {
-                    Intersection::Point(point) => {
-                        add_parameter(&mut splits_a[index_a], point.parameter_a, tolerance);
-                        add_parameter(&mut splits_b[index_b], point.parameter_b, tolerance);
-                    }
-                    Intersection::Overlap(overlap) => {
-                        add_parameter(&mut splits_a[index_a], overlap.range_a.min, tolerance);
-                        add_parameter(&mut splits_a[index_a], overlap.range_a.max, tolerance);
-                        add_parameter(&mut splits_b[index_b], overlap.range_b.min, tolerance);
-                        add_parameter(&mut splits_b[index_b], overlap.range_b.max, tolerance);
-                    }
+            match intersection {
+                Intersection::Point(point) => {
+                    add_parameter(&mut splits_a[index_a], point.parameter_a, tolerance);
+                    add_parameter(&mut splits_b[index_b], point.parameter_b, tolerance);
+                }
+                Intersection::Overlap(overlap) => {
+                    add_parameter(&mut splits_a[index_a], overlap.range_a.min, tolerance);
+                    add_parameter(&mut splits_a[index_a], overlap.range_a.max, tolerance);
+                    add_parameter(&mut splits_b[index_b], overlap.range_b.min, tolerance);
+                    add_parameter(&mut splits_b[index_b], overlap.range_b.max, tolerance);
                 }
             }
+        }
     }
 
     normalize_split_parameters(&mut splits_a, tolerance);
