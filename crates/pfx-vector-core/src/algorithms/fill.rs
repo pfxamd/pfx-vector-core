@@ -106,9 +106,27 @@ pub fn classify_point(
                     endpoint_events.push((intersection.x, direction));
                 }
 
+                if (point.x + 2.0).abs() < 0.01 && point.y.abs() < 0.01 {
+                    eprintln!(
+                        "FILL_EVENT q=({:.12},{:.12}) ray={:.12} seg={} t={:.15} x={:.12} dir={} endpoint={}",
+                        point.x,
+                        point.y,
+                        ray_y,
+                        segment_index,
+                        parameter,
+                        intersection.x,
+                        direction,
+                        endpoint,
+                    );
+                }
+
                 winding += i32::from(direction);
             }
         }
+    }
+
+    if (point.x + 2.0).abs() < 0.01 && point.y.abs() < 0.01 {
+        eprintln!("FILL_RESULT q=({:.12},{:.12}) winding={winding}", point.x, point.y);
     }
 
     Ok(match rule {
