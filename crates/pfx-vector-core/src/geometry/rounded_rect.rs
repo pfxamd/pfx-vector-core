@@ -1,5 +1,2 @@
-pub struct RoundedRect {
-    pub rect: crate::Rect,
-    pub radius_x: f64,
-    pub radius_y: f64,
-}
+use crate::{Rect,Scalar};
+#[derive(Clone,Copy,Debug,PartialEq)]pub struct RoundedRect{pub rect:Rect,pub radius_x:Scalar,pub radius_y:Scalar}

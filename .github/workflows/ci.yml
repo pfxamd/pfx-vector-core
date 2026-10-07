@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify architecture boundaries
+        run: python3 scripts/verify_structure.py
+      - name: Rustfmt parse and normalize
+        run: cargo fmt --all
+      - name: Check
+        run: cargo check --workspace --all-targets --all-features
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features
+      - name: Tests
+        run: cargo test --workspace --all-features
+      - name: Build benchmark targets
+        run: cargo bench -p pfx-vector-core --no-run
+      - name: Build WebAssembly target
+        run: cargo build -p pfx-vector-wasm --target wasm32-unknown-unknown
+
+  web-wrapper:
+    name: TypeScript wrapper
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/pfx-vector-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck

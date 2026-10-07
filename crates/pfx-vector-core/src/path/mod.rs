@@ -3,3 +3,8 @@ mod location;
 mod path;
 mod segment;
 mod subpath;
+pub use builder::PathBuilder;
+pub use location::PathLocation;
+pub use path::Path;
+pub use segment::Segment;
+pub use subpath::Subpath;

@@ -1,0 +1,20 @@
+[package]
+name = "pfx-vector-core-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+pfx-vector-core = { path = "../crates/pfx-vector-core" }
+pfx-vector-svg = { path = "../crates/pfx-vector-svg" }
+
+[[bin]]
+name = "smoke"
+path = "fuzz_targets/smoke.rs"
+test = false
+doc = false
+bench = false

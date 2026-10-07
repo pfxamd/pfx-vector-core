@@ -1,15 +1,4 @@
-use criterion::{
-    black_box, criterion_group, criterion_main, Criterion
-};
-use pfx_vector_core::{
-    CubicBezier, Point2, Segment, Tolerance, flatten_segment, segment_length
-};
-fn bench_curves(c: &mut Criterion) {
-    let curve = Segment::Cubic(CubicBezier::new(Point2::new(0.0, 0.0), Point2::new(100.0, 300.0),
-    Point2::new(300.0, -100.0), Point2::new(500.0, 200.0)));
-    let tol = Tolerance::default();
-    c.bench_function("cubic_length", |b|b.iter(|| segment_length(black_box(curve), black_box(tol)).unwrap()));
-    c.bench_function("cubic_flatten", |b|b.iter(|| flatten_segment(black_box(curve), black_box(tol)).unwrap()));
-}
-criterion_group!(benches, bench_curves);
-criterion_main!(benches);
+use criterion::{black_box,criterion_group,criterion_main,Criterion};
+use pfx_vector_core::*;
+fn bench_core(c:&mut Criterion){let curve=CubicBezier::new(Point2::new(0.0,0.0),Point2::new(100.0,300.0),Point2::new(200.0,-300.0),Point2::new(400.0,0.0));c.bench_function("cubic bounds",|b|b.iter(||black_box(curve).bounds()));let mut pb=PathBuilder::new();pb.move_to(Point2::new(0.0,0.0)).unwrap().cubic_to(curve.p1,curve.p2,curve.p3).unwrap();let path=pb.finish().unwrap();c.bench_function("path length",|b|b.iter(||path_length(black_box(&path),Tolerance::default()).unwrap()));}
+criterion_group!(benches,bench_core);criterion_main!(benches);
