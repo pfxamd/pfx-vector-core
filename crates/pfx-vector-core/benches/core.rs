@@ -296,13 +296,7 @@ fn bench_core(c: &mut Criterion) {
     });
 
     let native_fill = ellipse_to_path(
-        Ellipse::new(
-            Point2::new(20.0, -15.0),
-            120.0,
-            45.0,
-            Angle::degrees(23.0),
-        )
-        .unwrap(),
+        Ellipse::new(Point2::new(20.0, -15.0), 120.0, 45.0, Angle::degrees(23.0)).unwrap(),
     )
     .unwrap();
     let native_fill_query = Point2::new(35.0, -4.0);
@@ -323,10 +317,7 @@ fn bench_core(c: &mut Criterion) {
     c.bench_function("indexed native fill elliptical arc", |b| {
         b.iter(|| {
             native_fill_index
-                .classify_point(
-                    black_box(native_fill_query),
-                    black_box(FillRule::NonZero),
-                )
+                .classify_point(black_box(native_fill_query), black_box(FillRule::NonZero))
                 .unwrap()
         })
     });

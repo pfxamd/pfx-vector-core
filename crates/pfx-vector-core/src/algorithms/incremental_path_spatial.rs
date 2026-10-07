@@ -279,14 +279,8 @@ impl IncrementalPathSpatialIndex {
 
         let ray_y = point.y + numerical * 0.25;
         let query = Bounds::Finite {
-            min: Point2::new(
-                point.x - numerical,
-                point.y.min(ray_y) - numerical,
-            ),
-            max: Point2::new(
-                max.x + numerical,
-                point.y.max(ray_y) + numerical,
-            ),
+            min: Point2::new(point.x - numerical, point.y.min(ray_y) - numerical),
+            max: Point2::new(max.x + numerical, point.y.max(ray_y) + numerical),
         };
         let source_candidates = self.segment_spatial.query_bounds(query, 0.0)?;
         let edge_candidates = self.spatial.query_bounds(query, 0.0)?;
