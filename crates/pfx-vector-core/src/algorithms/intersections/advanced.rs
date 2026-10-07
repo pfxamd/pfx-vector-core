@@ -495,10 +495,8 @@ fn arc_overlap(
         let t0 = (low - shifted_start) / right_sweep;
         let t1 = (high - shifted_start) / right_sweep;
 
-        if t0 >= -PARAMETER_EPSILON
-            && t0 <= 1.0 + PARAMETER_EPSILON
-            && t1 >= -PARAMETER_EPSILON
-            && t1 <= 1.0 + PARAMETER_EPSILON
+        if (-PARAMETER_EPSILON..=1.0 + PARAMETER_EPSILON).contains(&t0)
+            && (-PARAMETER_EPSILON..=1.0 + PARAMETER_EPSILON).contains(&t1)
         {
             right_parameters = Some((t0.clamp(0.0, 1.0), t1.clamp(0.0, 1.0)));
             break;
