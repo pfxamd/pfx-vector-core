@@ -186,7 +186,6 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
-
     let outline_style = StrokeStyle {
         width: 8.0,
         cap: StrokeCap::Round,

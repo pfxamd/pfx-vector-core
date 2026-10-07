@@ -428,7 +428,6 @@ fn high_curvature_offset_splits_before_curvature_singularity() {
     );
 }
 
-
 #[test]
 fn large_coordinate_cubic_offset_preserves_precision() {
     let base = 1.0e9;
@@ -456,6 +455,10 @@ fn large_coordinate_cubic_offset_preserves_precision() {
         let t = step as f64 / 80.0;
         let expected = exact_offset_point(Segment::Cubic(curve), t, distance);
         let nearest = closest_point(&offset, expected, tolerance).unwrap();
-        assert!(nearest.distance <= 2.0e-3, "t={t}, error={}", nearest.distance);
+        assert!(
+            nearest.distance <= 2.0e-3,
+            "t={t}, error={}",
+            nearest.distance
+        );
     }
 }
