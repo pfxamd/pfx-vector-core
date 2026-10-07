@@ -406,10 +406,6 @@ fn closest_line(start: Point2, end: Point2, point: Point2) -> (Point2, Scalar) {
     (start + direction * t, t)
 }
 
-fn distance_to_segment(point: Point2, start: Point2, end: Point2) -> Scalar {
-    closest_line(start, end, point).0.distance_to(point)
-}
-
 fn square_bounds(center: Point2, radius: Scalar) -> Bounds {
     Bounds::Finite {
         min: Point2::new(center.x - radius, center.y - radius),
