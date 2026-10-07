@@ -1,4 +1,4 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use pfx_vector_core::*;
 
 fn bench_core(c: &mut Criterion) {
@@ -227,6 +227,43 @@ fn bench_core(c: &mut Criterion) {
             spatial_self_candidate_pairs(black_box(&sparse_bounds), black_box(tolerance.absolute))
                 .unwrap()
         })
+    });
+
+    let dynamic_index = DynamicSpatialIndex::from_bounds(&sparse_bounds).unwrap();
+    let dynamic_query = Bounds::from_points(&[
+        Point2::new(49_990.0, -1.0),
+        Point2::new(50_010.0, 2.0),
+    ]);
+
+    c.bench_function("dynamic spatial query 10000 bounds", |b| {
+        b.iter(|| {
+            dynamic_index
+                .query_bounds(black_box(dynamic_query), black_box(tolerance.absolute))
+                .unwrap()
+        })
+    });
+
+    c.bench_function("dynamic spatial update and query 10000 bounds", |b| {
+        b.iter_batched(
+            || DynamicSpatialIndex::from_bounds(&sparse_bounds).unwrap(),
+            |mut index| {
+                index
+                    .update(
+                        5_000,
+                        Bounds::from_points(&[
+                            Point2::new(49_999.5, -0.5),
+                            Point2::new(50_001.5, 1.5),
+                        ]),
+                    )
+                    .unwrap();
+                black_box(
+                    index
+                        .query_bounds(dynamic_query, tolerance.absolute)
+                        .unwrap(),
+                )
+            },
+            BatchSize::SmallInput,
+        )
     });
 
     let dense_index = PathSpatialIndex::build(&dense_path, tolerance).unwrap();
