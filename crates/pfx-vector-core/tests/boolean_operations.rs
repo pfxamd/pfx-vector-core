@@ -318,3 +318,51 @@ fn tangent_circles_do_not_create_intersection_area() {
     assert!(inside(&union, 25.0, 0.0));
     assert!(!inside(&union, 10.0, 5.0));
 }
+
+
+#[test]
+fn partial_shared_quadratic_boundary_is_split_for_boolean_topology() {
+    let parent = QuadraticBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(50.0, 80.0),
+        Point2::new(100.0, 0.0),
+    );
+    let child = parent.subcurve(0.25, 0.75);
+
+    let mut lower_builder = PathBuilder::new();
+    lower_builder
+        .move_to(parent.p0)
+        .unwrap()
+        .quad_to(parent.p1, parent.p2)
+        .unwrap()
+        .line_to(Point2::new(100.0, -40.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, -40.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let lower = lower_builder.finish().unwrap();
+
+    let mut upper_builder = PathBuilder::new();
+    upper_builder
+        .move_to(child.p0)
+        .unwrap()
+        .quad_to(child.p1, child.p2)
+        .unwrap()
+        .line_to(Point2::new(child.p2.x, 80.0))
+        .unwrap()
+        .line_to(Point2::new(child.p0.x, 80.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let upper = upper_builder.finish().unwrap();
+
+    let intersection = boolean_intersection(&lower, &upper, Tolerance::default()).unwrap();
+    let union = boolean_union(&lower, &upper, Tolerance::default()).unwrap();
+
+    assert!(intersection.is_empty());
+    assert_eq!(union.subpaths().len(), 1);
+    assert!(inside(&union, 50.0, 20.0));
+    assert!(inside(&union, 50.0, 60.0));
+    assert!(!inside(&union, 50.0, 90.0));
+}

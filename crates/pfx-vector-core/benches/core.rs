@@ -104,6 +104,26 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    let overlap_base = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(30.0, 90.0),
+        Point2::new(100.0, -70.0),
+        Point2::new(150.0, 20.0),
+    );
+    let (_, overlap_right) = overlap_base.split(0.2);
+    let overlap_child = overlap_right.split(0.75).0;
+
+    c.bench_function("partial cubic overlap", |b| {
+        b.iter(|| {
+            intersect_segments(
+                black_box(Segment::Cubic(overlap_base)),
+                black_box(Segment::Cubic(overlap_child)),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     let boolean_a = rect_to_path(Rect::new(0.0, 0.0, 100.0, 100.0).unwrap()).unwrap();
     let boolean_b = rect_to_path(Rect::new(50.0, 25.0, 100.0, 100.0).unwrap()).unwrap();
 

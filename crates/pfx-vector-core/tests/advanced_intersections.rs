@@ -617,3 +617,50 @@ fn reversed_multi_revolution_arc_keeps_deterministic_ranges() {
             .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9)
     );
 }
+
+
+#[test]
+fn partial_overlap_ranges_are_symmetric_when_inputs_are_swapped() {
+    let base = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(25.0, 80.0),
+        Point2::new(90.0, -60.0),
+        Point2::new(130.0, 15.0),
+    );
+    let first = Segment::Cubic(cubic_subcurve(base, 0.05, 0.72));
+    let second = Segment::Cubic(cubic_subcurve(base, 0.31, 0.94));
+
+    let forward = overlap_hits(&intersect_segments(first, second, default_tolerance()).unwrap());
+    let reverse = overlap_hits(&intersect_segments(second, first, default_tolerance()).unwrap());
+
+    assert_eq!(forward.len(), 1);
+    assert_eq!(reverse.len(), 1);
+    assert!((forward[0].range_a.min - reverse[0].range_b.min).abs() < 1.0e-8);
+    assert!((forward[0].range_a.max - reverse[0].range_b.max).abs() < 1.0e-8);
+    assert!((forward[0].range_b.min - reverse[0].range_a.min).abs() < 1.0e-8);
+    assert!((forward[0].range_b.max - reverse[0].range_a.max).abs() < 1.0e-8);
+}
+
+#[test]
+fn partial_cubic_overlap_survives_large_translation() {
+    let offset = 1.0e9;
+    let base = CubicBezier::new(
+        Point2::new(offset, offset),
+        Point2::new(offset + 30.0, offset + 90.0),
+        Point2::new(offset + 100.0, offset - 70.0),
+        Point2::new(offset + 150.0, offset + 20.0),
+    );
+    let child = cubic_subcurve(base, 0.2, 0.8);
+
+    let result = intersect_segments(
+        Segment::Cubic(base),
+        Segment::Cubic(child),
+        default_tolerance(),
+    )
+    .unwrap();
+    let overlaps = overlap_hits(&result);
+
+    assert_eq!(overlaps.len(), 1, "{result:#?}");
+    assert!((overlaps[0].range_a.min - 0.2).abs() < 1.0e-6);
+    assert!((overlaps[0].range_a.max - 0.8).abs() < 1.0e-6);
+}
