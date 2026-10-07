@@ -118,8 +118,14 @@ fn cached_and_spatial_indexes_match_direct_stroke_hits() {
     ] {
         let direct = stroke_contains_point(&path, &style, point, tolerance).unwrap();
         assert_eq!(cached.contains_point(point).unwrap(), direct);
-        assert_eq!(spatial.stroke_contains_point(&style, point).unwrap(), direct);
-        assert_eq!(incremental.stroke_contains_point(&style, point).unwrap(), direct);
+        assert_eq!(
+            spatial.stroke_contains_point(&style, point).unwrap(),
+            direct
+        );
+        assert_eq!(
+            incremental.stroke_contains_point(&style, point).unwrap(),
+            direct
+        );
     }
 }
 
@@ -134,8 +140,7 @@ fn precise_stroke_bounds_include_cap_and_miter_extent() {
         ..StrokeStyle::default()
     };
 
-    let Bounds::Finite { min, max } =
-        stroke_bounds(&path, &style, Tolerance::default()).unwrap()
+    let Bounds::Finite { min, max } = stroke_bounds(&path, &style, Tolerance::default()).unwrap()
     else {
         panic!("stroke bounds must be finite");
     };
@@ -183,12 +188,7 @@ fn overflowing_stroke_reach_is_rejected() {
     };
 
     assert_eq!(
-        stroke_contains_point(
-            &path,
-            &style,
-            Point2::new(0.0, 0.0),
-            Tolerance::default(),
-        ),
+        stroke_contains_point(&path, &style, Point2::new(0.0, 0.0), Tolerance::default(),),
         Err(CoreError::InvalidGeometry)
     );
 }
