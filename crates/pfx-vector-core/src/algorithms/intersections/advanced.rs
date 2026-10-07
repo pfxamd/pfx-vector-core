@@ -101,6 +101,8 @@ pub(super) fn intersect_curve_pair(
         }
     }
 
+    coalesce_tangent_neighborhoods(a, b, &mut result, tolerance);
+
     result.intersections.sort_by(|left, right| {
         parameter_key(left)
             .0
@@ -410,6 +412,54 @@ fn parameter_key(intersection: &Intersection) -> (Scalar, Scalar) {
         Intersection::Point(point) => (point.parameter_a, point.parameter_b),
         Intersection::Overlap(overlap) => (overlap.range_a.min, overlap.range_b.min),
     }
+}
+
+fn coalesce_tangent_neighborhoods(
+    a: Segment,
+    b: Segment,
+    result: &mut IntersectionResult,
+    tolerance: Tolerance,
+) {
+    let tangencies: Vec<PointIntersection> = result
+        .intersections
+        .iter()
+        .filter_map(|intersection| match intersection {
+            Intersection::Point(point) if point.kind == IntersectionKind::Tangent => Some(*point),
+            _ => None,
+        })
+        .collect();
+
+    if tangencies.is_empty() {
+        return;
+    }
+
+    let geometry_scale = bounds_extent(a.bounds())
+        .max(bounds_extent(b.bounds()))
+        .max(1.0);
+
+    result.intersections.retain(|intersection| {
+        let Intersection::Point(point) = intersection else {
+            return true;
+        };
+
+        if point.kind == IntersectionKind::Tangent {
+            return true;
+        }
+
+        !tangencies.iter().any(|tangent| {
+            let residual_tolerance =
+                intersection_residual_tolerance(tangent.point, tangent.point, tolerance);
+            let spatial_radius = (residual_tolerance * geometry_scale).sqrt() * 2.0;
+            let speed_a = derivative(a, tangent.parameter_a).length().max(tolerance.absolute);
+            let speed_b = derivative(b, tangent.parameter_b).length().max(tolerance.absolute);
+            let parameter_radius_a = spatial_radius / speed_a;
+            let parameter_radius_b = spatial_radius / speed_b;
+
+            point.point.distance_to(tangent.point) <= spatial_radius
+                && (point.parameter_a - tangent.parameter_a).abs() <= parameter_radius_a
+                && (point.parameter_b - tangent.parameter_b).abs() <= parameter_radius_b
+        })
+    });
 }
 
 fn detect_overlap(
