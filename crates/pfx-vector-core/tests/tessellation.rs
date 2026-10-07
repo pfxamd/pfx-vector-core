@@ -195,3 +195,45 @@ fn open_fill_subpaths_are_explicitly_rejected() {
         Err(CoreError::UnsupportedCase)
     );
 }
+
+
+#[test]
+fn multiple_holes_preserve_total_filled_area() {
+    let outer = rect_path(0.0, 0.0, 40.0, 30.0);
+    let hole_a = rect_path(5.0, 5.0, 10.0, 10.0);
+    let hole_b = rect_path(25.0, 5.0, 10.0, 15.0);
+    let first = boolean_difference(&outer, &hole_a, Tolerance::default()).unwrap();
+    let shape = boolean_difference(&first, &hole_b, Tolerance::default()).unwrap();
+
+    let mesh = tessellate_fill(&shape, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert!((mesh_area(&mesh) - 950.0).abs() < 1.0e-7);
+}
+
+#[test]
+fn island_inside_hole_becomes_independent_filled_component() {
+    let outer = rect_path(0.0, 0.0, 30.0, 30.0);
+    let hole = rect_path(5.0, 5.0, 20.0, 20.0);
+    let island = rect_path(10.0, 10.0, 10.0, 10.0);
+    let ring = boolean_difference(&outer, &hole, Tolerance::default()).unwrap();
+    let shape = boolean_union(&ring, &island, Tolerance::default()).unwrap();
+
+    let mesh = tessellate_fill(&shape, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert!((mesh_area(&mesh) - 600.0).abs() < 1.0e-7);
+}
+
+#[test]
+fn generated_triangles_have_valid_indices_and_positive_winding() {
+    let path = rect_path(1.0e9, -1.0e9, 25.0, 15.0);
+    let mesh = tessellate_fill(&path, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert_eq!(mesh.indices.len() % 3, 0);
+    for triangle in mesh.indices.chunks_exact(3) {
+        assert!(triangle.iter().all(|index| (*index as usize) < mesh.vertices.len()));
+        let a = mesh.vertices[triangle[0] as usize];
+        let b = mesh.vertices[triangle[1] as usize];
+        let c = mesh.vertices[triangle[2] as usize];
+        assert!((b - a).cross(c - a) > 0.0);
+    }
+}
