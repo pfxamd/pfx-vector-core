@@ -129,6 +129,19 @@ fn bench_core(c: &mut Criterion) {
         )
         .unwrap();
     let outline_source = outline_builder.finish().unwrap();
+
+    c.bench_function("offset open cubic path", |b| {
+        b.iter(|| {
+            offset_path(
+                black_box(&outline_source),
+                black_box(4.0),
+                black_box(OffsetStyle::default()),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     let outline_style = StrokeStyle {
         width: 8.0,
         cap: StrokeCap::Round,

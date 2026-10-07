@@ -251,7 +251,7 @@ fn dashed_outline_is_supported() {
 }
 
 #[test]
-fn open_path_offset_is_rejected() {
+fn open_path_offset_is_supported() {
     let mut builder = PathBuilder::new();
     builder
         .move_to(Point2::new(0.0, 0.0))
@@ -259,10 +259,20 @@ fn open_path_offset_is_rejected() {
         .line_to(Point2::new(10.0, 0.0))
         .unwrap();
     let path = builder.finish().unwrap();
+    let tolerance = Tolerance::default();
 
-    assert_eq!(
-        offset_path(&path, 2.0, OffsetStyle::default(), Tolerance::default(),),
-        Err(CoreError::UnsupportedCase)
+    let result = offset_path(&path, 2.0, OffsetStyle::default(), tolerance).unwrap();
+    assert_eq!(result.subpaths().len(), 1);
+    assert!(!result.subpaths()[0].is_closed());
+    assert!(
+        result.subpaths()[0]
+            .start()
+            .almost_eq(Point2::new(0.0, 2.0), tolerance)
+    );
+    assert!(
+        result.subpaths()[0]
+            .end()
+            .almost_eq(Point2::new(10.0, 2.0), tolerance)
     );
 }
 
