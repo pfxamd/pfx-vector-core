@@ -2,8 +2,9 @@
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
     PathBuilder, Point2, Segment, SegmentAddress, StrokeCap, StrokeJoin, StrokeStyle, Subpath,
-    SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, contains_point,
-    contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves, flatten_path,
+    SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, closest_point,
+    contains_point, contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves,
+    flatten_path,
     intersect_segments, join_open_subpaths, normalize_self_intersections, offset_path,
     outline_path, path_length, point_at_length, remove_segment, remove_subpath, replace_segment,
     replace_subpath, reverse_subpath, set_subpath_closed, simplify_path, slice_contour,
@@ -341,6 +342,24 @@ pub fn path_bounds_svg(data: &str) -> Result<String, JsValue> {
         ),
     })
 }
+#[wasm_bindgen]
+pub fn closest_point_svg(data: &str, x: f64, y: f64) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let result =
+        closest_point(&path, Point2::new(x, y), Tolerance::default()).map_err(js_err)?;
+    Ok(format!(
+        "{\"x\":{},\"y\":{},\"distance\":{},\"distanceSquared\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}",
+        result.point.x,
+        result.point.y,
+        result.distance,
+        result.distance_squared,
+        result.location.subpath_index,
+        result.location.segment_index,
+        result.location.t,
+        result.location.distance
+    ))
+}
+
 #[wasm_bindgen]
 pub fn point_at_length_svg(data: &str, distance: f64) -> Result<String, JsValue> {
     let p = parse_path(data).map_err(js_err)?;

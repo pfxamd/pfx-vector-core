@@ -51,6 +51,18 @@ fn bench_core(c: &mut Criterion) {
         b.iter(|| path_length(black_box(&path), Tolerance::default()).unwrap())
     });
 
+    let nearest_query = Point2::new(160.0, 45.0);
+    c.bench_function("precise nearest cubic segment", |b| {
+        b.iter(|| {
+            closest_point_on_segment(
+                black_box(Segment::Cubic(curve)),
+                black_box(nearest_query),
+                black_box(Tolerance::default()),
+            )
+            .unwrap()
+        })
+    });
+
     let contour = &path.subpaths()[0];
     let contour_tolerance = Tolerance::default();
     let contour_total = contour_length(contour, contour_tolerance).unwrap();
