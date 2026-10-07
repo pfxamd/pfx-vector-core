@@ -89,8 +89,7 @@ fn cleanup_preserves_real_curve_geometry() {
         )
         .unwrap();
     let path = builder.finish().unwrap();
-    let cleaned =
-        cleanup_path(&path, CleanupOptions::default(), Tolerance::default()).unwrap();
+    let cleaned = cleanup_path(&path, CleanupOptions::default(), Tolerance::default()).unwrap();
 
     assert!(matches!(
         cleaned.subpaths()[0].segments()[0],
@@ -158,8 +157,12 @@ fn simplification_is_translation_stable() {
         .collect();
 
     let a = simplify_path(&path_from_points(&base, false), 0.05, Tolerance::default()).unwrap();
-    let b =
-        simplify_path(&path_from_points(&translated, false), 0.05, Tolerance::default()).unwrap();
+    let b = simplify_path(
+        &path_from_points(&translated, false),
+        0.05,
+        Tolerance::default(),
+    )
+    .unwrap();
 
     assert_eq!(a.segment_count(), b.segment_count());
 }
@@ -212,11 +215,12 @@ fn closed_circle_samples_fit_to_closed_cubic_path() {
     let fitted = fit_path_curves(&source, 0.1, Tolerance::default()).unwrap();
 
     assert!(fitted.subpaths()[0].is_closed());
-    assert!(fitted
-        .subpaths()[0]
-        .segments()
-        .iter()
-        .all(|segment| matches!(segment, Segment::Cubic(_))));
+    assert!(
+        fitted.subpaths()[0]
+            .segments()
+            .iter()
+            .all(|segment| matches!(segment, Segment::Cubic(_)))
+    );
     assert!(fitted.segment_count() < source.segment_count());
     assert!(max_sample_distance(&fitted, &points, Tolerance::default()) <= 0.12);
 }
@@ -239,10 +243,7 @@ fn curve_fitting_is_deterministic() {
 
 #[test]
 fn invalid_cleanup_and_fit_tolerances_are_rejected() {
-    let path = path_from_points(
-        &[Point2::new(0.0, 0.0), Point2::new(1.0, 0.0)],
-        false,
-    );
+    let path = path_from_points(&[Point2::new(0.0, 0.0), Point2::new(1.0, 0.0)], false);
 
     assert_eq!(
         simplify_path(&path, 0.0, Tolerance::default()),

@@ -45,16 +45,15 @@ pub fn cleanup_path(
     let mut builder = PathBuilder::with_tolerance(tolerance);
 
     for subpath in path.subpaths() {
-        if subpath.segments().iter().all(|segment| matches!(segment, Segment::Line(_))) {
+        if subpath
+            .segments()
+            .iter()
+            .all(|segment| matches!(segment, Segment::Line(_)))
+        {
             let mut points = Vec::with_capacity(subpath.segments().len() + 1);
             points.push(subpath.start());
             points.extend(subpath.segments().iter().map(|segment| segment.end()));
-            let cleaned = cleanup_polyline_points(
-                &points,
-                subpath.is_closed(),
-                options,
-                tolerance,
-            );
+            let cleaned = cleanup_polyline_points(&points, subpath.is_closed(), options, tolerance);
 
             append_polyline(&mut builder, &cleaned, subpath.is_closed())?;
             continue;
@@ -65,11 +64,8 @@ pub fn cleanup_path(
         let mut pending_line_end: Option<Point2> = None;
 
         for &segment in subpath.segments() {
-            let simplified = simplify_nearly_linear_segment(
-                segment,
-                options.collinear_tolerance,
-                tolerance,
-            );
+            let simplified =
+                simplify_nearly_linear_segment(segment, options.collinear_tolerance, tolerance);
 
             match simplified {
                 Segment::Line(line) => {
@@ -125,11 +121,7 @@ pub fn cleanup_path(
     builder.finish()
 }
 
-pub fn simplify_path(
-    path: &Path,
-    max_deviation: Scalar,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+pub fn simplify_path(path: &Path, max_deviation: Scalar, tolerance: Tolerance) -> CoreResult<Path> {
     validate_positive_error(max_deviation)?;
 
     let mut flatten_tolerance = tolerance;
@@ -139,18 +131,15 @@ pub fn simplify_path(
 
     for subpath in flattened {
         let points = deduplicate_points(&subpath.points, tolerance);
-        let simplified = simplify_polyline_points(&points, subpath.closed, max_deviation, tolerance);
+        let simplified =
+            simplify_polyline_points(&points, subpath.closed, max_deviation, tolerance);
         append_polyline(&mut builder, &simplified, subpath.closed)?;
     }
 
     builder.finish()
 }
 
-pub fn fit_path_curves(
-    path: &Path,
-    max_error: Scalar,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+pub fn fit_path_curves(path: &Path, max_error: Scalar, tolerance: Tolerance) -> CoreResult<Path> {
     validate_positive_error(max_error)?;
 
     let mut flatten_tolerance = tolerance;
@@ -202,9 +191,7 @@ pub fn fit_polyline_cubics(
     validate_positive_error(max_error)?;
 
     let mut clean = deduplicate_points(points, tolerance);
-    if closed
-        && clean.len() > 1
-        && clean[0].almost_eq(*clean.last().expect("non-empty"), tolerance)
+    if closed && clean.len() > 1 && clean[0].almost_eq(*clean.last().expect("non-empty"), tolerance)
     {
         clean.pop();
     }
@@ -354,12 +341,7 @@ fn can_merge_lines(
     between_along_line(middle, start, end, tolerance)
 }
 
-fn between_along_line(
-    point: Point2,
-    start: Point2,
-    end: Point2,
-    tolerance: Tolerance,
-) -> bool {
+fn between_along_line(point: Point2, start: Point2, end: Point2, tolerance: Tolerance) -> bool {
     let direction = end - start;
     let length_squared = direction.length_squared();
     if tolerance.nearly_zero(length_squared, length_squared) {
@@ -370,12 +352,7 @@ fn between_along_line(
     t >= -tolerance.relative && t <= 1.0 + tolerance.relative
 }
 
-fn point_line_distance(
-    point: Point2,
-    start: Point2,
-    end: Point2,
-    tolerance: Tolerance,
-) -> Scalar {
+fn point_line_distance(point: Point2, start: Point2, end: Point2, tolerance: Tolerance) -> Scalar {
     let direction = end - start;
     let length = direction.length();
     if tolerance.nearly_zero(length, direction.x.abs().max(direction.y.abs())) {
@@ -562,8 +539,7 @@ fn fit_cubic_recursive(
         right_tangent,
         tolerance,
     );
-    let (mut maximum_error, mut split) =
-        maximum_fit_error(points, first, last, &parameters, curve);
+    let (mut maximum_error, mut split) = maximum_fit_error(points, first, last, &parameters, curve);
 
     if maximum_error <= error_squared {
         output.push(curve);
@@ -801,9 +777,7 @@ fn cubic_second_derivative(curve: CubicBezier, t: Scalar) -> Vector2 {
 }
 
 fn parameters_are_strictly_increasing(parameters: &[Scalar]) -> bool {
-    parameters
-        .windows(2)
-        .all(|window| window[1] > window[0])
+    parameters.windows(2).all(|window| window[1] > window[0])
 }
 
 fn endpoint_tangent(
@@ -829,11 +803,7 @@ fn endpoint_tangent(
     Err(CoreError::DegenerateOperation)
 }
 
-fn center_tangent(
-    points: &[Point2],
-    center: usize,
-    tolerance: Tolerance,
-) -> CoreResult<Vector2> {
+fn center_tangent(points: &[Point2], center: usize, tolerance: Tolerance) -> CoreResult<Vector2> {
     if center > 0 && center + 1 < points.len() {
         if let Ok(tangent) = (points[center - 1] - points[center + 1]).normalized(tolerance) {
             return Ok(tangent);
@@ -857,19 +827,10 @@ fn center_tangent(
 
 fn bernstein(t: Scalar) -> (Scalar, Scalar, Scalar, Scalar) {
     let mt = 1.0 - t;
-    (
-        mt * mt * mt,
-        3.0 * t * mt * mt,
-        3.0 * t * t * mt,
-        t * t * t,
-    )
+    (mt * mt * mt, 3.0 * t * mt * mt, 3.0 * t * t * mt, t * t * t)
 }
 
-fn append_polyline(
-    builder: &mut PathBuilder,
-    points: &[Point2],
-    closed: bool,
-) -> CoreResult<()> {
+fn append_polyline(builder: &mut PathBuilder, points: &[Point2], closed: bool) -> CoreResult<()> {
     let Some(&first) = points.first() else {
         return Ok(());
     };
