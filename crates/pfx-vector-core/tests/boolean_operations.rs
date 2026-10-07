@@ -170,7 +170,6 @@ fn open_paths_are_rejected() {
     );
 }
 
-
 #[test]
 fn shared_edge_is_removed_from_union_boundary() {
     let a = rect(0.0, 0.0, 10.0, 10.0);
@@ -229,8 +228,7 @@ fn reversing_input_orientation_does_not_change_set_result() {
         BooleanOperation::Xor,
     ] {
         let normal = boolean_paths(&a, &b, operation, Tolerance::default()).unwrap();
-        let reversed =
-            boolean_paths(&a, &reversed_b, operation, Tolerance::default()).unwrap();
+        let reversed = boolean_paths(&a, &reversed_b, operation, Tolerance::default()).unwrap();
 
         for x in -2..=17 {
             for y in -7..=17 {
@@ -312,8 +310,7 @@ fn tangent_circles_do_not_create_intersection_area() {
     let left = circle_to_path(Circle::new(Point2::new(0.0, 0.0), 10.0).unwrap()).unwrap();
     let right = circle_to_path(Circle::new(Point2::new(20.0, 0.0), 10.0).unwrap()).unwrap();
 
-    let intersection =
-        boolean_intersection(&left, &right, Tolerance::default()).unwrap();
+    let intersection = boolean_intersection(&left, &right, Tolerance::default()).unwrap();
     let union = boolean_union(&left, &right, Tolerance::default()).unwrap();
 
     assert!(intersection.is_empty());
