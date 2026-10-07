@@ -1,10 +1,11 @@
 mod builder;
 mod location;
-mod path;
+mod model;
 mod segment;
 mod subpath;
+
 pub use builder::PathBuilder;
 pub use location::PathLocation;
-pub use path::Path;
+pub use model::Path;
 pub use segment::Segment;
 pub use subpath::Subpath;

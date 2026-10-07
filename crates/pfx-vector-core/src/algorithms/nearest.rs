@@ -44,7 +44,7 @@ pub fn closest_point(
             let (candidate, t) = closest_line(a, b, point);
             let distance_squared = candidate.distance_squared_to(point);
 
-            if best.map_or(true, |(value, _, _, _, _, _)| distance_squared < value) {
+            if best.is_none_or(|(value, _, _, _, _, _)| distance_squared < value) {
                 best = Some((
                     distance_squared,
                     candidate,

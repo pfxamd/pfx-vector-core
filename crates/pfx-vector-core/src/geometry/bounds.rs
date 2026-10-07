@@ -1,14 +1,12 @@
 use crate::{Point2, Scalar};
-#[derive(Clone, Copy, Debug, PartialEq)]
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Bounds {
+    #[default]
     Empty,
     Finite { min: Point2, max: Point2 },
 }
-impl Default for Bounds {
-    fn default() -> Self {
-        Self::Empty
-    }
-}
+
 impl Bounds {
     #[must_use]
     pub fn from_points(points: &[Point2]) -> Self {
@@ -18,6 +16,7 @@ impl Bounds {
         }
         b
     }
+
     #[must_use]
     pub fn include(self, p: Point2) -> Self {
         match self {
@@ -28,6 +27,7 @@ impl Bounds {
             },
         }
     }
+
     #[must_use]
     pub fn union(self, other: Self) -> Self {
         match other {
@@ -35,6 +35,7 @@ impl Bounds {
             Self::Finite { min, max } => self.include(min).include(max),
         }
     }
+
     #[must_use]
     pub fn width(self) -> Scalar {
         match self {
@@ -42,6 +43,7 @@ impl Bounds {
             Self::Finite { min, max } => max.x - min.x,
         }
     }
+
     #[must_use]
     pub fn height(self) -> Scalar {
         match self {
@@ -49,6 +51,7 @@ impl Bounds {
             Self::Finite { min, max } => max.y - min.y,
         }
     }
+
     #[must_use]
     pub fn contains(self, p: Point2) -> bool {
         match self {
