@@ -51,6 +51,21 @@ fn bench_core(c: &mut Criterion) {
         b.iter(|| path_length(black_box(&path), Tolerance::default()).unwrap())
     });
 
+    let contour = &path.subpaths()[0];
+    let contour_total = contour_length(contour, tolerance).unwrap();
+    c.bench_function("slice cubic contour", |b| {
+        b.iter(|| {
+            slice_contour(
+                black_box(contour),
+                black_box(contour_total * 0.2),
+                black_box(contour_total * 0.8),
+                black_box(ContourSliceMode::Clamp),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     let intersection_a = Segment::Cubic(CubicBezier::new(
         Point2::new(0.0, 0.0),
         Point2::new(100.0, 300.0),

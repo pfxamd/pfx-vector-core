@@ -4,6 +4,14 @@ export type StrokeJoin = "miter" | "round" | "bevel";
 export interface VectorWasmBindings {
   validate_path(data: string): boolean;
   path_length_svg(data: string): number;
+  contour_length_svg(data: string, subpathIndex: number): number;
+  slice_contour_svg(
+    data: string,
+    subpathIndex: number,
+    startDistance: number,
+    endDistance: number,
+    wrap: boolean,
+  ): string;
   path_bounds_svg(data: string): string;
   point_at_length_svg(data: string, distance: number): string;
   hit_test_fill_svg(data: string, x: number, y: number, evenOdd: boolean): boolean;
@@ -86,6 +94,20 @@ export interface TessellationOptions {
   flatness?: number;
 }
 
+export interface ContourOptions {
+  subpathIndex?: number;
+}
+
+export interface ContourSliceOptions extends ContourOptions {
+  wrap?: boolean;
+}
+
+export interface ContourSplit {
+  before: string;
+  after: string;
+  totalLength: number;
+}
+
 export interface OffsetOptions {
   join?: StrokeJoin;
   miterLimit?: number;
@@ -109,6 +131,40 @@ export function createVectorCore(wasm: VectorWasmBindings) {
   return {
     validatePath: (data: string) => wasm.validate_path(data),
     pathLength: (data: string) => wasm.path_length_svg(data),
+    contourLength: (data: string, subpathIndex = 0) =>
+      wasm.contour_length_svg(data, subpathIndex),
+    sliceContour: (
+      data: string,
+      startDistance: number,
+      endDistance: number,
+      options: ContourSliceOptions = {},
+    ) =>
+      wasm.slice_contour_svg(
+        data,
+        options.subpathIndex ?? 0,
+        startDistance,
+        endDistance,
+        options.wrap ?? false,
+      ),
+    splitContour: (
+      data: string,
+      distance: number,
+      options: ContourOptions = {},
+    ): ContourSplit => {
+      const subpathIndex = options.subpathIndex ?? 0;
+      const totalLength = wasm.contour_length_svg(data, subpathIndex);
+      return {
+        before: wasm.slice_contour_svg(data, subpathIndex, 0, distance, false),
+        after: wasm.slice_contour_svg(
+          data,
+          subpathIndex,
+          distance,
+          totalLength,
+          false,
+        ),
+        totalLength,
+      };
+    },
     pathBounds: (data: string) =>
       JSON.parse(wasm.path_bounds_svg(data)) as Bounds | null,
     pointAtLength: (data: string, distance: number) =>

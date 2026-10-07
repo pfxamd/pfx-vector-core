@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
-    BooleanOperation, Bounds, CleanupOptions, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap,
-    StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point, dash_path,
-    fit_path_curves, flatten_path, intersect_segments, normalize_self_intersections, offset_path,
-    outline_path, path_length, point_at_length, simplify_path, spatial_cross_candidate_pairs,
-    tessellate_fill, tessellate_stroke,
+    BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
+    Point2, StrokeCap, StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path,
+    contains_point, contour_length, dash_path, fit_path_curves, flatten_path, intersect_segments,
+    normalize_self_intersections, offset_path, outline_path, path_length, point_at_length,
+    simplify_path, slice_contour, spatial_cross_candidate_pairs, tessellate_fill,
+    tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -24,6 +25,44 @@ pub fn path_length_svg(data: &str) -> Result<f64, JsValue> {
     let p = parse_path(data).map_err(js_err)?;
     path_length(&p, Tolerance::default()).map_err(js_err)
 }
+#[wasm_bindgen]
+pub fn contour_length_svg(data: &str, subpath_index: u32) -> Result<f64, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let subpath = path
+        .subpaths()
+        .get(subpath_index as usize)
+        .ok_or_else(|| JsValue::from_str("subpath index out of range"))?;
+    contour_length(subpath, Tolerance::default()).map_err(js_err)
+}
+
+#[wasm_bindgen]
+pub fn slice_contour_svg(
+    data: &str,
+    subpath_index: u32,
+    start_distance: f64,
+    end_distance: f64,
+    wrap: bool,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let subpath = path
+        .subpaths()
+        .get(subpath_index as usize)
+        .ok_or_else(|| JsValue::from_str("subpath index out of range"))?;
+    let sliced = slice_contour(
+        subpath,
+        start_distance,
+        end_distance,
+        if wrap {
+            ContourSliceMode::Wrap
+        } else {
+            ContourSliceMode::Clamp
+        },
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(&sliced, SerializeOptions::default()))
+}
+
 #[wasm_bindgen]
 pub fn path_bounds_svg(data: &str) -> Result<String, JsValue> {
     let p = parse_path(data).map_err(js_err)?;
