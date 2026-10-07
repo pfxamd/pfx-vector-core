@@ -18,3 +18,14 @@ impl Segment {
         }
     }
 }
+
+impl Segment {
+    pub fn end(self) -> crate::Point2 {
+        match self {
+            Self::Line(value) => value.end,
+            Self::Quadratic(value) => value.p2,
+            Self::Cubic(value) => value.p3,
+            Self::Arc(value) => value.point_at(1.0),
+        }
+    }
+}
