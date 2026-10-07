@@ -1,10 +1,8 @@
 mod advanced;
 
-use advanced::intersect_curve_pair;
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
-use crate::{
-    CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance, Vector2,
-};
+use crate::{CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance, Vector2};
+use advanced::intersect_curve_pair;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntersectionKind {
@@ -202,7 +200,13 @@ fn line_curve(
                 point,
                 parameter_a: u,
                 parameter_b: t,
-                kind: classify_line_curve(direction, segment_derivative(segment, t), u, t, tolerance),
+                kind: classify_line_curve(
+                    direction,
+                    segment_derivative(segment, t),
+                    u,
+                    t,
+                    tolerance,
+                ),
             }));
     }
 
@@ -231,9 +235,7 @@ fn classify_line_curve(
     let scale = line_derivative.length() * curve_derivative.length();
     let angular_tolerance = tolerance.angular.max(1.0e-7);
 
-    if scale == 0.0
-        || line_derivative.cross(curve_derivative).abs() <= angular_tolerance * scale
-    {
+    if scale == 0.0 || line_derivative.cross(curve_derivative).abs() <= angular_tolerance * scale {
         IntersectionKind::Tangent
     } else {
         IntersectionKind::Crossing

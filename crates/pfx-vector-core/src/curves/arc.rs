@@ -63,10 +63,8 @@ impl EllipticalArc {
         let rotation = self.rotation.as_radians();
         let (sin_rotation, cos_rotation) = rotation.sin_cos();
 
-        let x_extremum =
-            (-self.radius_y * sin_rotation).atan2(self.radius_x * cos_rotation);
-        let y_extremum =
-            (self.radius_y * cos_rotation).atan2(self.radius_x * sin_rotation);
+        let x_extremum = (-self.radius_y * sin_rotation).atan2(self.radius_x * cos_rotation);
+        let y_extremum = (self.radius_y * cos_rotation).atan2(self.radius_x * sin_rotation);
 
         for angle in [
             x_extremum,

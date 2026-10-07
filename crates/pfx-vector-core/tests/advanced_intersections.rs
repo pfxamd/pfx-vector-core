@@ -35,7 +35,10 @@ fn quadratic_quadratic_finds_two_crossings() {
     let hits = point_hits(&result);
 
     assert_eq!(hits.len(), 2);
-    assert!(hits.iter().all(|hit| hit.kind == IntersectionKind::Crossing));
+    assert!(
+        hits.iter()
+            .all(|hit| hit.kind == IntersectionKind::Crossing)
+    );
     assert!(hits.iter().all(|hit| (hit.point.y - 25.0).abs() < 1.0e-4));
     assert!(hits[0].parameter_a < hits[1].parameter_a);
 }
@@ -104,8 +107,14 @@ fn bezier_arc_finds_both_semicircle_endpoints() {
     let hits = point_hits(&result);
 
     assert_eq!(hits.len(), 2);
-    assert!(hits.iter().any(|hit| hit.point.distance_to(Point2::new(10.0, 0.0)) < 1.0e-4));
-    assert!(hits.iter().any(|hit| hit.point.distance_to(Point2::new(-10.0, 0.0)) < 1.0e-4));
+    assert!(
+        hits.iter()
+            .any(|hit| hit.point.distance_to(Point2::new(10.0, 0.0)) < 1.0e-4)
+    );
+    assert!(
+        hits.iter()
+            .any(|hit| hit.point.distance_to(Point2::new(-10.0, 0.0)) < 1.0e-4)
+    );
 }
 
 #[test]

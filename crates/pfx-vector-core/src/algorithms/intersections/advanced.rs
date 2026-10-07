@@ -2,8 +2,8 @@ use super::{
     Intersection, IntersectionKind, IntersectionResult, OverlapIntersection, PointIntersection,
 };
 use crate::{
-    Angle, Bounds, CoreError, CoreResult, CubicBezier, EllipticalArc, Interval, LineSegment, Point2,
-    QuadraticBezier, Scalar, Segment, Tolerance, Vector2,
+    Angle, Bounds, CoreError, CoreResult, CubicBezier, EllipticalArc, Interval, LineSegment,
+    Point2, QuadraticBezier, Scalar, Segment, Tolerance, Vector2,
 };
 
 const MAX_SEARCH_DEPTH: u32 = 36;
@@ -59,8 +59,7 @@ pub(super) fn intersect_curve_pair(
         let extent_a = bounds_extent(bounds_a);
         let extent_b = bounds_extent(bounds_b);
         let parameter_small =
-            (node.a1 - node.a0) <= PARAMETER_EPSILON
-                && (node.b1 - node.b0) <= PARAMETER_EPSILON;
+            (node.a1 - node.a0) <= PARAMETER_EPSILON && (node.b1 - node.b0) <= PARAMETER_EPSILON;
         let spatial_small =
             extent_a <= spatial_tolerance * 4.0 && extent_b <= spatial_tolerance * 4.0;
 
@@ -151,10 +150,7 @@ fn candidate_from_box(
         return None;
     }
 
-    let point = Point2::new(
-        (point_a.x + point_b.x) * 0.5,
-        (point_a.y + point_b.y) * 0.5,
-    );
+    let point = Point2::new((point_a.x + point_b.x) * 0.5, (point_a.y + point_b.y) * 0.5);
 
     Some(Intersection::Point(PointIntersection {
         point,
@@ -226,9 +222,7 @@ fn classify_kind(
     let scale = derivative_a.length() * derivative_b.length();
     let angular_tolerance = tolerance.angular.max(1.0e-7);
 
-    if scale == 0.0
-        || derivative_a.cross(derivative_b).abs() <= angular_tolerance * scale
-    {
+    if scale == 0.0 || derivative_a.cross(derivative_b).abs() <= angular_tolerance * scale {
         IntersectionKind::Tangent
     } else {
         IntersectionKind::Crossing
@@ -307,7 +301,9 @@ fn bounds_extent(bounds: Bounds) -> Scalar {
 }
 
 fn spatial_tolerance(a: Bounds, b: Bounds, tolerance: Tolerance) -> Scalar {
-    let scale = bounds_coordinate_scale(a).max(bounds_coordinate_scale(b)).max(1.0);
+    let scale = bounds_coordinate_scale(a)
+        .max(bounds_coordinate_scale(b))
+        .max(1.0);
     (tolerance.absolute + tolerance.relative * scale)
         .max(tolerance.flatness * 1.0e-3)
         .max(1.0e-10)
@@ -349,23 +345,21 @@ fn push_unique(
     });
 
     if !duplicate {
-        result.intersections.push(Intersection::Point(PointIntersection {
-            point: candidate_point.point,
-            parameter_a: snap_parameter(candidate_point.parameter_a, tolerance),
-            parameter_b: snap_parameter(candidate_point.parameter_b, tolerance),
-            kind: candidate_point.kind,
-        }));
+        result
+            .intersections
+            .push(Intersection::Point(PointIntersection {
+                point: candidate_point.point,
+                parameter_a: snap_parameter(candidate_point.parameter_a, tolerance),
+                parameter_b: snap_parameter(candidate_point.parameter_b, tolerance),
+                kind: candidate_point.kind,
+            }));
     }
 }
 
 fn canonical_parameter(segment: Segment, parameter: Scalar, tolerance: Tolerance) -> Scalar {
     let parameter = snap_parameter(parameter, tolerance);
 
-    if parameter == 1.0
-        && segment
-            .start()
-            .almost_eq(segment.end(), tolerance)
-    {
+    if parameter == 1.0 && segment.start().almost_eq(segment.end(), tolerance) {
         0.0
     } else {
         parameter
@@ -422,11 +416,7 @@ fn detect_overlap(
     Ok(None)
 }
 
-fn same_quadratic(
-    left: QuadraticBezier,
-    right: QuadraticBezier,
-    tolerance: Tolerance,
-) -> bool {
+fn same_quadratic(left: QuadraticBezier, right: QuadraticBezier, tolerance: Tolerance) -> bool {
     left.p0.almost_eq(right.p0, tolerance)
         && left.p1.almost_eq(right.p1, tolerance)
         && left.p2.almost_eq(right.p2, tolerance)
