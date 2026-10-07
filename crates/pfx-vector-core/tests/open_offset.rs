@@ -64,8 +64,16 @@ fn miter_join_is_exact_for_line_corner_on_both_sides() {
 
     let inside_segments = only_subpath(&inside).segments();
     assert_eq!(inside_segments.len(), 2);
-    assert!(inside_segments[0].end().almost_eq(Point2::new(8.0, 2.0), tolerance));
-    assert!(inside_segments[1].start().almost_eq(Point2::new(8.0, 2.0), tolerance));
+    assert!(
+        inside_segments[0]
+            .end()
+            .almost_eq(Point2::new(8.0, 2.0), tolerance)
+    );
+    assert!(
+        inside_segments[1]
+            .start()
+            .almost_eq(Point2::new(8.0, 2.0), tolerance)
+    );
 
     let outside_segments = only_subpath(&outside).segments();
     assert_eq!(outside_segments.len(), 2);
@@ -103,8 +111,16 @@ fn bevel_join_connects_outer_corner_without_miter_extension() {
     let segments = only_subpath(&result).segments();
     assert_eq!(segments.len(), 3);
     assert!(matches!(segments[1], Segment::Line(_)));
-    assert!(segments[0].end().almost_eq(Point2::new(10.0, -2.0), tolerance));
-    assert!(segments[1].end().almost_eq(Point2::new(12.0, 0.0), tolerance));
+    assert!(
+        segments[0]
+            .end()
+            .almost_eq(Point2::new(10.0, -2.0), tolerance)
+    );
+    assert!(
+        segments[1]
+            .end()
+            .almost_eq(Point2::new(12.0, 0.0), tolerance)
+    );
 }
 
 #[test]
@@ -172,8 +188,7 @@ fn open_cubic_offset_remains_cubic_geometry() {
         .unwrap();
     let path = builder.finish().unwrap();
 
-    let result =
-        offset_path(&path, 3.0, OffsetStyle::default(), Tolerance::default()).unwrap();
+    let result = offset_path(&path, 3.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     assert!(
         only_subpath(&result)
@@ -201,8 +216,7 @@ fn circular_arc_offset_preserves_arc_primitive() {
         .unwrap();
     let path = builder.finish().unwrap();
 
-    let result =
-        offset_path(&path, 2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
+    let result = offset_path(&path, 2.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     assert_eq!(only_subpath(&result).segments().len(), 1);
     assert!(matches!(
@@ -216,17 +230,9 @@ fn open_offset_accepts_trimmed_contour_output() {
     let closed = rect_to_path(Rect::new(0.0, 0.0, 20.0, 10.0).unwrap()).unwrap();
     let tolerance = Tolerance::default();
     let contour = &closed.subpaths()[0];
-    let trimmed = slice_contour(
-        contour,
-        5.0,
-        25.0,
-        ContourSliceMode::Clamp,
-        tolerance,
-    )
-    .unwrap();
+    let trimmed = slice_contour(contour, 5.0, 25.0, ContourSliceMode::Clamp, tolerance).unwrap();
 
-    let offset =
-        offset_path(&trimmed, 2.0, OffsetStyle::default(), tolerance).unwrap();
+    let offset = offset_path(&trimmed, 2.0, OffsetStyle::default(), tolerance).unwrap();
 
     assert!(!offset.is_empty());
     assert!(!only_subpath(&offset).is_closed());
@@ -252,8 +258,7 @@ fn mixed_closed_and_open_subpaths_are_both_preserved() {
         .unwrap();
     let path = builder.finish().unwrap();
 
-    let result =
-        offset_path(&path, 1.0, OffsetStyle::default(), Tolerance::default()).unwrap();
+    let result = offset_path(&path, 1.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     assert!(result.subpaths().iter().any(Subpath::is_closed));
     assert!(result.subpaths().iter().any(|subpath| !subpath.is_closed()));
@@ -269,8 +274,7 @@ fn large_coordinate_open_offset_remains_stable() {
     ]);
     let tolerance = Tolerance::default();
 
-    let result =
-        offset_path(&path, 5.0, OffsetStyle::default(), tolerance).unwrap();
+    let result = offset_path(&path, 5.0, OffsetStyle::default(), tolerance).unwrap();
     let subpath = only_subpath(&result);
 
     assert!(
@@ -293,8 +297,7 @@ fn zero_distance_open_offset_is_identity() {
         Point2::new(8.0, 0.0),
     ]);
 
-    let result =
-        offset_path(&path, 0.0, OffsetStyle::default(), Tolerance::default()).unwrap();
+    let result = offset_path(&path, 0.0, OffsetStyle::default(), Tolerance::default()).unwrap();
 
     assert_eq!(result, path);
 }
