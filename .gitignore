@@ -1,0 +1,19 @@
+/target/
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/corpus/
+**/node_modules/
+*.profraw
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node / TypeScript outputs
+packages/*/dist/
+packages/*/*.tsbuildinfo
+*.log
+
+# Local tooling caches
+.pytest_cache/
+__pycache__/
