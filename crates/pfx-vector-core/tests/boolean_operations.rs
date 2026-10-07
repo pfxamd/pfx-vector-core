@@ -91,8 +91,7 @@ fn contained_shape_union_and_intersection_choose_expected_boundary() {
     let inner = rect(5.0, 5.0, 10.0, 10.0);
 
     let union = boolean_union(&outer, &inner, Tolerance::default()).unwrap();
-    let intersection =
-        boolean_intersection(&outer, &inner, Tolerance::default()).unwrap();
+    let intersection = boolean_intersection(&outer, &inner, Tolerance::default()).unwrap();
 
     assert_eq!(union.subpaths().len(), 1);
     assert!(inside(&union, 1.0, 1.0));
@@ -142,11 +141,13 @@ fn boolean_preserves_curved_segments() {
     let result = boolean_intersection(&left, &right, Tolerance::default()).unwrap();
 
     assert_eq!(result.subpaths().len(), 1);
-    assert!(result
-        .subpaths()
-        .iter()
-        .flat_map(|subpath| subpath.segments())
-        .all(|segment| matches!(segment, Segment::Arc(_))));
+    assert!(
+        result
+            .subpaths()
+            .iter()
+            .flat_map(|subpath| subpath.segments())
+            .all(|segment| matches!(segment, Segment::Arc(_)))
+    );
     assert!(inside(&result, 5.0, 0.0));
     assert!(!inside(&result, -8.0, 0.0));
     assert!(!inside(&result, 18.0, 0.0));

@@ -1,7 +1,7 @@
 use crate::{
-    Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection,
-    LineSegment, Path, PathBuilder, Point2, PointClassification, QuadraticBezier, Scalar,
-    Segment, Tolerance, Vector2, classify_point, intersect_segments,
+    Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
+    Path, PathBuilder, Point2, PointClassification, QuadraticBezier, Scalar, Segment, Tolerance,
+    Vector2, classify_point, intersect_segments,
 };
 
 const PARAMETER_EPSILON: Scalar = 1.0e-10;
@@ -148,11 +148,7 @@ fn validate_boolean_input(path: &Path) -> CoreResult<()> {
     Ok(())
 }
 
-fn boolean_with_empty(
-    a: &Path,
-    b: &Path,
-    operation: BooleanOperation,
-) -> CoreResult<Path> {
+fn boolean_with_empty(a: &Path, b: &Path, operation: BooleanOperation) -> CoreResult<Path> {
     Ok(match operation {
         BooleanOperation::Union | BooleanOperation::Xor => {
             if a.is_empty() {
@@ -180,9 +176,7 @@ fn collect_segments(path: &Path, tolerance: Tolerance) -> Vec<WorkingSegment> {
             result.push(WorkingSegment { segment });
         }
 
-        if subpath.is_closed()
-            && !subpath.end().almost_eq(subpath.start(), tolerance)
-        {
+        if subpath.is_closed() && !subpath.end().almost_eq(subpath.start(), tolerance) {
             result.push(WorkingSegment {
                 segment: Segment::Line(LineSegment::new(subpath.end(), subpath.start())),
             });
@@ -250,15 +244,9 @@ fn append_boolean_fragments(
                 continue;
             }
 
-            if let Some(oriented) = classify_fragment_boundary(
-                fragment,
-                a,
-                fill_a,
-                b,
-                fill_b,
-                operation,
-                tolerance,
-            )? {
+            if let Some(oriented) =
+                classify_fragment_boundary(fragment, a, fill_a, b, fill_b, operation, tolerance)?
+            {
                 output.push(BoundaryFragment { segment: oriented });
             }
         }
@@ -281,13 +269,11 @@ fn classify_fragment_boundary(
     let normal = tangent.perpendicular();
     let probe = probe_distance(fragment, midpoint, tolerance);
 
-    let Some((left_a, right_a)) =
-        classify_sides(a, fill_a, midpoint, normal, probe, tolerance)?
+    let Some((left_a, right_a)) = classify_sides(a, fill_a, midpoint, normal, probe, tolerance)?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
-    let Some((left_b, right_b)) =
-        classify_sides(b, fill_b, midpoint, normal, probe, tolerance)?
+    let Some((left_b, right_b)) = classify_sides(b, fill_b, midpoint, normal, probe, tolerance)?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
@@ -378,9 +364,9 @@ fn deduplicate_fragments(fragments: &mut Vec<BoundaryFragment>, tolerance: Toler
 fn same_directed_geometry(a: Segment, b: Segment, tolerance: Tolerance) -> bool {
     let geometry_tolerance = geometry_match_tolerance(a, b, tolerance);
 
-    [0.0, 0.25, 0.5, 0.75, 1.0].into_iter().all(|t| {
-        a.point_at(t).distance_to(b.point_at(t)) <= geometry_tolerance
-    })
+    [0.0, 0.25, 0.5, 0.75, 1.0]
+        .into_iter()
+        .all(|t| a.point_at(t).distance_to(b.point_at(t)) <= geometry_tolerance)
 }
 
 fn geometry_match_tolerance(a: Segment, b: Segment, tolerance: Tolerance) -> Scalar {
@@ -430,7 +416,8 @@ fn stitch_fragments(
                 return Err(CoreError::IterationLimit);
             }
 
-            let Some(index) = best_continuation(&fragments, current, chain.last().copied(), tolerance)
+            let Some(index) =
+                best_continuation(&fragments, current, chain.last().copied(), tolerance)
             else {
                 return Err(CoreError::NumericalFailure);
             };
@@ -473,20 +460,13 @@ fn best_continuation(
         return candidates.first().map(|candidate| candidate.0);
     }
 
-    let previous_direction = previous
-        .and_then(|segment| tangent_at_end(segment, tolerance).ok());
+    let previous_direction = previous.and_then(|segment| tangent_at_end(segment, tolerance).ok());
 
     candidates.sort_by(|left, right| {
-        let score_left = continuation_score(
-            previous_direction,
-            fragments[left.0].segment,
-            tolerance,
-        );
-        let score_right = continuation_score(
-            previous_direction,
-            fragments[right.0].segment,
-            tolerance,
-        );
+        let score_left =
+            continuation_score(previous_direction, fragments[left.0].segment, tolerance);
+        let score_right =
+            continuation_score(previous_direction, fragments[right.0].segment, tolerance);
 
         score_right
             .total_cmp(&score_left)
@@ -505,8 +485,7 @@ fn continuation_score(
         return 0.0;
     };
 
-    tangent_at_start(next, tolerance)
-        .map_or(-2.0, |direction| previous.dot(direction))
+    tangent_at_start(next, tolerance).map_or(-2.0, |direction| previous.dot(direction))
 }
 
 fn tangent_at_start(segment: Segment, tolerance: Tolerance) -> CoreResult<Vector2> {
@@ -528,13 +507,12 @@ fn tangent_at_end(segment: Segment, tolerance: Tolerance) -> CoreResult<Vector2>
 }
 
 fn endpoint_tolerance(a: Point2, b: Point2, tolerance: Tolerance) -> Scalar {
-    let scale = a
-        .x
-        .abs()
-        .max(a.y.abs())
-        .max(b.x.abs())
-        .max(b.y.abs())
-        .max(1.0);
+    let scale =
+        a.x.abs()
+            .max(a.y.abs())
+            .max(b.x.abs())
+            .max(b.y.abs())
+            .max(1.0);
 
     (tolerance.absolute + tolerance.relative * scale) * 32.0
 }
