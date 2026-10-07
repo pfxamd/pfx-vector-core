@@ -124,13 +124,7 @@ pub fn hit_test_stroke_svg(
         dash_offset: 0.0,
     };
 
-    stroke_contains_point(
-        &path,
-        &style,
-        Point2::new(x, y),
-        Tolerance::default(),
-    )
-    .map_err(js_err)
+    stroke_contains_point(&path, &style, Point2::new(x, y), Tolerance::default()).map_err(js_err)
 }
 
 #[wasm_bindgen]
