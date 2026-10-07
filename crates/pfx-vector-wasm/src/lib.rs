@@ -66,7 +66,6 @@ pub fn slice_contour_svg(
     Ok(serialize_path(&sliced, SerializeOptions::default()))
 }
 
-
 fn append_edit_segment(builder: &mut PathBuilder, segment: Segment) -> Result<(), JsValue> {
     match segment {
         Segment::Line(line) => {
@@ -188,7 +187,6 @@ pub fn set_subpath_closed_svg(
         .map_err(js_err)?;
     Ok(serialize_path(edit.path(), SerializeOptions::default()))
 }
-
 
 #[wasm_bindgen]
 pub fn extract_segment_svg(
