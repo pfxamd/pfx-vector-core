@@ -65,8 +65,7 @@ fn reflection_preserves_arc_and_reverses_sweep_orientation() {
         .then(Transform2D::scale(-2.0, 1.25))
         .then(Transform2D::rotation(Angle::degrees(12.0)));
 
-    let transformed =
-        transform_elliptical_arc(arc, transform, Tolerance::default()).unwrap();
+    let transformed = transform_elliptical_arc(arc, transform, Tolerance::default()).unwrap();
 
     assert!(transformed.sweep_angle.as_radians() < 0.0);
     assert_transform_matches_samples(arc, transform);

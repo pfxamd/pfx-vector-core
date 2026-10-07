@@ -95,23 +95,19 @@ pub fn transform_elliptical_arc(
         return Err(CoreError::SingularTransform);
     }
 
-    let target_rotation = if tolerance.nearly_zero(
-        radius_x_squared - radius_y_squared,
-        radius_x_squared,
-    ) {
-        0.0
-    } else {
-        0.5 * (2.0 * sxy).atan2(sxx - syy)
-    };
+    let target_rotation =
+        if tolerance.nearly_zero(radius_x_squared - radius_y_squared, radius_x_squared) {
+            0.0
+        } else {
+            0.5 * (2.0 * sxy).atan2(sxx - syy)
+        };
     let (sin_target, cos_target) = target_rotation.sin_cos();
 
     let center = transform.transform_point(arc.center);
     let start_point = transform.transform_point(arc.point_at(0.0));
     let start_delta = start_point - center;
-    let unit_x =
-        (start_delta.x * cos_target + start_delta.y * sin_target) / radius_x;
-    let unit_y =
-        (-start_delta.x * sin_target + start_delta.y * cos_target) / radius_y;
+    let unit_x = (start_delta.x * cos_target + start_delta.y * sin_target) / radius_x;
+    let unit_y = (-start_delta.x * sin_target + start_delta.y * cos_target) / radius_y;
     let unit_length = unit_x.hypot(unit_y);
     if !unit_length.is_finite() || tolerance.nearly_zero(unit_length, 1.0) {
         return Err(CoreError::InvalidGeometry);
