@@ -56,17 +56,27 @@ fn hole_is_removed_from_mesh_area() {
 fn evenodd_same_direction_contours_create_hole() {
     let mut builder = PathBuilder::new();
     builder
-        .move_to(Point2::new(0.0, 0.0)).unwrap()
-        .line_to(Point2::new(20.0, 0.0)).unwrap()
-        .line_to(Point2::new(20.0, 20.0)).unwrap()
-        .line_to(Point2::new(0.0, 20.0)).unwrap()
-        .close().unwrap();
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(20.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(20.0, 20.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 20.0))
+        .unwrap()
+        .close()
+        .unwrap();
     builder
-        .move_to(Point2::new(5.0, 5.0)).unwrap()
-        .line_to(Point2::new(15.0, 5.0)).unwrap()
-        .line_to(Point2::new(15.0, 15.0)).unwrap()
-        .line_to(Point2::new(5.0, 15.0)).unwrap()
-        .close().unwrap();
+        .move_to(Point2::new(5.0, 5.0))
+        .unwrap()
+        .line_to(Point2::new(15.0, 5.0))
+        .unwrap()
+        .line_to(Point2::new(15.0, 15.0))
+        .unwrap()
+        .line_to(Point2::new(5.0, 15.0))
+        .unwrap()
+        .close()
+        .unwrap();
     let path = builder.finish().unwrap();
 
     let mesh = tessellate_fill(&path, FillRule::EvenOdd, Tolerance::default()).unwrap();
@@ -77,17 +87,27 @@ fn evenodd_same_direction_contours_create_hole() {
 fn nonzero_same_direction_nested_contour_is_redundant() {
     let mut builder = PathBuilder::new();
     builder
-        .move_to(Point2::new(0.0, 0.0)).unwrap()
-        .line_to(Point2::new(20.0, 0.0)).unwrap()
-        .line_to(Point2::new(20.0, 20.0)).unwrap()
-        .line_to(Point2::new(0.0, 20.0)).unwrap()
-        .close().unwrap();
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(20.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(20.0, 20.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 20.0))
+        .unwrap()
+        .close()
+        .unwrap();
     builder
-        .move_to(Point2::new(5.0, 5.0)).unwrap()
-        .line_to(Point2::new(15.0, 5.0)).unwrap()
-        .line_to(Point2::new(15.0, 15.0)).unwrap()
-        .line_to(Point2::new(5.0, 15.0)).unwrap()
-        .close().unwrap();
+        .move_to(Point2::new(5.0, 5.0))
+        .unwrap()
+        .line_to(Point2::new(15.0, 5.0))
+        .unwrap()
+        .line_to(Point2::new(15.0, 15.0))
+        .unwrap()
+        .line_to(Point2::new(5.0, 15.0))
+        .unwrap()
+        .close()
+        .unwrap();
     let path = builder.finish().unwrap();
 
     let mesh = tessellate_fill(&path, FillRule::NonZero, Tolerance::default()).unwrap();
@@ -122,8 +142,10 @@ fn circle_tessellation_converges_with_flatness() {
 fn stroke_tessellation_reuses_outline_geometry() {
     let mut builder = PathBuilder::new();
     builder
-        .move_to(Point2::new(0.0, 0.0)).unwrap()
-        .line_to(Point2::new(10.0, 0.0)).unwrap();
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap();
     let path = builder.finish().unwrap();
     let style = StrokeStyle {
         width: 4.0,
@@ -161,9 +183,12 @@ fn large_coordinates_remain_stable() {
 fn open_fill_subpaths_are_explicitly_rejected() {
     let mut builder = PathBuilder::new();
     builder
-        .move_to(Point2::new(0.0, 0.0)).unwrap()
-        .line_to(Point2::new(10.0, 0.0)).unwrap()
-        .line_to(Point2::new(5.0, 10.0)).unwrap();
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(5.0, 10.0))
+        .unwrap();
     let path = builder.finish().unwrap();
 
     assert_eq!(

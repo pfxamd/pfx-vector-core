@@ -51,16 +51,18 @@ pub fn tessellate_fill(
         }
     }
 
-    let mut outers: Vec<BoundaryContour> =
-        contours.iter().filter(|contour| contour.area > 0.0).cloned().collect();
-    let mut holes: Vec<BoundaryContour> =
-        contours.into_iter().filter(|contour| contour.area < 0.0).collect();
+    let mut outers: Vec<BoundaryContour> = contours
+        .iter()
+        .filter(|contour| contour.area > 0.0)
+        .cloned()
+        .collect();
+    let mut holes: Vec<BoundaryContour> = contours
+        .into_iter()
+        .filter(|contour| contour.area < 0.0)
+        .collect();
 
     outers.sort_by(|left, right| right.area.total_cmp(&left.area));
-    holes.sort_by(|left, right| {
-        rightmost_x(&right.points)
-            .total_cmp(&rightmost_x(&left.points))
-    });
+    holes.sort_by(|left, right| rightmost_x(&right.points).total_cmp(&rightmost_x(&left.points)));
 
     let mut grouped: Vec<(Vec<Point2>, Vec<Vec<Point2>>)> = outers
         .into_iter()
@@ -127,9 +129,9 @@ fn orient_boundary(
         let tangent = edge / length;
         let normal = tangent.perpendicular();
         let midpoint = a.lerp(b, 0.5);
-        let numerical =
-            (tolerance.absolute + tolerance.relative * midpoint.x.abs().max(midpoint.y.abs()).max(1.0))
-                * 32.0;
+        let numerical = (tolerance.absolute
+            + tolerance.relative * midpoint.x.abs().max(midpoint.y.abs()).max(1.0))
+            * 32.0;
         let probe = numerical
             .max(tolerance.flatness.min(length * 1.0e-4))
             .min(length * 0.02)
@@ -237,7 +239,9 @@ fn point_in_polygon(point: Point2, polygon: &[Point2], tolerance: Tolerance) -> 
         let ab = b - a;
         let ap = point - a;
         if ab.cross(ap).abs()
-            <= tolerance.absolute.max(tolerance.relative * ab.length() * ap.length())
+            <= tolerance
+                .absolute
+                .max(tolerance.relative * ab.length() * ap.length())
             && point.x >= a.x.min(b.x) - tolerance.absolute
             && point.x <= a.x.max(b.x) + tolerance.absolute
             && point.y >= a.y.min(b.y) - tolerance.absolute
