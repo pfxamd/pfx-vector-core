@@ -10,6 +10,7 @@ export interface VectorWasmBindings {
   flatten_path_svg(data: string, flatness: number): string;
   normalize_path_svg(data: string): string;
   normalize_fill_contours_svg(data: string, evenOdd: boolean): string;
+  dash_path_svg(data: string, dashArray: string, dashOffset: number): string;
   intersect_paths_svg(a: string, b: string): string;
   boolean_union_svg(a: string, b: string): string;
   boolean_intersection_svg(a: string, b: string): string;
@@ -28,6 +29,15 @@ export interface VectorWasmBindings {
     join: StrokeJoin,
     miterLimit: number,
   ): string;
+  outline_dashed_path_svg(
+    data: string,
+    width: number,
+    cap: StrokeCap,
+    join: StrokeJoin,
+    miterLimit: number,
+    dashArray: string,
+    dashOffset: number,
+  ): string;
   tessellate_fill_svg(data: string, evenOdd: boolean, flatness: number): string;
   tessellate_stroke_svg(
     data: string,
@@ -36,6 +46,16 @@ export interface VectorWasmBindings {
     join: StrokeJoin,
     miterLimit: number,
     flatness: number,
+  ): string;
+  tessellate_dashed_stroke_svg(
+    data: string,
+    width: number,
+    cap: StrokeCap,
+    join: StrokeJoin,
+    miterLimit: number,
+    flatness: number,
+    dashArray: string,
+    dashOffset: number,
   ): string;
   cleanup_path_svg(
     data: string,
@@ -81,7 +101,12 @@ export interface OffsetOptions {
   miterLimit?: number;
 }
 
-export interface OutlineOptions extends OffsetOptions {
+export interface DashOptions {
+  dashArray?: number[];
+  dashOffset?: number;
+}
+
+export interface OutlineOptions extends OffsetOptions, DashOptions {
   cap?: StrokeCap;
 }
 
@@ -111,6 +136,8 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       data: string,
       rule: "nonzero" | "evenodd" = "nonzero",
     ) => wasm.normalize_fill_contours_svg(data, rule === "evenodd"),
+    dashPath: (data: string, dashArray: number[], dashOffset = 0) =>
+      wasm.dash_path_svg(data, dashArray.join(","), dashOffset),
     intersectPaths: (a: string, b: string) =>
       JSON.parse(wasm.intersect_paths_svg(a, b)) as IntersectionPoint[],
     unionPaths: (a: string, b: string) => wasm.boolean_union_svg(a, b),
@@ -134,14 +161,27 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       data: string,
       width: number,
       options: OutlineOptions = {},
-    ) =>
-      wasm.outline_path_svg(
+    ) => {
+      const dashArray = options.dashArray ?? [];
+      if (dashArray.length > 0) {
+        return wasm.outline_dashed_path_svg(
+          data,
+          width,
+          options.cap ?? "butt",
+          options.join ?? "miter",
+          options.miterLimit ?? 4,
+          dashArray.join(","),
+          options.dashOffset ?? 0,
+        );
+      }
+      return wasm.outline_path_svg(
         data,
         width,
         options.cap ?? "butt",
         options.join ?? "miter",
         options.miterLimit ?? 4,
-      ),
+      );
+    },
     tessellateFill: (
       data: string,
       rule: "nonzero" | "evenodd" = "nonzero",
@@ -158,17 +198,30 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       data: string,
       width: number,
       options: OutlineOptions & TessellationOptions = {},
-    ) =>
-      JSON.parse(
-        wasm.tessellate_stroke_svg(
-          data,
-          width,
-          options.cap ?? "butt",
-          options.join ?? "miter",
-          options.miterLimit ?? 4,
-          options.flatness ?? 1e-4,
-        ),
-      ) as Mesh2D,
+    ) => {
+      const dashArray = options.dashArray ?? [];
+      const raw =
+        dashArray.length > 0
+          ? wasm.tessellate_dashed_stroke_svg(
+              data,
+              width,
+              options.cap ?? "butt",
+              options.join ?? "miter",
+              options.miterLimit ?? 4,
+              options.flatness ?? 1e-4,
+              dashArray.join(","),
+              options.dashOffset ?? 0,
+            )
+          : wasm.tessellate_stroke_svg(
+              data,
+              width,
+              options.cap ?? "butt",
+              options.join ?? "miter",
+              options.miterLimit ?? 4,
+              options.flatness ?? 1e-4,
+            );
+      return JSON.parse(raw) as Mesh2D;
+    },
     cleanupPath: (data: string, options: CleanupOptions = {}) =>
       wasm.cleanup_path_svg(
         data,

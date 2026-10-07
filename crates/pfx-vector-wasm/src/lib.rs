@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap,
-    StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point,
+    StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point, dash_path,
     fit_path_curves, flatten_path, intersect_segments, normalize_self_intersections, offset_path,
     outline_path, path_length, point_at_length, simplify_path, spatial_cross_candidate_pairs,
     tessellate_fill, tessellate_stroke,
@@ -180,6 +180,37 @@ fn parse_stroke_cap(value: &str) -> Result<StrokeCap, JsValue> {
     }
 }
 
+fn parse_dash_array(value: &str) -> Result<Vec<f64>, JsValue> {
+    if value.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    value
+        .split(',')
+        .map(|part| {
+            part.trim()
+                .parse::<f64>()
+                .map_err(|_| JsValue::from_str("invalid dash array"))
+        })
+        .collect()
+}
+
+#[wasm_bindgen]
+pub fn dash_path_svg(
+    data: &str,
+    dash_array: &str,
+    dash_offset: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let style = StrokeStyle {
+        dash_array: parse_dash_array(dash_array)?,
+        dash_offset,
+        ..StrokeStyle::default()
+    };
+    let result = dash_path(&path, &style, Tolerance::default()).map_err(js_err)?;
+    Ok(serialize_path(&result, SerializeOptions::default()))
+}
+
 #[wasm_bindgen]
 pub fn offset_path_svg(
     data: &str,
@@ -242,6 +273,29 @@ fn mesh_json(mesh: &Mesh2D) -> String {
 }
 
 #[wasm_bindgen]
+pub fn outline_dashed_path_svg(
+    data: &str,
+    width: f64,
+    cap: &str,
+    join: &str,
+    miter_limit: f64,
+    dash_array: &str,
+    dash_offset: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let style = StrokeStyle {
+        width,
+        cap: parse_stroke_cap(cap)?,
+        join: parse_stroke_join(join)?,
+        miter_limit,
+        dash_array: parse_dash_array(dash_array)?,
+        dash_offset,
+    };
+    let result = outline_path(&path, &style, Tolerance::default()).map_err(js_err)?;
+    Ok(serialize_path(&result, SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
 pub fn tessellate_fill_svg(data: &str, even_odd: bool, flatness: f64) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
     let tolerance = Tolerance {
@@ -286,6 +340,34 @@ pub fn tessellate_stroke_svg(
     };
     let mesh = tessellate_stroke(&path, &style, tolerance).map_err(js_err)?;
 
+    Ok(mesh_json(&mesh))
+}
+
+#[wasm_bindgen]
+pub fn tessellate_dashed_stroke_svg(
+    data: &str,
+    width: f64,
+    cap: &str,
+    join: &str,
+    miter_limit: f64,
+    flatness: f64,
+    dash_array: &str,
+    dash_offset: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let tolerance = Tolerance {
+        flatness: flatness.max(1.0e-12),
+        ..Tolerance::default()
+    };
+    let style = StrokeStyle {
+        width,
+        cap: parse_stroke_cap(cap)?,
+        join: parse_stroke_join(join)?,
+        miter_limit,
+        dash_array: parse_dash_array(dash_array)?,
+        dash_offset,
+    };
+    let mesh = tessellate_stroke(&path, &style, tolerance).map_err(js_err)?;
     Ok(mesh_json(&mesh))
 }
 
