@@ -1,7 +1,10 @@
 mod advanced;
 
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
-use crate::{CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance, Vector2};
+use crate::{
+    CoreError, CoreResult, CubicBezier, EllipticalArc, Interval, LineSegment, Point2,
+    QuadraticBezier, Scalar, Segment, Tolerance, Vector2,
+};
 use advanced::intersect_curve_pair;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -138,6 +141,10 @@ fn line_curve(
 ) -> CoreResult<IntersectionResult> {
     let direction = line.end - line.start;
 
+    if let Some(result) = coincident_line_curve(line, segment, tolerance)? {
+        return Ok(result);
+    }
+
     let mut roots = match segment {
         Segment::Quadratic(curve) => {
             let ax = curve.p0.x - 2.0 * curve.p1.x + curve.p2.x;
@@ -219,6 +226,298 @@ fn line_curve(
     });
 
     Ok(result)
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ProjectedCurve {
+    Quadratic([Scalar; 3]),
+    Cubic([Scalar; 4]),
+}
+
+impl ProjectedCurve {
+    fn evaluate(self, t: Scalar) -> Scalar {
+        match self {
+            Self::Quadratic([c0, c1, c2]) => c0 + t * (c1 + t * c2),
+            Self::Cubic([c0, c1, c2, c3]) => c0 + t * (c1 + t * (c2 + t * c3)),
+        }
+    }
+
+    fn roots_at(self, value: Scalar) -> Vec<Scalar> {
+        match self {
+            Self::Quadratic([c0, c1, c2]) => solve_quadratic(c2, c1, c0 - value),
+            Self::Cubic([c0, c1, c2, c3]) => solve_cubic(c3, c2, c1, c0 - value),
+        }
+    }
+
+    fn derivative_roots(self) -> Vec<Scalar> {
+        match self {
+            Self::Quadratic([_, c1, c2]) => solve_quadratic(0.0, 2.0 * c2, c1),
+            Self::Cubic([_, c1, c2, c3]) => {
+                solve_quadratic(3.0 * c3, 2.0 * c2, c1)
+            }
+        }
+    }
+}
+
+fn coincident_line_curve(
+    line: LineSegment,
+    segment: Segment,
+    tolerance: Tolerance,
+) -> CoreResult<Option<IntersectionResult>> {
+    let direction = line.direction();
+    let length_squared = direction.length_squared();
+    if length_squared <= tolerance.absolute * tolerance.absolute {
+        return Ok(None);
+    }
+
+    let controls = match segment {
+        Segment::Quadratic(curve) => vec![curve.p0, curve.p1, curve.p2],
+        Segment::Cubic(curve) => vec![curve.p0, curve.p1, curve.p2, curve.p3],
+        _ => return Ok(None),
+    };
+
+    let line_length = length_squared.sqrt();
+    let coordinate_scale = controls
+        .iter()
+        .fold(line.start.x.abs().max(line.start.y.abs()).max(1.0), |scale, point| {
+            scale.max(point.x.abs()).max(point.y.abs())
+        });
+    let geometric_tolerance =
+        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+
+    if controls.iter().any(|point| {
+        direction.cross(*point - line.start).abs() / line_length > geometric_tolerance
+    }) {
+        return Ok(None);
+    }
+
+    let projected = projected_curve(segment, line.start, direction, length_squared)
+        .ok_or(CoreError::UnsupportedCase)?;
+    let parameter_epsilon = 1.0e-10_f64.max(tolerance.relative * 16.0);
+    let projection_epsilon = geometric_tolerance / line_length;
+
+    let mut breakpoints = vec![0.0, 1.0];
+    breakpoints.extend(projected.roots_at(0.0));
+    breakpoints.extend(projected.roots_at(1.0));
+    breakpoints.extend(projected.derivative_roots());
+    breakpoints.retain(|value| {
+        value.is_finite() && *value >= -parameter_epsilon && *value <= 1.0 + parameter_epsilon
+    });
+    for value in &mut breakpoints {
+        *value = value.clamp(0.0, 1.0);
+    }
+    dedup_sorted(&mut breakpoints, tolerance);
+
+    let mut intersections = Vec::new();
+    for pair in breakpoints.windows(2) {
+        let t0 = pair[0];
+        let t1 = pair[1];
+        if t1 - t0 <= parameter_epsilon {
+            continue;
+        }
+
+        let midpoint = (t0 + t1) * 0.5;
+        let middle_projection = projected.evaluate(midpoint);
+        if middle_projection < -projection_epsilon
+            || middle_projection > 1.0 + projection_epsilon
+        {
+            continue;
+        }
+
+        let u0 = projected.evaluate(t0).clamp(0.0, 1.0);
+        let u1 = projected.evaluate(t1).clamp(0.0, 1.0);
+        if (u1 - u0).abs() <= projection_epsilon {
+            continue;
+        }
+
+        intersections.push(Intersection::Overlap(OverlapIntersection {
+            range_a: Interval::new(u0.min(u1), u0.max(u1))?,
+            range_b: Interval::new(t0, t1)?,
+        }));
+    }
+
+    if intersections.is_empty() {
+        let start = segment.start();
+        let u = (start - line.start).dot(direction) / length_squared;
+        if u >= -projection_epsilon && u <= 1.0 + projection_epsilon {
+            intersections.push(Intersection::Point(PointIntersection {
+                point: start,
+                parameter_a: u.clamp(0.0, 1.0),
+                parameter_b: 0.0,
+                kind: IntersectionKind::Endpoint,
+            }));
+        }
+    }
+
+    Ok(Some(IntersectionResult { intersections }))
+}
+
+fn projected_curve(
+    segment: Segment,
+    origin: Point2,
+    direction: Vector2,
+    direction_length_squared: Scalar,
+) -> Option<ProjectedCurve> {
+    let project = |point: Point2| (point - origin).dot(direction) / direction_length_squared;
+
+    match segment {
+        Segment::Quadratic(curve) => {
+            let p0 = project(curve.p0);
+            let p1 = project(curve.p1);
+            let p2 = project(curve.p2);
+            Some(ProjectedCurve::Quadratic([
+                p0,
+                2.0 * (p1 - p0),
+                p0 - 2.0 * p1 + p2,
+            ]))
+        }
+        Segment::Cubic(curve) => {
+            let p0 = project(curve.p0);
+            let p1 = project(curve.p1);
+            let p2 = project(curve.p2);
+            let p3 = project(curve.p3);
+            Some(ProjectedCurve::Cubic([
+                p0,
+                3.0 * (p1 - p0),
+                3.0 * (p0 - 2.0 * p1 + p2),
+                -p0 + 3.0 * p1 - 3.0 * p2 + p3,
+            ]))
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn intrinsic_overlap_parameters(
+    segment: Segment,
+    tolerance: Tolerance,
+) -> CoreResult<Vec<Scalar>> {
+    match segment {
+        Segment::Arc(arc) => intrinsic_arc_overlap_parameters(arc, tolerance),
+        Segment::Quadratic(curve) => {
+            intrinsic_line_like_curve_parameters(Segment::Quadratic(curve), tolerance)
+        }
+        Segment::Cubic(curve) => {
+            intrinsic_line_like_curve_parameters(Segment::Cubic(curve), tolerance)
+        }
+        Segment::Line(_) => Ok(Vec::new()),
+    }
+}
+
+fn intrinsic_arc_overlap_parameters(
+    arc: EllipticalArc,
+    tolerance: Tolerance,
+) -> CoreResult<Vec<Scalar>> {
+    let sweep = arc.sweep_angle.as_radians();
+    let total = sweep.abs();
+    let tau = core::f64::consts::TAU;
+    let angular_epsilon = tolerance.angular.max(1.0e-10);
+
+    if total <= tau + angular_epsilon {
+        return Ok(Vec::new());
+    }
+
+    let start = arc.start_angle.as_radians();
+    let end = start + sweep;
+    let low = start.min(end);
+    let high = start.max(end);
+    let mut parameters = Vec::new();
+
+    for base in [start, end] {
+        let first = ((low - base) / tau).ceil() as i64;
+        let last = ((high - base) / tau).floor() as i64;
+        let count = last.saturating_sub(first).saturating_add(1) as usize;
+        if count > 4096 || parameters.len().saturating_add(count) > 4096 {
+            return Err(CoreError::IterationLimit);
+        }
+
+        for turn in first..=last {
+            let angle = base + turn as Scalar * tau;
+            let parameter = (angle - start) / sweep;
+            if parameter > 0.0 && parameter < 1.0 {
+                parameters.push(parameter);
+            }
+        }
+    }
+
+    dedup_sorted(&mut parameters, tolerance);
+    Ok(parameters)
+}
+
+fn intrinsic_line_like_curve_parameters(
+    segment: Segment,
+    tolerance: Tolerance,
+) -> CoreResult<Vec<Scalar>> {
+    let controls: Vec<Point2> = match segment {
+        Segment::Quadratic(curve) => vec![curve.p0, curve.p1, curve.p2],
+        Segment::Cubic(curve) => vec![curve.p0, curve.p1, curve.p2, curve.p3],
+        _ => return Ok(Vec::new()),
+    };
+
+    let mut origin = controls[0];
+    let mut direction = Vector2::new(0.0, 0.0);
+    let mut length_squared = 0.0;
+    for &left in &controls {
+        for &right in &controls {
+            let candidate = right - left;
+            let candidate_length = candidate.length_squared();
+            if candidate_length > length_squared {
+                origin = left;
+                direction = candidate;
+                length_squared = candidate_length;
+            }
+        }
+    }
+
+    if length_squared <= tolerance.absolute * tolerance.absolute {
+        return Ok(Vec::new());
+    }
+
+    let length = length_squared.sqrt();
+    let coordinate_scale = controls.iter().fold(1.0_f64, |scale, point| {
+        scale.max(point.x.abs()).max(point.y.abs())
+    });
+    let geometric_tolerance =
+        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+
+    if controls
+        .iter()
+        .any(|point| direction.cross(*point - origin).abs() / length > geometric_tolerance)
+    {
+        return Ok(Vec::new());
+    }
+
+    let projected = projected_curve(segment, origin, direction, length_squared)
+        .ok_or(CoreError::UnsupportedCase)?;
+    let parameter_epsilon = 1.0e-10_f64.max(tolerance.relative * 16.0);
+    let mut seeds = vec![0.0, 1.0];
+    seeds.extend(projected.derivative_roots());
+    seeds.retain(|value| {
+        value.is_finite() && *value >= -parameter_epsilon && *value <= 1.0 + parameter_epsilon
+    });
+    for value in &mut seeds {
+        *value = value.clamp(0.0, 1.0);
+    }
+    dedup_sorted(&mut seeds, tolerance);
+
+    let values: Vec<_> = seeds
+        .iter()
+        .map(|parameter| projected.evaluate(*parameter))
+        .collect();
+    let mut parameters = Vec::new();
+
+    for value in values {
+        for root in projected.roots_at(value) {
+            if root.is_finite()
+                && root > parameter_epsilon
+                && root < 1.0 - parameter_epsilon
+            {
+                parameters.push(root);
+            }
+        }
+    }
+
+    dedup_sorted(&mut parameters, tolerance);
+    Ok(parameters)
 }
 
 fn classify_line_curve(
