@@ -124,6 +124,28 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    let retraced_line = Segment::Line(LineSegment::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(10.0, 0.0),
+    ));
+    let retraced_cubic = Segment::Cubic(CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(18.0, 0.0),
+        Point2::new(-8.0, 0.0),
+        Point2::new(10.0, 0.0),
+    ));
+
+    c.bench_function("retraced line cubic overlap", |b| {
+        b.iter(|| {
+            intersect_segments(
+                black_box(retraced_line),
+                black_box(retraced_cubic),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     let boolean_a = rect_to_path(Rect::new(0.0, 0.0, 100.0, 100.0).unwrap()).unwrap();
     let boolean_b = rect_to_path(Rect::new(50.0, 25.0, 100.0, 100.0).unwrap()).unwrap();
 

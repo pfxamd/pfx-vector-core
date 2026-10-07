@@ -365,3 +365,44 @@ fn partial_shared_quadratic_boundary_is_split_for_boolean_topology() {
     assert!(inside(&union, 50.0, 60.0));
     assert!(!inside(&union, 50.0, 90.0));
 }
+
+
+#[test]
+fn line_and_nonlinearly_parameterized_quadratic_shared_edge_has_set_semantics() {
+    let mut lower_builder = PathBuilder::new();
+    lower_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, -10.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, -10.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let lower = lower_builder.finish().unwrap();
+
+    let mut upper_builder = PathBuilder::new();
+    upper_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .quad_to(Point2::new(2.0, 0.0), Point2::new(10.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 10.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 10.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let upper = upper_builder.finish().unwrap();
+
+    let union = boolean_union(&lower, &upper, Tolerance::default()).unwrap();
+    let intersection = boolean_intersection(&lower, &upper, Tolerance::default()).unwrap();
+
+    assert_eq!(union.subpaths().len(), 1);
+    assert!(intersection.is_empty());
+    assert!(inside(&union, 5.0, -5.0));
+    assert!(inside(&union, 5.0, 5.0));
+    assert!(!inside(&union, 12.0, 0.0));
+}
