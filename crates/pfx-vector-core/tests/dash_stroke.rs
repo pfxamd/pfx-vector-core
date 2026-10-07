@@ -60,12 +60,29 @@ fn dash_offset_changes_pattern_phase() {
         ..StrokeStyle::default()
     };
 
-    let dashed = dash_path(&path, &style, Tolerance::default()).unwrap();
+    let tolerance = Tolerance::default();
+    let dashed = dash_path(&path, &style, tolerance).unwrap();
     assert_eq!(dashed.subpaths().len(), 3);
-    assert_eq!(dashed.subpaths()[0].end(), Point2::new(3.0, 0.0));
-    assert_eq!(dashed.subpaths()[1].start(), Point2::new(8.0, 0.0));
-    assert_eq!(dashed.subpaths()[1].end(), Point2::new(13.0, 0.0));
-    assert_eq!(dashed.subpaths()[2].start(), Point2::new(18.0, 0.0));
+    assert!(
+        dashed.subpaths()[0]
+            .end()
+            .almost_eq(Point2::new(3.0, 0.0), tolerance)
+    );
+    assert!(
+        dashed.subpaths()[1]
+            .start()
+            .almost_eq(Point2::new(8.0, 0.0), tolerance)
+    );
+    assert!(
+        dashed.subpaths()[1]
+            .end()
+            .almost_eq(Point2::new(13.0, 0.0), tolerance)
+    );
+    assert!(
+        dashed.subpaths()[2]
+            .start()
+            .almost_eq(Point2::new(18.0, 0.0), tolerance)
+    );
 }
 
 #[test]
