@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.20.0 - 2026-10-07
+
+### Added
+
+- Partial overlap detection for quadratic and cubic Bézier segments.
+- Overlap detection when neither Bézier segment fully contains the other.
+- Reversed partial Bézier overlap support with deterministic parameter ranges.
+- Quadratic-to-cubic degree-elevation equivalence for coincident overlap detection.
+- Multi-range periodic overlap reporting for multi-revolution elliptical arcs.
+- Canonical circle handling across different stored rotations.
+- Equivalent ellipse handling across swapped radii and corresponding quarter-turn rotation changes.
+- Bounded computed periodic arc alignment search replacing the previous fixed turn window.
+- Regression coverage for overlap symmetry, large translated coordinates, full circles with different seams, swapped ellipse axes, reversed multi-revolution arcs, and Boolean topology with partially shared curved boundaries.
+- Criterion benchmark coverage for partial cubic overlap queries.
+
+### Changed
+
+- `intersect_segments` may return multiple `Intersection::Overlap` entries when one periodic arc range maps to multiple source-parameter intervals on the other arc.
+- Coincident Bézier detection no longer requires identical full control polygons.
+- Boolean and contour-normalization splitting automatically consume the stronger overlap ranges without an API migration.
+- Near-endpoint overlap parameters are canonicalized through the existing intersection parameter snapping rules.
+
+### Scope limits
+
+- Bézier overlap recognition covers common polynomial equivalence under affine subranges, reversal, and exact quadratic degree elevation; arbitrary non-affine reparameterizations are not claimed.
+- Intrinsic self-retrace inside one single Bézier or elliptical-arc segment remains outside the pairwise overlap API.
+- Arc overlap alignment is explicitly bounded at 4096 periodic alignments and returns `IterationLimit` beyond that bound.
+- Line-versus-curved coincident overlap is not expanded by this milestone.
+
 ## 0.19.0 - 2026-10-07
 
 ### Added

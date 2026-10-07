@@ -2,7 +2,34 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.19.0`.
+**Status:** `v0.20.0`.
+
+## v0.20 robust curve overlap engine
+
+Curve intersection now treats coincident curve intervals as first-class geometry instead of recognizing only a small set of fully identical cases.
+
+For Bézier geometry, the overlap engine now:
+
+- detects partial quadratic and cubic overlaps from source endpoints mapped onto the opposite curve
+- supports overlap where neither source segment fully contains the other
+- preserves reversed coincident ranges
+- recognizes quadratic/cubic equivalence created by exact quadratic degree elevation
+- canonicalizes near-endpoint parameters so full-range overlaps remain deterministic
+- remains stable under large coordinate translations
+
+For elliptical arcs, overlap detection now canonicalizes equivalent circle and ellipse parameterizations and computes the complete bounded set of periodic alignments instead of searching a fixed number of turns. This supports different circle rotations, swapped ellipse axes with equivalent rotation, reversed sweeps, and multi-revolution pairwise overlaps. A hard alignment bound prevents pathological revolution counts from causing unbounded work.
+
+`intersect_segments` can therefore return multiple `Intersection::Overlap` ranges for periodic arc geometry. Existing Boolean and contour-normalization code already consumes overlap range endpoints, so partial coincident boundaries are split at the correct source parameters without a public API migration.
+
+No Web API migration is required. The existing path-intersection Web API continues to expose point hits only; overlap ranges remain available through the Rust core intersection API.
+
+Current overlap limits:
+
+- Bézier overlap recognition covers the same polynomial geometry under affine parameter subranges, reversal, and quadratic-to-cubic degree elevation; arbitrary non-affine reparameterizations are not claimed
+- intrinsic self-retrace inside one single Bézier segment remains outside the pairwise overlap API
+- pairwise multi-revolution arc overlap is supported, but intrinsic self-retrace of one single elliptical-arc segment is still outside guaranteed contour-normalization scope
+- pathological arc inputs requiring more than 4096 periodic alignments return `IterationLimit`
+- line-versus-curved coincident overlap remains governed by the existing line/curve intersection path rather than the new Bézier-pair overlap detector
 
 ## v0.19 native fill & winding engine
 
@@ -769,8 +796,8 @@ Current limits:
 
 - inputs must be closed fill contours
 - intrinsic cubic self-crossings are supported analytically
-- multi-revolution or retraced single elliptical arcs are outside the guaranteed scope
-- pathological coincident curves remain subject to the overlap capabilities of the intersection engine
+- pairwise multi-revolution elliptical-arc overlap is supported from v0.20; intrinsic self-retrace of one single arc remains outside the guaranteed normalization scope
+- partial coincident Bézier boundaries are supported for affine parameter subranges, reversal, and quadratic degree elevation; more exotic coincident reparameterizations remain outside the guaranteed scope
 - severe degenerate cusps may return a defined failure instead of unstable topology
 
 ## Validated cleanup and fitting scope
