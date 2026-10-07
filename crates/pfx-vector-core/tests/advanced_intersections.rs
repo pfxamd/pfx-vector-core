@@ -475,7 +475,6 @@ fn degree_elevated_quadratic_and_cubic_report_overlap() {
     assert!((overlap.range_b.max - 1.0).abs() < 1.0e-8);
 }
 
-
 fn overlap_hits(result: &IntersectionResult) -> Vec<OverlapIntersection> {
     result
         .intersections
@@ -510,8 +509,14 @@ fn full_circles_with_different_rotation_cover_the_full_parameter_domain() {
     let overlaps = overlap_hits(&result);
 
     assert_eq!(overlaps.len(), 2, "{result:#?}");
-    let coverage_a: f64 = overlaps.iter().map(|overlap| overlap.range_a.length()).sum();
-    let coverage_b: f64 = overlaps.iter().map(|overlap| overlap.range_b.length()).sum();
+    let coverage_a: f64 = overlaps
+        .iter()
+        .map(|overlap| overlap.range_a.length())
+        .sum();
+    let coverage_b: f64 = overlaps
+        .iter()
+        .map(|overlap| overlap.range_b.length())
+        .sum();
     assert!((coverage_a - 1.0).abs() < 1.0e-9);
     assert!((coverage_b - 1.0).abs() < 1.0e-9);
 }
@@ -570,9 +575,11 @@ fn multi_revolution_arc_reports_each_parameter_overlap() {
     assert!((overlaps[0].range_a.max - 0.5).abs() < 1.0e-9);
     assert!((overlaps[1].range_a.min - 0.5).abs() < 1.0e-9);
     assert!((overlaps[1].range_a.max - 1.0).abs() < 1.0e-9);
-    assert!(overlaps
-        .iter()
-        .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9));
+    assert!(
+        overlaps
+            .iter()
+            .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9)
+    );
 }
 
 #[test]
@@ -599,10 +606,14 @@ fn reversed_multi_revolution_arc_keeps_deterministic_ranges() {
 
     assert_eq!(overlaps.len(), 2, "{result:#?}");
     assert!(overlaps[0].range_a.min <= overlaps[1].range_a.min);
-    assert!(overlaps
-        .iter()
-        .all(|overlap| overlap.range_a.length() > 0.49));
-    assert!(overlaps
-        .iter()
-        .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9));
+    assert!(
+        overlaps
+            .iter()
+            .all(|overlap| overlap.range_a.length() > 0.49)
+    );
+    assert!(
+        overlaps
+            .iter()
+            .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9)
+    );
 }

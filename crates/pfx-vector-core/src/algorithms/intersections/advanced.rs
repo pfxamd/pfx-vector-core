@@ -671,10 +671,8 @@ fn arc_overlaps(
             return Ok(Vec::new());
         }
 
-        let half_turns =
-            ((right.rotation - left.rotation) / core::f64::consts::PI).round();
-        let rotation_delta =
-            right.rotation - left.rotation - half_turns * core::f64::consts::PI;
+        let half_turns = ((right.rotation - left.rotation) / core::f64::consts::PI).round();
+        let rotation_delta = right.rotation - left.rotation - half_turns * core::f64::consts::PI;
         if rotation_delta.abs() > angle_epsilon {
             return Ok(Vec::new());
         }
@@ -724,12 +722,18 @@ fn arc_overlaps(
         }
 
         let left_t0 = snap_parameter(((low - left.start) / left.sweep).clamp(0.0, 1.0), tolerance);
-        let left_t1 =
-            snap_parameter(((high - left.start) / left.sweep).clamp(0.0, 1.0), tolerance);
-        let right_t0 =
-            snap_parameter(((low - shifted_start) / right.sweep).clamp(0.0, 1.0), tolerance);
-        let right_t1 =
-            snap_parameter(((high - shifted_start) / right.sweep).clamp(0.0, 1.0), tolerance);
+        let left_t1 = snap_parameter(
+            ((high - left.start) / left.sweep).clamp(0.0, 1.0),
+            tolerance,
+        );
+        let right_t0 = snap_parameter(
+            ((low - shifted_start) / right.sweep).clamp(0.0, 1.0),
+            tolerance,
+        );
+        let right_t1 = snap_parameter(
+            ((high - shifted_start) / right.sweep).clamp(0.0, 1.0),
+            tolerance,
+        );
 
         let overlap = OverlapIntersection {
             range_a: Interval::new(left_t0.min(left_t1), left_t0.max(left_t1))?,
