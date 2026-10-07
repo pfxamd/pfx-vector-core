@@ -275,7 +275,6 @@ fn invalid_cleanup_and_fit_tolerances_are_rejected() {
     );
 }
 
-
 #[test]
 fn cleanup_closed_dense_rectangle_keeps_four_vertices() {
     let points = [
@@ -338,8 +337,12 @@ fn fitting_respects_sharp_corner_by_splitting() {
         Point2::new(10.0, 8.0),
         Point2::new(10.0, 10.0),
     ];
-    let fitted =
-        fit_path_curves(&path_from_points(&points, false), 0.01, Tolerance::default()).unwrap();
+    let fitted = fit_path_curves(
+        &path_from_points(&points, false),
+        0.01,
+        Tolerance::default(),
+    )
+    .unwrap();
 
     assert!(fitted.segment_count() >= 2);
     assert!(max_sample_distance(&fitted, &points, Tolerance::default()) <= 0.011);
@@ -357,8 +360,12 @@ fn cubic_fitting_remains_stable_after_large_translation() {
     let samples: Vec<_> = (0..=100)
         .map(|index| source.point_at(index as f64 / 100.0))
         .collect();
-    let fitted =
-        fit_path_curves(&path_from_points(&samples, false), 0.1, Tolerance::default()).unwrap();
+    let fitted = fit_path_curves(
+        &path_from_points(&samples, false),
+        0.1,
+        Tolerance::default(),
+    )
+    .unwrap();
 
     assert!(max_sample_distance(&fitted, &samples, Tolerance::default()) <= 0.11);
     assert!(fitted.segment_count() < 12);
@@ -374,10 +381,18 @@ fn reversed_samples_fit_with_same_error_contract() {
         .collect();
     let reversed: Vec<_> = points.iter().copied().rev().collect();
 
-    let forward =
-        fit_path_curves(&path_from_points(&points, false), 0.08, Tolerance::default()).unwrap();
-    let backward =
-        fit_path_curves(&path_from_points(&reversed, false), 0.08, Tolerance::default()).unwrap();
+    let forward = fit_path_curves(
+        &path_from_points(&points, false),
+        0.08,
+        Tolerance::default(),
+    )
+    .unwrap();
+    let backward = fit_path_curves(
+        &path_from_points(&reversed, false),
+        0.08,
+        Tolerance::default(),
+    )
+    .unwrap();
 
     assert!(max_sample_distance(&forward, &points, Tolerance::default()) <= 0.09);
     assert!(max_sample_distance(&backward, &reversed, Tolerance::default()) <= 0.09);
