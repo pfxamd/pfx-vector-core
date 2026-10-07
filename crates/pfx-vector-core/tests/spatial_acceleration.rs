@@ -213,7 +213,6 @@ fn invalid_spatial_padding_is_rejected() {
     );
 }
 
-
 #[test]
 fn path_spatial_nearest_refines_against_source_curve() {
     let mut builder = PathBuilder::new();

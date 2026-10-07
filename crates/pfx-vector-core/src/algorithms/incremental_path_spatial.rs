@@ -450,7 +450,7 @@ impl IncrementalPathSpatialIndex {
         Ok(best)
     }
 
-    fn distance_to_location(    fn distance_to_location(
+    fn distance_to_location(
         &self,
         subpath_index: usize,
         segment_index: usize,
@@ -538,7 +538,7 @@ impl IncrementalPathSpatialIndex {
         Ok(())
     }
 
-    fn insert_edge(&mut self, subpath_index: usize, prepared: PreparedEdge) -> CoreResult<usize> {
+    fn insert_edge(&mut self, _subpath_index: usize, prepared: PreparedEdge) -> CoreResult<usize> {
         let next = self
             .next_edge_id
             .checked_add(1)

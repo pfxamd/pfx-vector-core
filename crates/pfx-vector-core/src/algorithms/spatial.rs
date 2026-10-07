@@ -1,7 +1,7 @@
 use super::measure::segment_length_to_t;
 use crate::{
     Bounds, CoreError, CoreResult, FillRule, Path, PathLocation, Point2, PointClassification,
-    Scalar, Segment, SegmentClosestPoint, StrokeStyle, Tolerance, closest_point_on_segment,
+    Scalar, SegmentClosestPoint, StrokeStyle, Tolerance, closest_point_on_segment,
     flatten_path, segment_length,
 };
 
@@ -139,8 +139,6 @@ pub fn spatial_cross_candidate_pairs(
 struct IndexedEdge {
     start: Point2,
     end: Point2,
-    subpath_index: usize,
-    segment_index: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -421,22 +419,15 @@ impl PathSpatialIndex {
     }
 }
 
-fn push_edge}
-
 fn push_edge(
     edges: &mut Vec<IndexedEdge>,
     bounds: &mut Vec<Bounds>,
     start: Point2,
     end: Point2,
-    subpath_index: usize,
-    segment_index: usize,
+    _subpath_index: usize,
+    _segment_index: usize,
 ) {
-    edges.push(IndexedEdge {
-        start,
-        end,
-        subpath_index,
-        segment_index,
-    });
+    edges.push(IndexedEdge { start, end });
     bounds.push(Bounds::from_points(&[start, end]));
 }
 

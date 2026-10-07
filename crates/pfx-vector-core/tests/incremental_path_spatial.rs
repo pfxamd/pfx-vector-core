@@ -308,7 +308,6 @@ fn incremental_index_is_stable_at_large_coordinates() {
     assert!(indexed.point.distance_to(direct.point) <= 1.0e-3);
 }
 
-
 #[test]
 fn incremental_nearest_refines_against_source_curve_after_sync() {
     let tolerance = Tolerance {
