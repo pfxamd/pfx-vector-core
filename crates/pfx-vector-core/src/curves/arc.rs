@@ -76,4 +76,14 @@ impl EllipticalArc {
             },
         )
     }
+    #[must_use]
+    pub fn reversed(self) -> Self {
+        Self {
+            start_angle: Angle::radians(
+                self.start_angle.as_radians() + self.sweep_angle.as_radians(),
+            ),
+            sweep_angle: Angle::radians(-self.sweep_angle.as_radians()),
+            ..self
+        }
+    }
 }
