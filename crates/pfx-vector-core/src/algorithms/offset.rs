@@ -73,13 +73,8 @@ pub fn offset_path_with_fill_rule(
 
     if !closed_subpaths.is_empty() {
         let closed = Path::from_subpaths(closed_subpaths);
-        let offset = offset_closed_path_with_fill_rule(
-            &closed,
-            fill_rule,
-            distance,
-            style,
-            tolerance,
-        )?;
+        let offset =
+            offset_closed_path_with_fill_rule(&closed, fill_rule, distance, style, tolerance)?;
         output.extend(offset.subpaths().iter().cloned());
     }
 
@@ -251,8 +246,7 @@ fn stitch_open_offset_join(
         }
         StrokeJoin::Miter => {
             if let Some(point) = intersection {
-                let ratio =
-                    vertex.distance_to(point) / distance.abs().max(tolerance.absolute);
+                let ratio = vertex.distance_to(point) / distance.abs().max(tolerance.absolute);
 
                 if ratio <= style.miter_limit {
                     if !merge_line_join(output, next, point) {
@@ -284,21 +278,13 @@ fn merge_line_join(output: &mut [Segment], next: &mut [Segment], point: Point2) 
     true
 }
 
-fn push_join_line(
-    output: &mut Vec<Segment>,
-    start: Point2,
-    end: Point2,
-    tolerance: Tolerance,
-) {
+fn push_join_line(output: &mut Vec<Segment>, start: Point2, end: Point2, tolerance: Tolerance) {
     if !start.almost_eq(end, tolerance) {
         output.push(Segment::Line(LineSegment::new(start, end)));
     }
 }
 
-fn open_path_from_segments(
-    segments: Vec<Segment>,
-    tolerance: Tolerance,
-) -> CoreResult<Path> {
+fn open_path_from_segments(segments: Vec<Segment>, tolerance: Tolerance) -> CoreResult<Path> {
     let Some(first) = segments.first().copied() else {
         return Ok(Path::new());
     };
