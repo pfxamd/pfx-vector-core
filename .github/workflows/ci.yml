@@ -78,13 +78,35 @@ jobs:
             exit 1
           fi
 
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
-            echo "Tag ${TAG} already exists."
-            exit 1
-          fi
-
           git config user.name "PFxamd"
           git config user.email "pfxamd@gmail.com"
-          git tag -a "${TAG}" -m "PFx Vector Core ${TAG}"
-          git push origin "${TAG}"
-          gh release create "${TAG}" --title "PFx Vector Core ${TAG}" --generate-notes
+
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists; reusing it."
+          else
+            git tag -a "${TAG}" -m "PFx Vector Core ${TAG}"
+            git push origin "${TAG}"
+          fi
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists."
+            exit 0
+          fi
+
+          for attempt in 1 2 3 4 5; do
+            if gh release create "${TAG}" --title "PFx Vector Core ${TAG}" --generate-notes; then
+              exit 0
+            fi
+
+            if gh release view "${TAG}" >/dev/null 2>&1; then
+              echo "Release ${TAG} became available after the create attempt."
+              exit 0
+            fi
+
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Failed to create release ${TAG} after 5 attempts."
+              exit 1
+            fi
+
+            sleep $((attempt * 5))
+          done
