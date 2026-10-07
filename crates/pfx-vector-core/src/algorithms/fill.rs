@@ -1,10 +1,9 @@
-use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
+use crate::numeric::{dedup_sorted, solve_cubic, solve_quadratic};
 use crate::{
     CoreError, CoreResult, EllipticalArc, LineSegment, Path, Point2, Scalar, Segment, Tolerance,
     closest_point_on_segment,
 };
 
-const ROOT_PARAMETER_EPSILON: Scalar = 1.0e-10;
 const SIDE_SAMPLE_START: Scalar = 1.0e-8;
 const SIDE_SAMPLE_MAX: Scalar = 1.0e-2;
 
@@ -52,33 +51,61 @@ pub fn classify_point(
             }
         }
 
+        let mut endpoint_events: Vec<(Scalar, i8)> = Vec::new();
+
         for (segment_index, &segment) in segments.iter().enumerate() {
             let mut roots = horizontal_ray_parameters(segment, point.y, tolerance);
             dedup_sorted(&mut roots, tolerance);
 
-            for parameter in roots {
-                let Some(parameter) = clamp_unit(parameter, tolerance) else {
-                    continue;
-                };
-
-                if parameter >= 1.0 - ROOT_PARAMETER_EPSILON {
+            for root in roots {
+                if root < -tolerance.absolute || root > 1.0 + tolerance.absolute {
                     continue;
                 }
-
+                let parameter = root.clamp(0.0, 1.0);
                 let intersection = segment.point_at(parameter);
                 if intersection.x <= point.x {
                     continue;
                 }
 
-                let before =
-                    crossing_side_before(&segments, segment_index, parameter, point.y, tolerance);
-                let after = crossing_side_after(segment, parameter, point.y, tolerance);
+                let before = crossing_side_before(
+                    &segments,
+                    segment_index,
+                    parameter,
+                    point.y,
+                    subpath.is_closed(),
+                    tolerance,
+                );
+                let after = crossing_side_after(
+                    &segments,
+                    segment_index,
+                    parameter,
+                    point.y,
+                    subpath.is_closed(),
+                    tolerance,
+                );
 
-                match (before, after) {
-                    (Some(-1), Some(1)) => winding += 1,
-                    (Some(1), Some(-1)) => winding -= 1,
-                    _ => {}
+                let direction = match (before, after) {
+                    (Some(-1), Some(1)) => 1,
+                    (Some(1), Some(-1)) => -1,
+                    _ => 0,
+                };
+                if direction == 0 {
+                    continue;
                 }
+
+                let endpoint = parameter == 0.0 || parameter == 1.0;
+                if endpoint
+                    && endpoint_events.iter().any(|(x, existing_direction)| {
+                        *existing_direction == direction && tolerance.almost_eq(*x, intersection.x)
+                    })
+                {
+                    continue;
+                }
+                if endpoint {
+                    endpoint_events.push((intersection.x, direction));
+                }
+
+                winding += i32::from(direction);
             }
         }
     }
@@ -193,38 +220,61 @@ fn crossing_side_before(
     segment_index: usize,
     parameter: Scalar,
     ray_y: Scalar,
+    closed: bool,
     tolerance: Tolerance,
 ) -> Option<i8> {
-    if parameter > ROOT_PARAMETER_EPSILON {
+    if parameter > 0.0 {
         return sample_side(segments[segment_index], parameter, -1.0, ray_y, tolerance);
     }
 
-    if segment_index == 0 {
-        if segments
-            .last()
-            .is_some_and(|segment| segment.end().almost_eq(segments[0].start(), tolerance))
-        {
-            return sample_side(
-                *segments.last().expect("closed segment list is non-empty"),
-                1.0,
-                -1.0,
-                ray_y,
-                tolerance,
-            );
-        }
-        return None;
+    if segment_index > 0 {
+        return sample_side(
+            segments[segment_index - 1],
+            1.0,
+            -1.0,
+            ray_y,
+            tolerance,
+        );
     }
 
-    sample_side(segments[segment_index - 1], 1.0, -1.0, ray_y, tolerance)
+    if closed {
+        return segments.last().and_then(|segment| {
+            sample_side(*segment, 1.0, -1.0, ray_y, tolerance)
+        });
+    }
+
+    None
 }
 
 fn crossing_side_after(
-    segment: Segment,
+    segments: &[Segment],
+    segment_index: usize,
     parameter: Scalar,
     ray_y: Scalar,
+    closed: bool,
     tolerance: Tolerance,
 ) -> Option<i8> {
-    sample_side(segment, parameter, 1.0, ray_y, tolerance)
+    if parameter < 1.0 {
+        return sample_side(segments[segment_index], parameter, 1.0, ray_y, tolerance);
+    }
+
+    if segment_index + 1 < segments.len() {
+        return sample_side(
+            segments[segment_index + 1],
+            0.0,
+            1.0,
+            ray_y,
+            tolerance,
+        );
+    }
+
+    if closed {
+        return segments
+            .first()
+            .and_then(|segment| sample_side(*segment, 0.0, 1.0, ray_y, tolerance));
+    }
+
+    None
 }
 
 fn sample_side(

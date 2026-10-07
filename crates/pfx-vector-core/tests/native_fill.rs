@@ -199,3 +199,32 @@ fn non_finite_fill_query_is_rejected() {
         Err(CoreError::InvalidNumber)
     );
 }
+
+
+#[test]
+fn full_circle_near_endpoint_ray_keeps_correct_winding() {
+    let circle = circle_to_path(Circle::new(Point2::new(0.0, 0.0), 10.0).unwrap()).unwrap();
+    let tolerance = Tolerance::default();
+    let ray_y = -1.0e-15;
+
+    assert_eq!(
+        classify_point(
+            &circle,
+            Point2::new(-9.9996, ray_y),
+            FillRule::NonZero,
+            tolerance
+        )
+        .unwrap(),
+        PointClassification::Inside
+    );
+    assert_eq!(
+        classify_point(
+            &circle,
+            Point2::new(-10.0004, ray_y),
+            FillRule::NonZero,
+            tolerance
+        )
+        .unwrap(),
+        PointClassification::Outside
+    );
+}
