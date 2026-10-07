@@ -2,8 +2,8 @@ mod advanced;
 
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
 use crate::{
-    CoreError, CoreResult, CubicBezier, EllipticalArc, Interval, LineSegment, Point2,
-    QuadraticBezier, Scalar, Segment, Tolerance, Vector2,
+    CoreError, CoreResult, EllipticalArc, Interval, LineSegment, Point2, Scalar, Segment,
+    Tolerance, Vector2,
 };
 use advanced::intersect_curve_pair;
 

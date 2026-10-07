@@ -414,3 +414,71 @@ fn normalization_preserves_native_arc_segments_for_simple_circle() {
             .all(|segment| matches!(segment, Segment::Arc(_)))
     );
 }
+
+
+fn multi_turn_arc(turns: f64) -> Path {
+    let arc = EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        12.0,
+        7.0,
+        Angle::degrees(20.0),
+        Angle::degrees(15.0),
+        Angle::degrees(360.0 * turns),
+    );
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(arc.point_at(0.0))
+        .unwrap()
+        .arc_to(arc)
+        .unwrap()
+        .close()
+        .unwrap();
+    builder.finish().unwrap()
+}
+
+#[test]
+fn double_revolution_arc_normalizes_to_one_boundary_for_nonzero() {
+    let source = multi_turn_arc(2.0);
+    let normalized =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert_eq!(normalized.subpaths().len(), 1);
+    assert_eq!(normalized.segment_count(), 1);
+    assert!(contains_point(
+        &normalized,
+        Point2::new(0.0, 0.0),
+        FillRule::NonZero,
+        Tolerance::default()
+    )
+    .unwrap());
+    assert!(normalized.subpaths()[0]
+        .segments()
+        .iter()
+        .all(|segment| matches!(segment, Segment::Arc(_))));
+}
+
+#[test]
+fn double_revolution_arc_cancels_under_evenodd() {
+    let source = multi_turn_arc(2.0);
+    let normalized =
+        normalize_self_intersections(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
+
+    assert!(normalized.is_empty());
+}
+
+#[test]
+fn triple_revolution_arc_preserves_one_boundary_under_evenodd() {
+    let source = multi_turn_arc(3.0);
+    let normalized =
+        normalize_self_intersections(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
+
+    assert_eq!(normalized.subpaths().len(), 1);
+    assert_eq!(normalized.segment_count(), 1);
+    assert!(contains_point(
+        &normalized,
+        Point2::new(0.0, 0.0),
+        FillRule::NonZero,
+        Tolerance::default()
+    )
+    .unwrap());
+}

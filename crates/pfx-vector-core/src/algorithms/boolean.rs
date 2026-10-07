@@ -1,3 +1,4 @@
+use super::intersections::intrinsic_overlap_parameters;
 use crate::{
     Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
     Path, PathBuilder, PathSpatialIndex, Point2, PointClassification, Scalar, Segment, Tolerance,
@@ -76,6 +77,10 @@ pub fn normalize_self_intersections(
     let mut splits = vec![vec![0.0, 1.0]; segments.len()];
 
     for (index, working) in segments.iter().enumerate() {
+        for parameter in intrinsic_overlap_parameters(working.segment, tolerance)? {
+            add_parameter(&mut splits[index], parameter, tolerance);
+        }
+
         if let Segment::Cubic(curve) = working.segment {
             if let Some((first, second)) = cubic_self_intersection_parameters(curve, tolerance) {
                 add_parameter(&mut splits[index], first, tolerance);
@@ -640,9 +645,41 @@ fn deduplicate_fragments(fragments: &mut Vec<BoundaryFragment>, tolerance: Toler
 fn same_directed_geometry(a: Segment, b: Segment, tolerance: Tolerance) -> bool {
     let geometry_tolerance = geometry_match_tolerance(a, b, tolerance);
 
+    if a.start().distance_to(b.start()) <= geometry_tolerance
+        && a.end().distance_to(b.end()) <= geometry_tolerance
+        && segment_is_straight(a, geometry_tolerance)
+        && segment_is_straight(b, geometry_tolerance)
+    {
+        return true;
+    }
+
     [0.0, 0.25, 0.5, 0.75, 1.0]
         .into_iter()
         .all(|t| a.point_at(t).distance_to(b.point_at(t)) <= geometry_tolerance)
+}
+
+fn segment_is_straight(segment: Segment, geometry_tolerance: Scalar) -> bool {
+    let start = segment.start();
+    let end = segment.end();
+    let direction = end - start;
+    let length = direction.length();
+
+    if length <= geometry_tolerance {
+        return segment.bounds().width() <= geometry_tolerance
+            && segment.bounds().height() <= geometry_tolerance;
+    }
+
+    match segment {
+        Segment::Line(_) => true,
+        Segment::Quadratic(curve) => {
+            direction.cross(curve.p1 - start).abs() / length <= geometry_tolerance
+        }
+        Segment::Cubic(curve) => {
+            direction.cross(curve.p1 - start).abs() / length <= geometry_tolerance
+                && direction.cross(curve.p2 - start).abs() / length <= geometry_tolerance
+        }
+        Segment::Arc(_) => false,
+    }
 }
 
 fn geometry_match_tolerance(a: Segment, b: Segment, tolerance: Tolerance) -> Scalar {
