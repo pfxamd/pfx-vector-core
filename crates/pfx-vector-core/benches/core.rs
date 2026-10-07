@@ -230,10 +230,8 @@ fn bench_core(c: &mut Criterion) {
     });
 
     let dynamic_index = DynamicSpatialIndex::from_bounds(&sparse_bounds).unwrap();
-    let dynamic_query = Bounds::from_points(&[
-        Point2::new(49_990.0, -1.0),
-        Point2::new(50_010.0, 2.0),
-    ]);
+    let dynamic_query =
+        Bounds::from_points(&[Point2::new(49_990.0, -1.0), Point2::new(50_010.0, 2.0)]);
 
     c.bench_function("dynamic spatial query 10000 bounds", |b| {
         b.iter(|| {
