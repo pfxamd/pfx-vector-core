@@ -125,7 +125,7 @@ fn horizontal_ray_parameters(segment: Segment, ray_y: Scalar, tolerance: Toleran
         Segment::Arc(arc) => arc_horizontal_parameters(arc, ray_y, tolerance),
     };
 
-    roots.retain(Scalar::is_finite);
+    roots.retain(|root| root.is_finite());
     roots.sort_by(Scalar::total_cmp);
     roots
 }
