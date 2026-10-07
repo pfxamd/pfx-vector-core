@@ -2,7 +2,35 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.20.0`.
+**Status:** `v0.21.0`.
+
+## v0.21 self-overlap & degenerate geometry engine
+
+Topology normalization now understands important self-overlap and degenerate-curve cases that previously escaped the pairwise overlap engine.
+
+The intersection layer now detects coincident `Line ↔ Quadratic/Cubic Bézier` geometry directly. Collinear Béziers are projected onto the line parameter domain and partitioned at line-boundary crossings and derivative extrema, allowing one curve to produce multiple overlap ranges when it retraces the same line.
+
+Contour normalization also performs intrinsic splitting before pairwise intersections:
+
+- multi-revolution elliptical arcs are split at repeated periodic seams
+- collinear quadratic/cubic Béziers are split at repeated projected positions created by direction reversals
+- existing intrinsic cubic self-crossing detection remains active
+- equivalent straight fragments are deduplicated by geometry even when their Bézier parameterization differs
+
+This lets `NonZero` and `EvenOdd` normalize repeated arc revolutions deterministically and prevents line-like retraced Bézier boundaries from failing topology cleanup.
+
+Degenerate collinear Bézier measurement was strengthened as part of the same work. Arc length for line-like quadratic/cubic curves is now computed as exact one-dimensional total variation across derivative roots instead of forcing adaptive numerical integration through direction-reversal cusps. This also makes `PathSpatialIndex` robust for those paths because index construction no longer fails while computing source-distance coordinates.
+
+No Web API migration is required.
+
+Current self-overlap limits:
+
+- intrinsic multi-revolution elliptical-arc retrace is supported through periodic seam splitting
+- intrinsic line-like quadratic/cubic retrace is supported through projected polynomial partitioning
+- ordinary intrinsic cubic self-crossings remain supported by the existing analytic splitter
+- arbitrary non-collinear coincident subranges inside one single Bézier segment are not yet claimed
+- periodic intrinsic splitting is bounded; pathological revolution counts return `IterationLimit`
+- degenerate curves that collapse to a single point remain subject to the existing degenerate-operation rules
 
 ## v0.20 robust curve overlap engine
 
@@ -26,10 +54,10 @@ No Web API migration is required. The existing path-intersection Web API continu
 Current overlap limits:
 
 - Bézier overlap recognition covers the same polynomial geometry under affine parameter subranges, reversal, and quadratic-to-cubic degree elevation; arbitrary non-affine reparameterizations are not claimed
-- intrinsic self-retrace inside one single Bézier segment remains outside the pairwise overlap API
-- pairwise multi-revolution arc overlap is supported, but intrinsic self-retrace of one single elliptical-arc segment is still outside guaranteed contour-normalization scope
+- intrinsic line-like Bézier retrace is handled by v0.21 normalization; arbitrary non-collinear coincident subranges inside one Bézier remain outside the guaranteed scope
+- pairwise and intrinsic multi-revolution elliptical-arc overlap are supported; intrinsic normalization splits repeated periodic seams before topology classification
 - pathological arc inputs requiring more than 4096 periodic alignments return `IterationLimit`
-- line-versus-curved coincident overlap remains governed by the existing line/curve intersection path rather than the new Bézier-pair overlap detector
+- line-versus-collinear-Bézier coincident overlap is handled directly from v0.21; other line/curve contacts retain the standard point-intersection path
 
 ## v0.19 native fill & winding engine
 
@@ -796,8 +824,8 @@ Current limits:
 
 - inputs must be closed fill contours
 - intrinsic cubic self-crossings are supported analytically
-- pairwise multi-revolution elliptical-arc overlap is supported from v0.20; intrinsic self-retrace of one single arc remains outside the guaranteed normalization scope
-- partial coincident Bézier boundaries are supported for affine parameter subranges, reversal, and quadratic degree elevation; more exotic coincident reparameterizations remain outside the guaranteed scope
+- pairwise multi-revolution elliptical-arc overlap is supported from v0.20 and intrinsic multi-revolution seams are normalized from v0.21
+- partial coincident Bézier boundaries support affine parameter subranges, reversal, quadratic degree elevation, and line-like retrace normalization; arbitrary non-collinear self-overlap reparameterizations remain outside the guaranteed scope
 - severe degenerate cusps may return a defined failure instead of unstable topology
 
 ## Validated cleanup and fitting scope

@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.21.0 - 2026-10-07
+
+### Added
+
+- Coincident `Line ↔ Quadratic Bézier` and `Line ↔ Cubic Bézier` overlap detection.
+- Multiple overlap ranges for collinear Béziers that reverse direction and retrace a finite line interval.
+- Intrinsic overlap split parameters for multi-revolution elliptical arcs.
+- Intrinsic split parameters for line-like quadratic/cubic Béziers with repeated projected positions.
+- Geometry-based straight-fragment deduplication independent of Bézier parameterization.
+- Exact total-variation arc length for collinear quadratic/cubic Béziers, split at derivative roots.
+- Regression coverage for line/curve argument symmetry, retraced cubic overlap, near-collinear rejection, multi-turn `NonZero / EvenOdd` normalization, line-vs-nonlinearly-parameterized Bézier Boolean boundaries, retraced cubic topology cleanup, and spatial-index construction over retraced curves.
+- Criterion benchmark coverage for retraced line/cubic overlap queries.
+
+### Changed
+
+- `normalize_self_intersections` now applies intrinsic self-overlap splitting before pairwise segment intersection splitting.
+- Multi-revolution arcs can normalize repeated winding directly instead of remaining outside guaranteed contour-normalization scope.
+- Straight Bézier fragments with matching directed endpoints can deduplicate even when their internal parameterizations differ.
+- `segment_length` avoids adaptive integration for line-like Béziers and computes exact one-dimensional total variation instead.
+- `PathSpatialIndex::build` therefore no longer fails on validated retraced collinear Béziers while computing segment distance coordinates.
+
+### Scope limits
+
+- Intrinsic self-overlap support covers multi-revolution elliptical arcs and line-like Bézier retraces; arbitrary non-collinear coincident subranges within a single Bézier are not claimed.
+- Existing analytic intrinsic cubic self-crossing support remains separate from coincident self-retrace handling.
+- Periodic intrinsic arc splitting is bounded and returns `IterationLimit` for pathological revolution counts.
+- Point-collapsed degenerate primitives remain governed by existing degenerate-operation behavior.
+
 ## 0.20.0 - 2026-10-07
 
 ### Added
