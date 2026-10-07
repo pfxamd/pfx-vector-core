@@ -340,34 +340,6 @@ pub fn tessellate_stroke_svg(
 }
 
 #[wasm_bindgen]
-pub fn tessellate_dashed_stroke_svg(
-    data: &str,
-    width: f64,
-    cap: &str,
-    join: &str,
-    miter_limit: f64,
-    flatness: f64,
-    dash_array: &str,
-    dash_offset: f64,
-) -> Result<String, JsValue> {
-    let path = parse_path(data).map_err(js_err)?;
-    let tolerance = Tolerance {
-        flatness: flatness.max(1.0e-12),
-        ..Tolerance::default()
-    };
-    let style = StrokeStyle {
-        width,
-        cap: parse_stroke_cap(cap)?,
-        join: parse_stroke_join(join)?,
-        miter_limit,
-        dash_array: parse_dash_array(dash_array)?,
-        dash_offset,
-    };
-    let mesh = tessellate_stroke(&path, &style, tolerance).map_err(js_err)?;
-    Ok(mesh_json(&mesh))
-}
-
-#[wasm_bindgen]
 pub fn cleanup_path_svg(
     data: &str,
     point_tolerance: f64,

@@ -47,16 +47,6 @@ export interface VectorWasmBindings {
     miterLimit: number,
     flatness: number,
   ): string;
-  tessellate_dashed_stroke_svg(
-    data: string,
-    width: number,
-    cap: StrokeCap,
-    join: StrokeJoin,
-    miterLimit: number,
-    flatness: number,
-    dashArray: string,
-    dashOffset: number,
-  ): string;
   cleanup_path_svg(
     data: string,
     pointTolerance: number,
@@ -200,27 +190,20 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       options: OutlineOptions & TessellationOptions = {},
     ) => {
       const dashArray = options.dashArray ?? [];
-      const raw =
+      const strokeData =
         dashArray.length > 0
-          ? wasm.tessellate_dashed_stroke_svg(
-              data,
-              width,
-              options.cap ?? "butt",
-              options.join ?? "miter",
-              options.miterLimit ?? 4,
-              options.flatness ?? 1e-4,
-              dashArray.join(","),
-              options.dashOffset ?? 0,
-            )
-          : wasm.tessellate_stroke_svg(
-              data,
-              width,
-              options.cap ?? "butt",
-              options.join ?? "miter",
-              options.miterLimit ?? 4,
-              options.flatness ?? 1e-4,
-            );
-      return JSON.parse(raw) as Mesh2D;
+          ? wasm.dash_path_svg(data, dashArray.join(","), options.dashOffset ?? 0)
+          : data;
+      return JSON.parse(
+        wasm.tessellate_stroke_svg(
+          strokeData,
+          width,
+          options.cap ?? "butt",
+          options.join ?? "miter",
+          options.miterLimit ?? 4,
+          options.flatness ?? 1e-4,
+        ),
+      ) as Mesh2D;
     },
     cleanupPath: (data: string, options: CleanupOptions = {}) =>
       wasm.cleanup_path_svg(
