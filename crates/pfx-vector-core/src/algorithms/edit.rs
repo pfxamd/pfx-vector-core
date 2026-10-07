@@ -253,13 +253,8 @@ pub fn remove_segment(
         )
         .ok_or(CoreError::InvalidGeometry)?;
         let right_segments = segments[address.segment_index + 1..].to_vec();
-        let right = Subpath::new(
-            right_segments[0].start(),
-            right_segments,
-            false,
-            tolerance,
-        )
-        .ok_or(CoreError::InvalidGeometry)?;
+        let right = Subpath::new(right_segments[0].start(), right_segments, false, tolerance)
+            .ok_or(CoreError::InvalidGeometry)?;
         vec![left, right]
     };
 
