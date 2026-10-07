@@ -185,6 +185,31 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    let mut self_crossing_builder = PathBuilder::new();
+    self_crossing_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(100.0, 100.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 100.0))
+        .unwrap()
+        .line_to(Point2::new(100.0, 0.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let self_crossing_path = self_crossing_builder.finish().unwrap();
+
+    c.bench_function("normalize self-intersecting contour", |b| {
+        b.iter(|| {
+            normalize_self_intersections(
+                black_box(&self_crossing_path),
+                black_box(FillRule::EvenOdd),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);

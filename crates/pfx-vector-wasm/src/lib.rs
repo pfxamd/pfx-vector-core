@@ -2,8 +2,8 @@
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap,
     StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point,
-    fit_path_curves, flatten_path, intersect_segments, offset_path, outline_path, path_length,
-    point_at_length, simplify_path, tessellate_fill, tessellate_stroke,
+    fit_path_curves, flatten_path, intersect_segments, normalize_self_intersections, offset_path,
+    outline_path, path_length, point_at_length, simplify_path, tessellate_fill, tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -314,3 +314,21 @@ pub fn fit_path_curves_svg(data: &str, max_error: f64) -> Result<String, JsValue
 
     Ok(serialize_path(&fitted, SerializeOptions::default()))
 }
+
+#[wasm_bindgen]
+pub fn normalize_fill_contours_svg(data: &str, even_odd: bool) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let normalized = normalize_self_intersections(
+        &path,
+        if even_odd {
+            FillRule::EvenOdd
+        } else {
+            FillRule::NonZero
+        },
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+
+    Ok(serialize_path(&normalized, SerializeOptions::default()))
+}
+

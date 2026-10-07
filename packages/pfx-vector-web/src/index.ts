@@ -9,6 +9,7 @@ export interface VectorWasmBindings {
   hit_test_fill_svg(data: string, x: number, y: number, evenOdd: boolean): boolean;
   flatten_path_svg(data: string, flatness: number): string;
   normalize_path_svg(data: string): string;
+  normalize_fill_contours_svg(data: string, evenOdd: boolean): string;
   intersect_paths_svg(a: string, b: string): string;
   boolean_union_svg(a: string, b: string): string;
   boolean_intersection_svg(a: string, b: string): string;
@@ -106,6 +107,10 @@ export function createVectorCore(wasm: VectorWasmBindings) {
     flattenPath: (data: string, flatness = 1e-4) =>
       wasm.flatten_path_svg(data, flatness),
     normalizePath: (data: string) => wasm.normalize_path_svg(data),
+    normalizeFillContours: (
+      data: string,
+      rule: "nonzero" | "evenodd" = "nonzero",
+    ) => wasm.normalize_fill_contours_svg(data, rule === "evenodd"),
     intersectPaths: (a: string, b: string) =>
       JSON.parse(wasm.intersect_paths_svg(a, b)) as IntersectionPoint[],
     unionPaths: (a: string, b: string) => wasm.boolean_union_svg(a, b),

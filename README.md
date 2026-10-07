@@ -1,8 +1,52 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, intersections, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.6.0`.
+**Status:** `v0.7.0`.
+
+## v0.7 self-intersection and contour normalization
+
+The core can now convert closed self-intersecting filled paths into explicit simple boundary contours:
+
+```rust
+let normalized = normalize_self_intersections(
+    &path,
+    FillRule::EvenOdd,
+    tolerance,
+)?;
+```
+
+The normalization pipeline:
+
+- collects explicit and implicit closing segments
+- detects intersections between segment pairs
+- detects intrinsic loop intersections inside a single cubic Bézier
+- splits geometry at stable parameters
+- classifies both sides of every fragment using the requested fill rule
+- discards fragments that do not separate filled and empty space
+- orients retained boundaries with filled space on the left
+- walks the resulting planar boundary graph into closed simple contours
+
+The operation is curve-preserving. Lines, quadratic Béziers, cubic Béziers, and elliptical arcs remain native segment types and are only subdivided where topology requires it.
+
+### Integrated engines
+
+Self-intersection normalization now runs automatically before:
+
+- Boolean operations
+- filled path offsets
+- fill tessellation
+
+This means validated bow-tie shapes, repeated winding, touching lobes, and curve self-crossings can feed those engines directly.
+
+### Web API
+
+```text
+normalizeFillContours(data, "nonzero")
+normalizeFillContours(data, "evenodd")
+```
+
+This is distinct from `normalizePath`: `normalizePath` canonicalizes SVG path syntax, while `normalizeFillContours` resolves fill topology.
 
 ## v0.6 cleanup, simplification, and curve fitting
 
@@ -231,10 +275,23 @@ Tolerance-sensitive operations include:
 - closest-point and stroke hit-testing approximations
 - advanced curve intersections via bounded subdivision and local refinement
 - general curve offsets via adaptive cubic fitting
+- self-intersection normalization through geometric splitting, fill-side classification, and face walking
 - Boolean/offset topology through explicit geometric side classification and cleanup
 - tessellation through adaptive flattening, contour topology, hole bridging, and ear clipping
 - path simplification through explicit geometric deviation thresholds
 - cubic fitting through least-squares approximation and iterative reparameterization
+
+## Validated contour-normalization scope
+
+Validated cases include bow-tie crossings, multiple simple lobes sharing one node, repeated same-direction winding, opposite-winding cancellation, `NonZero / EvenOdd` differences, nested contours, reversed input orientation, large translated coordinates, native circle arcs, intrinsic cubic Bézier loops, idempotent renormalization, and direct use by Boolean, Offset, and Tessellation.
+
+Current limits:
+
+- inputs must be closed fill contours
+- intrinsic cubic self-crossings are supported analytically
+- multi-revolution or retraced single elliptical arcs are outside the guaranteed scope
+- pathological coincident curves remain subject to the overlap capabilities of the intersection engine
+- severe degenerate cusps may return a defined failure instead of unstable topology
 
 ## Validated cleanup and fitting scope
 
@@ -254,7 +311,7 @@ Validated cases include convex and concave polygons, multiple disjoint contours,
 Current tessellation limits:
 
 - fill tessellation requires closed subpaths
-- self-intersecting contour normalization is not guaranteed
+- validated self-intersecting fills are normalized before triangulation
 - mesh output contains geometry only; renderer/GPU concerns remain outside the core
 - curve tessellation accuracy follows the explicit flatness tolerance
 
@@ -265,9 +322,9 @@ Validated cases include outward/inward rectangle offsets, circular offsets, clos
 Current limits:
 
 - offset inputs must be closed
+- self-intersecting filled contours are normalized before offset construction
 - dashed outline expansion is deferred
 - severe cusp/degenerate tangent cases may return a defined failure
-- general self-intersecting filled-contour offset normalization is not guaranteed
 
 ## Naming
 

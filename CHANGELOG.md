@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.7.0 - 2026-10-07
+
+### Added
+
+- Public self-intersection normalization through `normalize_self_intersections`.
+- Pairwise boundary splitting across line, quadratic Bézier, cubic Bézier, and elliptical-arc segments using the existing advanced intersection engine.
+- Analytical detection and parameter splitting for intrinsic self-intersections inside a single cubic Bézier segment.
+- Fill-rule-aware topology resolution for both `NonZero` and `EvenOdd`.
+- Directed boundary reconstruction with filled space consistently kept on the left side of emitted contours.
+- Face-walking continuation at multi-edge intersection nodes, preventing a normalized contour from simply recreating the original crossing.
+- Exact overlap cleanup for validated coincident fragments, including repeated and oppositely wound contours.
+- Stable handling of bow-tie contours, double winding, touching lobes, nested contours, large translated coordinates, reversed input orientation, and intrinsic cubic loops.
+- Automatic contour normalization before Boolean operations, filled offsets, and fill tessellation.
+- WebAssembly `normalize_fill_contours_svg` export.
+- TypeScript `normalizeFillContours` API.
+- Criterion benchmark coverage for self-intersecting contour normalization.
+
+### Changed
+
+- Boolean inputs are normalized to explicit NonZero-oriented boundary contours before cross-path Boolean fragmentation.
+- Filled offsets normalize their source fill topology before outline construction and set operations.
+- Fill tessellation now consumes normalized simple contours instead of rejecting validated self-intersecting fills.
+- Native curve primitives are preserved through normalization; curves are split into subsegments rather than flattened.
+
+### Scope limits
+
+- Normalization currently requires closed fill subpaths.
+- Proper intrinsic self-intersection is analytically handled for cubic Bézier segments; multi-revolution or retraced single elliptical arcs remain outside the guaranteed normalization scope.
+- General partial overlap detection for differently parameterized but geometrically identical Bézier curves remains limited by the intersection engine.
+- Extremely degenerate cusp/retrace configurations can return an explicit numerical or unsupported-case error rather than inventing topology.
+- Open stroke topology is not normalized by this fill-contour API.
+
 ## 0.6.0 - 2026-10-07
 
 ### Added
