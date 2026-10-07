@@ -1,8 +1,59 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.11.0`.
+**Status:** `v0.12.0`.
+
+## v0.12 path trim and slice engine
+
+The core can now extract and split arc-length intervals from individual path contours without flattening their source geometry:
+
+```rust
+let contour = &path.subpaths()[0];
+let total = contour_length(contour, tolerance)?;
+
+let middle = slice_contour(
+    contour,
+    total * 0.2,
+    total * 0.8,
+    ContourSliceMode::Clamp,
+    tolerance,
+)?;
+
+let wrapped = slice_contour(
+    contour,
+    total * 0.85,
+    total * 0.15,
+    ContourSliceMode::Wrap,
+    tolerance,
+)?;
+
+let (before, after) = split_contour_at_length(contour, total * 0.5, tolerance)?;
+```
+
+`contour_length` includes the implicit closing edge of a closed contour. This is intentional and distinct from the older `path_length` API, whose path-location semantics continue to follow explicit stored segments.
+
+`ContourSliceMode::Clamp` clamps both distances to the contour extent and rejects reversed intervals. `ContourSliceMode::Wrap` is reserved for closed contours and follows the contour forward across the closing seam when the end precedes the start. Requesting a full cycle preserves the original closed contour.
+
+Line, quadratic Bézier, cubic Bézier, and elliptical-arc fragments remain native segment types after slicing. The dash engine now reuses the same internal arc-length slicing primitives, so dash expansion and manual trimming share one geometry path instead of duplicated implementations.
+
+### Web API
+
+```text
+contourLength(data, subpathIndex)
+sliceContour(data, startDistance, endDistance, { subpathIndex, wrap })
+splitContour(data, distance, { subpathIndex })
+```
+
+The WebAssembly boundary exposes contour length and slicing directly. The TypeScript wrapper composes splitting from those same primitives.
+
+Current trim/slice limits:
+
+- slicing operates on one selected contour/subpath at a time
+- wrap mode requires a closed contour
+- equal start/end distances produce an empty slice; a full closed cycle is requested with an interval spanning the contour length
+- curve split placement follows numerical arc-length integration and the supplied `Tolerance`
+- partial slices are returned as open contours; only a complete source contour preserves its closed state
 
 ## v0.11 dash and stroke pattern engine
 
@@ -427,10 +478,10 @@ Validated cases include exact agreement with brute-force candidate pairing, dete
 
 Current limits:
 
-- indexes are immutable snapshots and must be rebuilt after geometry changes
+- `SpatialIndex` and `PathSpatialIndex` are immutable bulk snapshots; `DynamicSpatialIndex` and `IncrementalPathSpatialIndex` cover mutation-heavy and repeated path-edit workloads
 - `PathSpatialIndex` uses flattened edges and inherits the configured flatness tolerance
 - the spatial layer is deliberately broad-phase only; it does not approximate exact curve intersections
-- no dynamic tree mutation, multithreaded index updates, or GPU spatial structures are part of this release
+- spatial mutation remains a deterministic CPU/single-process facility; multithreaded index mutation and GPU-resident spatial structures are outside the current scope
 
 ## Validated contour-normalization scope
 

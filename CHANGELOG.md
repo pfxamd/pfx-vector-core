@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.12.0 - 2026-10-07
+
+### Added
+
+- Public `ContourSliceMode` with clamped and closed-contour wrapping semantics.
+- Public `contour_length` that includes the implicit closing edge of closed contours.
+- Public `slice_contour` for extracting an arc-length interval from one contour.
+- Public `split_contour_at_length` for complementary contour pieces around a split distance.
+- Native line, quadratic Bézier, cubic Bézier, and elliptical-arc preservation during trimming.
+- Closed-contour seam wrapping for intervals that cross the implicit close edge.
+- WebAssembly `contour_length_svg` and `slice_contour_svg`.
+- TypeScript `contourLength`, `sliceContour`, and `splitContour` APIs with subpath selection.
+- Robustness tests covering implicit close length, reversed clamp intervals, native curve preservation, seam wrapping, full cycles, open-wrap rejection, complementary splits, zero-length slices, non-finite inputs, and large translated coordinates.
+- Criterion benchmark coverage for cubic contour slicing.
+
+### Changed
+
+- Dash expansion and manual contour slicing now share one internal arc-length slicing implementation.
+- README spatial-acceleration limits now reflect the dynamic and incremental indexes introduced in v0.9 and v0.10.
+
+### Scope limits
+
+- Slicing addresses one selected contour/subpath at a time.
+- Wrap mode applies only to closed contours.
+- Equal start and end distances produce an empty slice; a full cycle is represented by an interval spanning the contour length.
+- Partial slices are open contours. Complete contour slices preserve the source closed state.
+- Slice placement inherits numerical integration and inversion tolerance.
+
 ## 0.11.0 - 2026-10-07
 
 ### Added
