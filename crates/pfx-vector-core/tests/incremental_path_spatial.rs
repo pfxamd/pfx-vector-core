@@ -340,7 +340,6 @@ fn incremental_nearest_refines_against_source_curve_after_sync() {
     assert!((result.distance - 3.0).abs() <= 1.0e-8);
 }
 
-
 #[test]
 fn incremental_fill_refines_against_source_curve_after_sync() {
     let tolerance = Tolerance {

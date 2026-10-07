@@ -236,7 +236,6 @@ fn path_spatial_nearest_refines_against_source_curve() {
     assert!((result.distance - 3.0).abs() <= 1.0e-8);
 }
 
-
 #[test]
 fn path_spatial_fill_refines_against_source_curve() {
     let mut builder = PathBuilder::new();
