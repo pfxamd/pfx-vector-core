@@ -208,19 +208,38 @@ fn sanitize_contour(mut points: Vec<Point2>, tolerance: Tolerance) -> Vec<Point2
 }
 
 fn signed_area(points: &[Point2]) -> Scalar {
+    if points.len() < 3 {
+        return 0.0;
+    }
+
+    let origin = points[0];
     let mut sum = 0.0;
     for index in 0..points.len() {
-        let a = points[index];
-        let b = points[(index + 1) % points.len()];
-        sum += a.x * b.y - b.x * a.y;
+        let a = points[index] - origin;
+        let b = points[(index + 1) % points.len()] - origin;
+        sum += a.cross(b);
     }
     sum * 0.5
 }
 
 fn area_epsilon(points: &[Point2], tolerance: Tolerance) -> Scalar {
-    let scale = points.iter().fold(1.0_f64, |scale, point| {
-        scale.max(point.x.abs()).max(point.y.abs())
-    });
+    if points.is_empty() {
+        return tolerance.absolute;
+    }
+
+    let mut min_x = points[0].x;
+    let mut min_y = points[0].y;
+    let mut max_x = points[0].x;
+    let mut max_y = points[0].y;
+
+    for point in &points[1..] {
+        min_x = min_x.min(point.x);
+        min_y = min_y.min(point.y);
+        max_x = max_x.max(point.x);
+        max_y = max_y.max(point.y);
+    }
+
+    let scale = (max_x - min_x).max(max_y - min_y).max(1.0);
     (tolerance.absolute + tolerance.relative * scale) * scale
 }
 
@@ -379,7 +398,7 @@ fn triangulate_simple_polygon(
                 {
                     return false;
                 }
-                point_strictly_inside_triangle(p, a, b, c, epsilon)
+                point_inside_or_on_triangle(p, a, b, c, epsilon)
             });
 
             if blocked {
@@ -438,7 +457,7 @@ fn triangulate_simple_polygon(
     Ok(())
 }
 
-fn point_strictly_inside_triangle(
+fn point_inside_or_on_triangle(
     point: Point2,
     a: Point2,
     b: Point2,
@@ -448,5 +467,5 @@ fn point_strictly_inside_triangle(
     let ab = (b - a).cross(point - a);
     let bc = (c - b).cross(point - b);
     let ca = (a - c).cross(point - c);
-    ab > epsilon && bc > epsilon && ca > epsilon
+    ab >= -epsilon && bc >= -epsilon && ca >= -epsilon
 }
