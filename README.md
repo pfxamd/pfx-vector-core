@@ -2,7 +2,50 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.13.0`.
+**Status:** `v0.14.0`.
+
+## v0.14 precise stroke hit-testing engine
+
+Stroke hit testing now follows the actual generated stroke geometry instead of a centerline-distance approximation.
+
+```rust
+let style = StrokeStyle {
+    width: 6.0,
+    cap: StrokeCap::Round,
+    join: StrokeJoin::Miter,
+    miter_limit: 4.0,
+    dash_array: vec![12.0, 6.0],
+    dash_offset: 2.0,
+};
+
+let hit = stroke_contains_point(&path, &style, point, tolerance)?;
+
+let index = StrokeHitIndex::build(&path, &style, tolerance)?;
+let repeated_hit = index.contains_point(point)?;
+```
+
+The hit region is built from the same stroke components used by outlining: segment ribbons, joins, caps, and dash fragments. This gives correct semantics for `Butt`, `Round`, and `Square` caps; `Miter`, `Round`, and `Bevel` joins; miter-limit fallback; dash gaps; and dash endpoint caps.
+
+`StrokeHitIndex` stores the individual stroke components behind a spatial index rather than Boolean-unioning the entire outline. This avoids the convergence cost of constructing a complete union for every pointer query and is the preferred path for repeated editor hit testing.
+
+`PathSpatialIndex` and `IncrementalPathSpatialIndex` use their source-path indexes as a conservative broad phase before the geometry-backed stroke test. Their query radius accounts for cap and join reach, including square caps and miter limits.
+
+`stroke_bounds` is now derived from the indexed stroke components, so cap and join extensions are included without requiring a complete Boolean outline.
+
+### Web API
+
+```text
+hitStroke(data, x, y, width, { cap, join, miterLimit, dashArray, dashOffset })
+```
+
+The TypeScript wrapper composes dash expansion with the new WebAssembly stroke-hit boundary, so dashed and solid strokes share the same final geometry test.
+
+Current hit-testing limits:
+
+- curved component point classification inherits the configured `Tolerance` and adaptive flattening used by fill classification
+- constructing stroke components inherits the offset/outline failure behavior for severe cusps or degenerate source tangents
+- `PathSpatialIndex` and `IncrementalPathSpatialIndex` do not cache a style-specific stroke index; repeated pointer queries should build and reuse `StrokeHitIndex`
+- pathological stroke widths and miter limits whose combined reach overflows finite coordinates are rejected as `InvalidGeometry`
 
 ## v0.13 open path offset engine
 
@@ -507,7 +550,7 @@ Tolerance-sensitive operations include:
 - deterministic AABB spatial broad-phase pruning
 - reusable indexed path queries
 - adaptive curve flattening
-- closest-point and stroke hit-testing approximations
+- closest-point approximation over indexed flattened edges and geometry-backed stroke hit testing
 - advanced curve intersections via bounded subdivision and local refinement
 - general curve offsets via adaptive cubic fitting
 - self-intersection normalization through geometric splitting, fill-side classification, and face walking

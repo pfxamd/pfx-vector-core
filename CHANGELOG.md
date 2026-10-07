@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.14.0 - 2026-10-07
+
+### Added
+
+- Public `StrokeHitIndex` for reusable, style-specific stroke hit testing.
+- Geometry-backed stroke hit testing using the same segment ribbons, joins, caps, and dash fragments as the outline engine.
+- Exact stroke semantics for `Butt`, `Round`, and `Square` caps.
+- Exact stroke semantics for `Miter`, `Round`, and `Bevel` joins with miter-limit fallback.
+- Dashed stroke hit testing with dash gaps and dash endpoint caps.
+- Conservative cap/join-aware broad-phase pruning in `PathSpatialIndex` and `IncrementalPathSpatialIndex`.
+- Geometry-derived `stroke_bounds` that includes cap and join reach.
+- WebAssembly `hit_test_stroke_svg`.
+- TypeScript `hitStroke` with cap, join, miter, dash-array, and dash-offset options.
+- Robustness coverage for cap differences, join differences, dashed gaps, cached/indexed equivalence, large coordinates, and overflow rejection.
+- Criterion benchmarks comparing per-query construction with reusable `StrokeHitIndex`.
+
+### Changed
+
+- `stroke_contains_point` no longer uses flattened centerline distance as the final hit criterion.
+- Stroke hit testing now indexes independent stroke components instead of Boolean-unioning a complete outline for every query.
+- `outline_path` and hit testing share one internal stroke-component construction path.
+- Dense-path stroke hit queries no longer depend on a full Boolean outline union and avoid the previous `NonConvergent` failure in spatial equivalence tests.
+- Stroke validation rejects finite inputs whose combined width/miter reach would overflow.
+
+### Scope limits
+
+- Curved component point classification inherits the configured `Tolerance` and adaptive flattening used by fill classification.
+- Severe cusps or degenerate tangents may still return a defined geometry/tolerance failure during component construction.
+- Source-path spatial indexes provide broad-phase pruning but do not cache style-specific stroke components; repeated queries should reuse `StrokeHitIndex`.
+
 ## 0.13.0 - 2026-10-07
 
 ### Added
