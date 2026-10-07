@@ -1,6 +1,35 @@
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use pfx_vector_core::*;
 
+fn incremental_benchmark_path(changed: bool) -> Path {
+    let mut builder = PathBuilder::new();
+
+    for subpath_index in 0..100 {
+        let base_x = subpath_index as f64 * 50.0;
+        builder.move_to(Point2::new(base_x, 0.0)).unwrap();
+
+        for segment_index in 0..20 {
+            let start_x = base_x + segment_index as f64 * 2.0;
+            let end_x = start_x + 2.0;
+            let control_y = if changed && subpath_index == 50 && segment_index == 10 {
+                8.0
+            } else {
+                0.0
+            };
+
+            builder
+                .cubic_to(
+                    Point2::new(start_x + 0.6, control_y),
+                    Point2::new(start_x + 1.4, control_y),
+                    Point2::new(end_x, 0.0),
+                )
+                .unwrap();
+        }
+    }
+
+    builder.finish().unwrap()
+}
+
 fn bench_core(c: &mut Criterion) {
     let curve = CubicBezier::new(
         Point2::new(0.0, 0.0),
@@ -260,6 +289,21 @@ fn bench_core(c: &mut Criterion) {
                         .unwrap(),
                 )
             },
+            BatchSize::SmallInput,
+        )
+    });
+
+    let incremental_base = incremental_benchmark_path(false);
+    let incremental_changed = incremental_benchmark_path(true);
+
+    c.bench_function("path spatial full rebuild 2000 segments", |b| {
+        b.iter(|| PathSpatialIndex::build(black_box(&incremental_changed), tolerance).unwrap())
+    });
+
+    c.bench_function("incremental path sync one segment 2000 segments", |b| {
+        b.iter_batched(
+            || IncrementalPathSpatialIndex::build(&incremental_base, tolerance).unwrap(),
+            |mut index| black_box(index.sync_path(&incremental_changed).unwrap()),
             BatchSize::SmallInput,
         )
     });
