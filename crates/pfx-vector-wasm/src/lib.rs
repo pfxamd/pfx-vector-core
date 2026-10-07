@@ -65,7 +65,6 @@ pub fn slice_contour_svg(
     Ok(serialize_path(&sliced, SerializeOptions::default()))
 }
 
-
 #[wasm_bindgen]
 pub fn split_segment_svg(
     data: &str,
@@ -116,13 +115,8 @@ pub fn set_subpath_closed_svg(
     closed: bool,
 ) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
-    let edit = set_subpath_closed(
-        &path,
-        subpath_index as usize,
-        closed,
-        Tolerance::default(),
-    )
-    .map_err(js_err)?;
+    let edit = set_subpath_closed(&path, subpath_index as usize, closed, Tolerance::default())
+        .map_err(js_err)?;
     Ok(serialize_path(edit.path(), SerializeOptions::default()))
 }
 
@@ -198,11 +192,7 @@ fn parse_transform_matrix(value: &str) -> Result<Transform2D, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn transform_path_svg(
-    data: &str,
-    matrix: &str,
-    flatness: f64,
-) -> Result<String, JsValue> {
+pub fn transform_path_svg(data: &str, matrix: &str, flatness: f64) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
     let tolerance = Tolerance {
         flatness: flatness.max(1.0e-12),
