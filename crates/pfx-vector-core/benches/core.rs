@@ -214,10 +214,7 @@ fn bench_core(c: &mut Criterion) {
     let sparse_bounds: Vec<_> = (0..10_000)
         .map(|index| {
             let x = index as f64 * 10.0;
-            Bounds::from_points(&[
-                Point2::new(x, 0.0),
-                Point2::new(x + 1.0, 1.0),
-            ])
+            Bounds::from_points(&[Point2::new(x, 0.0), Point2::new(x + 1.0, 1.0)])
         })
         .collect();
 
@@ -227,11 +224,8 @@ fn bench_core(c: &mut Criterion) {
 
     c.bench_function("spatial self candidates 10000 sparse bounds", |b| {
         b.iter(|| {
-            spatial_self_candidate_pairs(
-                black_box(&sparse_bounds),
-                black_box(tolerance.absolute),
-            )
-            .unwrap()
+            spatial_self_candidate_pairs(black_box(&sparse_bounds), black_box(tolerance.absolute))
+                .unwrap()
         })
     });
 
