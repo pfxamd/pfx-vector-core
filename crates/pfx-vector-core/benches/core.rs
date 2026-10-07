@@ -46,6 +46,20 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    let boolean_a = rect_to_path(Rect::new(0.0, 0.0, 100.0, 100.0).unwrap()).unwrap();
+    let boolean_b = rect_to_path(Rect::new(50.0, 25.0, 100.0, 100.0).unwrap()).unwrap();
+
+    c.bench_function("boolean union rectangles", |b| {
+        b.iter(|| {
+            boolean_union(
+                black_box(&boolean_a),
+                black_box(&boolean_b),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);

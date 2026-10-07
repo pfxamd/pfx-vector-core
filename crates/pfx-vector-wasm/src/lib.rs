@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
-    Bounds, FillRule, Point2, Tolerance, contains_point, flatten_path, intersect_segments,
-    path_length, point_at_length,
+    BooleanOperation, Bounds, FillRule, Point2, Tolerance, boolean_paths, contains_point,
+    flatten_path, intersect_segments, path_length, point_at_length,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -121,3 +121,32 @@ pub fn intersect_paths_svg(a: &str, b: &str) -> Result<String, JsValue> {
         .join(",");
     Ok(format!("[{body}]"))
 }
+
+fn boolean_svg(a: &str, b: &str, operation: BooleanOperation) -> Result<String, JsValue> {
+    let path_a = parse_path(a).map_err(js_err)?;
+    let path_b = parse_path(b).map_err(js_err)?;
+    let result =
+        boolean_paths(&path_a, &path_b, operation, Tolerance::default()).map_err(js_err)?;
+    Ok(serialize_path(&result, SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn boolean_union_svg(a: &str, b: &str) -> Result<String, JsValue> {
+    boolean_svg(a, b, BooleanOperation::Union)
+}
+
+#[wasm_bindgen]
+pub fn boolean_intersection_svg(a: &str, b: &str) -> Result<String, JsValue> {
+    boolean_svg(a, b, BooleanOperation::Intersection)
+}
+
+#[wasm_bindgen]
+pub fn boolean_difference_svg(a: &str, b: &str) -> Result<String, JsValue> {
+    boolean_svg(a, b, BooleanOperation::Difference)
+}
+
+#[wasm_bindgen]
+pub fn boolean_xor_svg(a: &str, b: &str) -> Result<String, JsValue> {
+    boolean_svg(a, b, BooleanOperation::Xor)
+}
+
