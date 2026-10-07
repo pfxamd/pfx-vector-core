@@ -33,8 +33,7 @@ fn concave_polygon_triangulates_without_area_loss() {
         Point2::new(10.0, 10.0),
         Point2::new(5.0, 5.0),
         Point2::new(0.0, 10.0),
-    ])
-    .unwrap();
+    ]);
     let path = polygon_to_path(&polygon).unwrap();
     let mesh = tessellate_fill(&path, FillRule::NonZero, Tolerance::default()).unwrap();
 
