@@ -65,8 +65,10 @@ pub fn hit_test_fill_svg(data: &str, x: f64, y: f64, even_odd: bool) -> Result<b
 #[wasm_bindgen]
 pub fn flatten_path_svg(data: &str, flatness: f64) -> Result<String, JsValue> {
     let p = parse_path(data).map_err(js_err)?;
-    let mut tol = Tolerance::default();
-    tol.flatness = flatness.max(1e-12);
+    let tol = Tolerance {
+        flatness: flatness.max(1e-12),
+        ..Tolerance::default()
+    };
     let flat = flatten_path(&p, tol).map_err(js_err)?;
     let mut b = pfx_vector_core::PathBuilder::with_tolerance(tol);
     for sub in flat {
