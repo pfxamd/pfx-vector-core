@@ -351,3 +351,127 @@ fn advanced_intersections_survive_large_translation() {
     assert_eq!(hits.len(), 1, "{hits:#?}");
     assert!(hits[0].point.distance_to(Point2::new(offset, offset)) < 1.0e-4);
 }
+
+
+fn cubic_subcurve(curve: CubicBezier, t0: f64, t1: f64) -> CubicBezier {
+    let (_, right) = curve.split(t0);
+    let local = (t1 - t0) / (1.0 - t0);
+    right.split(local).0
+}
+
+fn elevate_quadratic_for_test(curve: QuadraticBezier) -> CubicBezier {
+    CubicBezier::new(
+        curve.p0,
+        curve.p0.lerp(curve.p1, 2.0 / 3.0),
+        curve.p1.lerp(curve.p2, 1.0 / 3.0),
+        curve.p2,
+    )
+}
+
+#[test]
+fn quadratic_subcurve_reports_partial_overlap() {
+    let parent = QuadraticBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(50.0, 80.0),
+        Point2::new(100.0, 0.0),
+    );
+    let child = parent.subcurve(0.25, 0.75);
+
+    let result = intersect_segments(
+        Segment::Quadratic(parent),
+        Segment::Quadratic(child),
+        default_tolerance(),
+    )
+    .unwrap();
+
+    let Some(Intersection::Overlap(overlap)) = result.intersections.first() else {
+        panic!("expected partial quadratic overlap: {result:#?}");
+    };
+
+    assert!((overlap.range_a.min - 0.25).abs() < 1.0e-8);
+    assert!((overlap.range_a.max - 0.75).abs() < 1.0e-8);
+    assert!(overlap.range_b.min.abs() < 1.0e-8);
+    assert!((overlap.range_b.max - 1.0).abs() < 1.0e-8);
+}
+
+#[test]
+fn cubic_middle_overlap_is_detected_when_neither_segment_contains_the_other() {
+    let base = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(20.0, 90.0),
+        Point2::new(80.0, -70.0),
+        Point2::new(120.0, 10.0),
+    );
+    let first = cubic_subcurve(base, 0.0, 0.7);
+    let second = cubic_subcurve(base, 0.3, 1.0);
+
+    let result = intersect_segments(
+        Segment::Cubic(first),
+        Segment::Cubic(second),
+        default_tolerance(),
+    )
+    .unwrap();
+
+    let Some(Intersection::Overlap(overlap)) = result.intersections.first() else {
+        panic!("expected middle cubic overlap: {result:#?}");
+    };
+
+    assert!((overlap.range_a.min - (0.3 / 0.7)).abs() < 1.0e-7);
+    assert!((overlap.range_a.max - 1.0).abs() < 1.0e-8);
+    assert!(overlap.range_b.min.abs() < 1.0e-8);
+    assert!((overlap.range_b.max - (0.4 / 0.7)).abs() < 1.0e-7);
+}
+
+#[test]
+fn reversed_cubic_subcurve_reports_partial_overlap() {
+    let parent = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(30.0, 70.0),
+        Point2::new(80.0, 60.0),
+        Point2::new(120.0, 0.0),
+    );
+    let child = cubic_subcurve(parent, 0.2, 0.8).reversed();
+
+    let result = intersect_segments(
+        Segment::Cubic(parent),
+        Segment::Cubic(child),
+        default_tolerance(),
+    )
+    .unwrap();
+
+    let Some(Intersection::Overlap(overlap)) = result.intersections.first() else {
+        panic!("expected reversed partial cubic overlap: {result:#?}");
+    };
+
+    assert!((overlap.range_a.min - 0.2).abs() < 1.0e-7);
+    assert!((overlap.range_a.max - 0.8).abs() < 1.0e-7);
+    assert!(overlap.range_b.min.abs() < 1.0e-8);
+    assert!((overlap.range_b.max - 1.0).abs() < 1.0e-8);
+}
+
+#[test]
+fn degree_elevated_quadratic_and_cubic_report_overlap() {
+    let quadratic = QuadraticBezier::new(
+        Point2::new(-10.0, 4.0),
+        Point2::new(35.0, 75.0),
+        Point2::new(90.0, -5.0),
+    );
+    let elevated = elevate_quadratic_for_test(quadratic);
+    let partial = cubic_subcurve(elevated, 0.15, 0.85);
+
+    let result = intersect_segments(
+        Segment::Quadratic(quadratic),
+        Segment::Cubic(partial),
+        default_tolerance(),
+    )
+    .unwrap();
+
+    let Some(Intersection::Overlap(overlap)) = result.intersections.first() else {
+        panic!("expected cross-degree overlap: {result:#?}");
+    };
+
+    assert!((overlap.range_a.min - 0.15).abs() < 1.0e-7);
+    assert!((overlap.range_a.max - 0.85).abs() < 1.0e-7);
+    assert!(overlap.range_b.min.abs() < 1.0e-8);
+    assert!((overlap.range_b.max - 1.0).abs() < 1.0e-8);
+}

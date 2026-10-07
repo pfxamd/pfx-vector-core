@@ -3,7 +3,7 @@ use super::{
 };
 use crate::{
     Angle, Bounds, CoreError, CoreResult, CubicBezier, EllipticalArc, Interval, LineSegment,
-    Point2, QuadraticBezier, Scalar, Segment, Tolerance, Vector2,
+    Point2, QuadraticBezier, Scalar, Segment, Tolerance, Vector2, closest_point_on_segment,
 };
 
 const MAX_SEARCH_DEPTH: u32 = 36;
@@ -24,9 +24,9 @@ pub(super) fn intersect_curve_pair(
     b: Segment,
     tolerance: Tolerance,
 ) -> CoreResult<IntersectionResult> {
-    if let Some(overlap) = detect_overlap(a, b, tolerance)? {
+    if let Some(overlaps) = detect_overlap(a, b, tolerance)? {
         return Ok(IntersectionResult {
-            intersections: vec![overlap],
+            intersections: overlaps,
         });
     }
 
@@ -470,27 +470,153 @@ fn detect_overlap(
     a: Segment,
     b: Segment,
     tolerance: Tolerance,
-) -> CoreResult<Option<Intersection>> {
-    match (a, b) {
-        (Segment::Quadratic(left), Segment::Quadratic(right)) => {
-            if same_quadratic(left, right, tolerance)
-                || same_quadratic(left, right.reversed(), tolerance)
-            {
-                return Ok(Some(full_overlap()?));
-            }
-        }
-        (Segment::Cubic(left), Segment::Cubic(right)) => {
-            if same_cubic(left, right, tolerance) || same_cubic(left, right.reversed(), tolerance) {
-                return Ok(Some(full_overlap()?));
-            }
-        }
-        (Segment::Arc(left), Segment::Arc(right)) => {
-            return arc_overlap(left, right, tolerance);
-        }
-        _ => {}
+) -> CoreResult<Option<Vec<Intersection>>> {
+    if matches!(a, Segment::Quadratic(_) | Segment::Cubic(_))
+        && matches!(b, Segment::Quadratic(_) | Segment::Cubic(_))
+        && let Some(overlap) = bezier_overlap(a, b, tolerance)?
+    {
+        return Ok(Some(vec![Intersection::Overlap(overlap)]));
+    }
+
+    if let (Segment::Arc(left), Segment::Arc(right)) = (a, b)
+        && let Some(overlap) = arc_overlap(left, right, tolerance)?
+    {
+        return Ok(Some(vec![overlap]));
     }
 
     Ok(None)
+}
+
+#[derive(Clone, Copy, Debug)]
+struct OverlapAnchor {
+    parameter_a: Scalar,
+    parameter_b: Scalar,
+}
+
+fn bezier_overlap(
+    a: Segment,
+    b: Segment,
+    tolerance: Tolerance,
+) -> CoreResult<Option<OverlapIntersection>> {
+    let mut anchors = Vec::with_capacity(4);
+
+    push_endpoint_anchor(&mut anchors, 0.0, a.start(), b, true, tolerance)?;
+    push_endpoint_anchor(&mut anchors, 1.0, a.end(), b, true, tolerance)?;
+    push_endpoint_anchor(&mut anchors, 0.0, b.start(), a, false, tolerance)?;
+    push_endpoint_anchor(&mut anchors, 1.0, b.end(), a, false, tolerance)?;
+
+    let parameter_epsilon = overlap_parameter_epsilon(tolerance);
+    anchors.sort_by(|left, right| {
+        left.parameter_a
+            .total_cmp(&right.parameter_a)
+            .then_with(|| left.parameter_b.total_cmp(&right.parameter_b))
+    });
+    anchors.dedup_by(|left, right| {
+        (left.parameter_a - right.parameter_a).abs() <= parameter_epsilon
+            && (left.parameter_b - right.parameter_b).abs() <= parameter_epsilon
+    });
+
+    let mut best: Option<(Scalar, OverlapIntersection)> = None;
+
+    for first_index in 0..anchors.len() {
+        for second_index in first_index + 1..anchors.len() {
+            let first = anchors[first_index];
+            let second = anchors[second_index];
+            let delta_a = second.parameter_a - first.parameter_a;
+            let delta_b = second.parameter_b - first.parameter_b;
+
+            if delta_a.abs() <= parameter_epsilon || delta_b.abs() <= parameter_epsilon {
+                continue;
+            }
+
+            let range_a = Interval::new(
+                first.parameter_a.min(second.parameter_a),
+                first.parameter_a.max(second.parameter_a),
+            )?;
+            let range_b = Interval::new(
+                first.parameter_b.min(second.parameter_b),
+                first.parameter_b.max(second.parameter_b),
+            )?;
+
+            let piece_a = subsegment(a, range_a.min, range_a.max);
+            let mut piece_b = subsegment(b, range_b.min, range_b.max);
+            if delta_a.signum() != delta_b.signum() {
+                piece_b = piece_b.reversed();
+            }
+
+            if !same_bezier_geometry(piece_a, piece_b, tolerance) {
+                continue;
+            }
+
+            let score = range_a.length() + range_b.length();
+            let overlap = OverlapIntersection { range_a, range_b };
+
+            if best.is_none_or(|(best_score, _)| score > best_score + parameter_epsilon) {
+                best = Some((score, overlap));
+            }
+        }
+    }
+
+    Ok(best.map(|(_, overlap)| overlap))
+}
+
+fn push_endpoint_anchor(
+    anchors: &mut Vec<OverlapAnchor>,
+    endpoint_parameter: Scalar,
+    point: Point2,
+    other: Segment,
+    endpoint_belongs_to_a: bool,
+    tolerance: Tolerance,
+) -> CoreResult<()> {
+    let nearest = closest_point_on_segment(other, point, tolerance)?;
+    let residual = intersection_residual_tolerance(point, nearest.point, tolerance);
+
+    if nearest.distance > residual * 4.0 {
+        return Ok(());
+    }
+
+    anchors.push(if endpoint_belongs_to_a {
+        OverlapAnchor {
+            parameter_a: endpoint_parameter,
+            parameter_b: nearest.t,
+        }
+    } else {
+        OverlapAnchor {
+            parameter_a: nearest.t,
+            parameter_b: endpoint_parameter,
+        }
+    });
+
+    Ok(())
+}
+
+fn overlap_parameter_epsilon(tolerance: Tolerance) -> Scalar {
+    PARAMETER_EPSILON.max(tolerance.absolute.sqrt().min(1.0e-5))
+}
+
+fn same_bezier_geometry(left: Segment, right: Segment, tolerance: Tolerance) -> bool {
+    match (left, right) {
+        (Segment::Quadratic(left), Segment::Quadratic(right)) => {
+            same_quadratic(left, right, tolerance)
+        }
+        (Segment::Cubic(left), Segment::Cubic(right)) => same_cubic(left, right, tolerance),
+        (Segment::Quadratic(left), Segment::Cubic(right)) => {
+            same_cubic(elevate_quadratic(left), right, tolerance)
+        }
+        (Segment::Cubic(left), Segment::Quadratic(right)) => {
+            same_cubic(left, elevate_quadratic(right), tolerance)
+        }
+        _ => false,
+    }
+}
+
+fn elevate_quadratic(curve: QuadraticBezier) -> CubicBezier {
+    CubicBezier::new(
+        curve.p0,
+        curve.p0.lerp(curve.p1, 2.0 / 3.0),
+        curve.p1.lerp(curve.p2, 1.0 / 3.0),
+        curve.p2,
+    )
 }
 
 fn same_quadratic(left: QuadraticBezier, right: QuadraticBezier, tolerance: Tolerance) -> bool {
@@ -504,13 +630,6 @@ fn same_cubic(left: CubicBezier, right: CubicBezier, tolerance: Tolerance) -> bo
         && left.p1.almost_eq(right.p1, tolerance)
         && left.p2.almost_eq(right.p2, tolerance)
         && left.p3.almost_eq(right.p3, tolerance)
-}
-
-fn full_overlap() -> CoreResult<Intersection> {
-    Ok(Intersection::Overlap(OverlapIntersection {
-        range_a: Interval::new(0.0, 1.0)?,
-        range_b: Interval::new(0.0, 1.0)?,
-    }))
 }
 
 fn arc_overlap(
