@@ -545,23 +545,13 @@ fn classify_fragment_boundary(
     let normal = tangent.perpendicular();
     let probe = probe_distance(fragment, midpoint, tolerance);
 
-    let Some((left_a, right_a)) = classify_sides(
-        context.a,
-        context.fill_a,
-        midpoint,
-        normal,
-        probe,
-    )?
+    let Some((left_a, right_a)) =
+        classify_sides(context.a, context.fill_a, midpoint, normal, probe)?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
-    let Some((left_b, right_b)) = classify_sides(
-        context.b,
-        context.fill_b,
-        midpoint,
-        normal,
-        probe,
-    )?
+    let Some((left_b, right_b)) =
+        classify_sides(context.b, context.fill_b, midpoint, normal, probe)?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
