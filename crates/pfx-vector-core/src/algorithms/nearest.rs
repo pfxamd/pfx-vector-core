@@ -115,12 +115,7 @@ pub fn closest_point(
                         && (subpath_index, segment_index, candidate.t)
                             < (current_subpath, current_segment, current.t))
             }) {
-                best = Some((
-                    candidate,
-                    subpath_index,
-                    segment_index,
-                    start_distance,
-                ));
+                best = Some((candidate, subpath_index, segment_index, start_distance));
             }
 
             accumulated += segment_length(segment, tolerance)?;
@@ -165,12 +160,10 @@ fn closest_line(line: LineSegment, point: Point2) -> SegmentClosestPoint {
 }
 
 fn quadratic_stationary_parameters(curve: QuadraticBezier, point: Point2) -> Vec<Scalar> {
-    let a = vector_from_points(
-        Point2::new(
-            curve.p0.x - 2.0 * curve.p1.x + curve.p2.x,
-            curve.p0.y - 2.0 * curve.p1.y + curve.p2.y,
-        ),
-    );
+    let a = vector_from_points(Point2::new(
+        curve.p0.x - 2.0 * curve.p1.x + curve.p2.x,
+        curve.p0.y - 2.0 * curve.p1.y + curve.p2.y,
+    ));
     let b = (curve.p1 - curve.p0) * 2.0;
     let c = curve.p0 - point;
 
@@ -231,13 +224,7 @@ fn arc_stationary_parameters(arc: EllipticalArc, point: Point2) -> Vec<Scalar> {
     let a = arc.radius_y * arc.radius_y - arc.radius_x * arc.radius_x;
     let b = arc.radius_x * query_x;
     let c = arc.radius_y * query_y;
-    let polynomial = [
-        -c,
-        2.0 * (a + b),
-        0.0,
-        2.0 * (b - a),
-        c,
-    ];
+    let polynomial = [-c, 2.0 * (a + b), 0.0, 2.0 * (b - a), c];
 
     let start = arc.start_angle.as_radians();
     let sweep = arc.sweep_angle.as_radians();
@@ -292,8 +279,7 @@ fn arc_stationary_value(
     let (sin_theta, cos_theta) = theta.sin_cos();
     let x = arc.radius_x * cos_theta;
     let y = arc.radius_y * sin_theta;
-    (x - query_x) * (-arc.radius_x * sin_theta)
-        + (y - query_y) * (arc.radius_y * cos_theta)
+    (x - query_x) * (-arc.radius_x * sin_theta) + (y - query_y) * (arc.radius_y * cos_theta)
 }
 
 fn stationary_epsilon(scale: Scalar) -> Scalar {

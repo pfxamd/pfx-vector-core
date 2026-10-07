@@ -19,8 +19,7 @@ fn quadratic_nearest_is_native_and_independent_of_flatness() {
         ..Tolerance::default()
     };
 
-    let result =
-        closest_point_on_segment(curve, Point2::new(5.0, 8.0), tolerance).unwrap();
+    let result = closest_point_on_segment(curve, Point2::new(5.0, 8.0), tolerance).unwrap();
 
     assert_close(result.t, 0.5, 1.0e-10);
     assert!(result.point.distance_to(Point2::new(5.0, 5.0)) <= 1.0e-9);
@@ -36,12 +35,8 @@ fn cubic_nearest_solves_stationary_quintic() {
         Point2::new(10.0, 0.0),
     ));
 
-    let result = closest_point_on_segment(
-        curve,
-        Point2::new(5.0, 12.0),
-        Tolerance::default(),
-    )
-    .unwrap();
+    let result =
+        closest_point_on_segment(curve, Point2::new(5.0, 12.0), Tolerance::default()).unwrap();
 
     assert_close(result.t, 0.5, 1.0e-9);
     assert!(result.point.distance_to(Point2::new(5.0, 7.5)) <= 1.0e-8);
@@ -118,11 +113,7 @@ fn nearest_rejects_non_finite_query() {
     ));
 
     assert_eq!(
-        closest_point_on_segment(
-            segment,
-            Point2::new(f64::NAN, 0.0),
-            Tolerance::default()
-        ),
+        closest_point_on_segment(segment, Point2::new(f64::NAN, 0.0), Tolerance::default()),
         Err(CoreError::InvalidNumber)
     );
 }
