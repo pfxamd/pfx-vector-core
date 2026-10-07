@@ -18,10 +18,7 @@ pub struct PathSpatialSync {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct IncrementalPathEdge {
-    start: Point2,
-    end: Point2,
-}
+struct IncrementalPathEdge;
 
 #[derive(Clone, Copy, Debug)]
 struct PreparedEdge {
@@ -509,13 +506,7 @@ impl IncrementalPathSpatialIndex {
         let edge_id = self.next_edge_id;
         let bounds = Bounds::from_points(&[prepared.start, prepared.end]);
         self.spatial.insert(edge_id, bounds)?;
-        self.edges.insert(
-            edge_id,
-            IncrementalPathEdge {
-                start: prepared.start,
-                end: prepared.end,
-            },
-        );
+        self.edges.insert(edge_id, IncrementalPathEdge);
         self.next_edge_id = next;
         Ok(edge_id)
     }

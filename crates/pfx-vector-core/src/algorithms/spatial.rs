@@ -136,10 +136,7 @@ pub fn spatial_cross_candidate_pairs(
 }
 
 #[derive(Clone, Copy, Debug)]
-struct IndexedEdge {
-    start: Point2,
-    end: Point2,
-}
+struct IndexedEdge;
 
 #[derive(Clone, Copy, Debug)]
 struct IndexedSegment {
@@ -401,7 +398,7 @@ fn push_edge(
     _subpath_index: usize,
     _segment_index: usize,
 ) {
-    edges.push(IndexedEdge { start, end });
+    edges.push(IndexedEdge);
     bounds.push(Bounds::from_points(&[start, end]));
 }
 
