@@ -558,6 +558,19 @@ fn classify_fragment_boundary(
     let left = operation_value(context.operation, left_a, left_b);
     let right = operation_value(context.operation, right_a, right_b);
 
+    if matches!(fragment, Segment::Arc(_)) {
+        eprintln!(
+            "BOOL_ARC {:?} start=({:.12},{:.12}) end=({:.12},{:.12}) mid=({:.12},{:.12}) a=({left_a},{right_a}) b=({left_b},{right_b}) out=({left},{right})",
+            context.operation,
+            fragment.start().x,
+            fragment.start().y,
+            fragment.end().x,
+            fragment.end().y,
+            midpoint.x,
+            midpoint.y,
+        );
+    }
+
     if left == right {
         Ok(None)
     } else if left {
@@ -695,6 +708,23 @@ fn stitch_fragments(
             let Some(index) =
                 best_continuation(&fragments, current, chain.last().copied(), tolerance)
             else {
+                eprintln!(
+                    "BOOL_STITCH_MISS current=({:.12},{:.12}) start=({:.12},{:.12}) remaining={}",
+                    current.x,
+                    current.y,
+                    start.x,
+                    start.y,
+                    fragments.len(),
+                );
+                for fragment in &fragments {
+                    eprintln!(
+                        "BOOL_REMAIN start=({:.12},{:.12}) end=({:.12},{:.12})",
+                        fragment.segment.start().x,
+                        fragment.segment.start().y,
+                        fragment.segment.end().x,
+                        fragment.segment.end().y,
+                    );
+                }
                 return Err(CoreError::NonConvergent);
             };
 
