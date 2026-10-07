@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.18.0 - 2026-10-07
+
+### Added
+
+- Curvature-aware adaptive offset fitting for quadratic Bézier, cubic Bézier, and non-circular elliptical-arc geometry.
+- Analytic offset derivatives derived from source tangent, second derivative, and signed curvature.
+- Detection and bounded splitting around offset singularities where the offset speed factor changes sign or approaches zero.
+- Denser in-interval offset validation before accepting fitted cubic segments.
+- Precision regression tests measured against source-native offset points through the v0.17 nearest-point engine.
+- Large-coordinate curved-offset regression coverage.
+- Criterion benchmark coverage for precision elliptical-arc offsets.
+
+### Changed
+
+- Adaptive curve offsets no longer estimate offset derivatives with finite differences.
+- Offset fitting now uses native source derivatives and curvature to place cubic handles.
+- Cubic and elliptical offsets subdivide more conservatively around high-curvature regions and singularity candidates.
+- `outline_path`, stroke geometry, and open-path offsets inherit the improved curve-offset precision automatically without a Web API change.
+
+### Scope limits
+
+- General Bézier and non-circular elliptical offsets remain bounded cubic approximations rather than exact algebraic offset curves.
+- Source curves with genuinely degenerate tangents may still use the existing stable-tangent fallback or return a defined geometry/tolerance failure.
+- Open offset centerlines remain unnormalized for self-intersections; closed filled offsets continue through the existing Boolean cleanup path.
+
 ## 0.17.0 - 2026-10-07
 
 ### Added

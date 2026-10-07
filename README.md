@@ -2,7 +2,36 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.17.0`.
+**Status:** `v0.18.0`.
+
+## v0.18 precision offset engine
+
+Curve offsets now use source-native differential geometry instead of finite-difference offset derivatives.
+
+For regular curve points, the offset derivative is derived from the source velocity and signed curvature:
+
+```text
+offset'(t) = source'(t) * (1 - distance * curvature(t))
+```
+
+Quadratic Béziers, cubic Béziers, and non-circular elliptical arcs are still represented by bounded cubic approximations where an exact native offset primitive does not exist, but fitting is now curvature-aware. The fitter detects offset singularity candidates, splits around them, and validates accepted cubic pieces at a denser set of interior parameters.
+
+The precision tests use the v0.17 native nearest-point engine to measure generated offset geometry against mathematically offset source samples rather than relying only on visual shape or control-point checks.
+
+`outline_path`, stroke geometry, and the existing WebAssembly/TypeScript `offsetPath` API inherit the improved engine automatically:
+
+```text
+offsetPath(data, distance, { join, miterLimit })
+```
+
+No Web API migration is required.
+
+Current offset limits:
+
+- general Bézier and non-circular elliptical offsets are high-precision cubic approximations, not exact algebraic offset curves
+- source curves with genuinely degenerate tangents can still produce a defined geometry/tolerance failure
+- open offset centerlines are not Boolean-normalized for self-intersections
+- closed filled offsets retain the existing normalization and Boolean cleanup pipeline
 
 ## v0.17 precise nearest-point engine
 
@@ -205,7 +234,7 @@ let left = offset_path(
 let right = offset_path(&open_path, -8.0, OffsetStyle::default(), tolerance)?;
 ```
 
-Open offsets remain open. Line segments are offset exactly, circular arcs stay native arcs when possible, and quadratic/cubic/elliptical geometry uses the existing bounded adaptive cubic offset fitting.
+Open offsets remain open. Line segments are offset exactly, circular arcs stay native arcs when possible, and quadratic/cubic/elliptical geometry uses the curvature-aware precision fitting introduced in v0.18.
 
 At polyline corners, exact line-line intersections are used where appropriate. Outer corners honor `Miter`, `Bevel`, and `Round` joins, including miter-limit fallback. Round outer joins remain native circular arcs.
 
