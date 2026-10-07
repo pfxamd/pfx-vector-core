@@ -245,17 +245,6 @@ impl PathSpatialIndex {
             return Ok(PointClassification::Outside);
         }
 
-        let query = Bounds::Finite {
-            min: Point2::new(point.x - numerical, point.y - numerical),
-            max: Point2::new(max.x + numerical, point.y + numerical),
-        };
-        let source_candidates = self.segment_spatial.query_bounds(query, numerical)?;
-        let flattened_candidates = self.spatial.query_bounds(query, numerical)?;
-
-        if source_candidates.is_empty() && flattened_candidates.is_empty() {
-            return Ok(PointClassification::Outside);
-        }
-
         crate::classify_point(&self.path, point, rule, self.tolerance)
     }
 
