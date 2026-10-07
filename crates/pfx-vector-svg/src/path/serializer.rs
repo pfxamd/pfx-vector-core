@@ -1,4 +1,106 @@
-use pfx_vector_core::{Path,Scalar,Segment};
-#[derive(Clone,Copy,Debug,PartialEq)]pub struct SerializeOptions{pub precision:usize,pub compact:bool}impl Default for SerializeOptions{fn default()->Self{Self{precision:6,compact:false}}}
-fn num(v:Scalar,p:usize)->String{let mut s=format!("{v:.p$}");if s.contains('.') {while s.ends_with('0'){s.pop();}if s.ends_with('.') {s.pop();}}if s=="-0"{s="0".into()}s}
-pub fn serialize_path(path:&Path,opt:SerializeOptions)->String{let mut parts=Vec::new();for sub in path.subpaths(){let s=sub.start();parts.push(format!("M {} {}",num(s.x,opt.precision),num(s.y,opt.precision)));for &seg in sub.segments(){match seg{Segment::Line(v)=>parts.push(format!("L {} {}",num(v.end.x,opt.precision),num(v.end.y,opt.precision))),Segment::Quadratic(v)=>parts.push(format!("Q {} {} {} {}",num(v.p1.x,opt.precision),num(v.p1.y,opt.precision),num(v.p2.x,opt.precision),num(v.p2.y,opt.precision))),Segment::Cubic(v)=>parts.push(format!("C {} {} {} {} {} {}",num(v.p1.x,opt.precision),num(v.p1.y,opt.precision),num(v.p2.x,opt.precision),num(v.p2.y,opt.precision),num(v.p3.x,opt.precision),num(v.p3.y,opt.precision))),Segment::Arc(v)=>{let e=v.point_at(1.0);parts.push(format!("A {} {} {} {} {} {} {}",num(v.radius_x,opt.precision),num(v.radius_y,opt.precision),num(v.rotation.as_degrees(),opt.precision),i32::from(v.sweep_angle.as_radians().abs()>core::f64::consts::PI),i32::from(v.sweep_angle.as_radians()>=0.0),num(e.x,opt.precision),num(e.y,opt.precision)))}}if sub.is_closed(){parts.push("Z".into())}}if opt.compact{parts.join(" ")}else{parts.join(" ")}}
+use pfx_vector_core::{Path, Scalar, Segment};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SerializeOptions {
+    pub precision: usize,
+    pub compact: bool,
+}
+
+impl Default for SerializeOptions {
+    fn default() -> Self {
+        Self {
+            precision: 6,
+            compact: false,
+        }
+    }
+}
+
+fn num(value: Scalar, precision: usize) -> String {
+    let mut text = format!("{value:.precision$}");
+
+    if text.contains('.') {
+        while text.ends_with('0') {
+            text.pop();
+        }
+        if text.ends_with('.') {
+            text.pop();
+        }
+    }
+
+    if text == "-0" {
+        "0".to_owned()
+    } else {
+        text
+    }
+}
+
+#[must_use]
+pub fn serialize_path(path: &Path, options: SerializeOptions) -> String {
+    let mut parts = Vec::new();
+
+    for subpath in path.subpaths() {
+        let start = subpath.start();
+        parts.push(format!(
+            "M {} {}",
+            num(start.x, options.precision),
+            num(start.y, options.precision)
+        ));
+
+        for &segment in subpath.segments() {
+            match segment {
+                Segment::Line(line) => {
+                    parts.push(format!(
+                        "L {} {}",
+                        num(line.end.x, options.precision),
+                        num(line.end.y, options.precision)
+                    ));
+                }
+                Segment::Quadratic(curve) => {
+                    parts.push(format!(
+                        "Q {} {} {} {}",
+                        num(curve.p1.x, options.precision),
+                        num(curve.p1.y, options.precision),
+                        num(curve.p2.x, options.precision),
+                        num(curve.p2.y, options.precision)
+                    ));
+                }
+                Segment::Cubic(curve) => {
+                    parts.push(format!(
+                        "C {} {} {} {} {} {}",
+                        num(curve.p1.x, options.precision),
+                        num(curve.p1.y, options.precision),
+                        num(curve.p2.x, options.precision),
+                        num(curve.p2.y, options.precision),
+                        num(curve.p3.x, options.precision),
+                        num(curve.p3.y, options.precision)
+                    ));
+                }
+                Segment::Arc(arc) => {
+                    let end = arc.point_at(1.0);
+                    parts.push(format!(
+                        "A {} {} {} {} {} {} {}",
+                        num(arc.radius_x, options.precision),
+                        num(arc.radius_y, options.precision),
+                        num(arc.rotation.as_degrees(), options.precision),
+                        i32::from(
+                            arc.sweep_angle.as_radians().abs() > core::f64::consts::PI
+                        ),
+                        i32::from(arc.sweep_angle.as_radians() >= 0.0),
+                        num(end.x, options.precision),
+                        num(end.y, options.precision)
+                    ));
+                }
+            }
+        }
+
+        if subpath.is_closed() {
+            parts.push("Z".to_owned());
+        }
+    }
+
+    if options.compact {
+        parts.join(" ")
+    } else {
+        parts.join(" ")
+    }
+}
