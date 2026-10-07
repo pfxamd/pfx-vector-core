@@ -1,9 +1,8 @@
-use super::{
-    CoreError, CoreResult, Scalar
-};
+use super::{CoreError, CoreResult, Scalar};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Interval {
-    pub min: Scalar, pub max: Scalar
+    pub min: Scalar,
+    pub max: Scalar,
 }
 impl Interval {
     pub fn new(min: Scalar, max: Scalar) -> CoreResult<Self> {
@@ -13,9 +12,7 @@ impl Interval {
         if min > max {
             return Err(CoreError::InvalidGeometry);
         }
-        Ok(Self {
-            min, max
-        })
+        Ok(Self { min, max })
     }
     #[must_use]
     pub fn contains(self, value: Scalar) -> bool {

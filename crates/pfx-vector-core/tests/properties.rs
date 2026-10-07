@@ -1,5 +1,5 @@
-use proptest::prelude::*;
 use pfx_vector_core::*;
+use proptest::prelude::*;
 proptest! {
     #[test]
     fn distance_is_symmetric(ax in -1e6f64..1e6, ay in -1e6f64..1e6, bx in -1e6f64..1e6, by in -1e6f64..1e6) {

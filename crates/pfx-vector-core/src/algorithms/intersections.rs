@@ -1,7 +1,5 @@
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
-use crate::{
-    CoreError, CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance,
-};
+use crate::{CoreError, CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntersectionKind {
@@ -177,11 +175,7 @@ fn line_curve(
             let mut result = IntersectionResult::default();
 
             for window in flattened[0].points.windows(2) {
-                let partial = line_line(
-                    line,
-                    LineSegment::new(window[0], window[1]),
-                    tolerance,
-                )?;
+                let partial = line_line(line, LineSegment::new(window[0], window[1]), tolerance)?;
                 result.intersections.extend(partial.intersections);
             }
 
@@ -210,16 +204,18 @@ fn line_curve(
             continue;
         };
 
-        result.intersections.push(Intersection::Point(PointIntersection {
-            point,
-            parameter_a: u,
-            parameter_b: t,
-            kind: if t == 0.0 || t == 1.0 || u == 0.0 || u == 1.0 {
-                IntersectionKind::Endpoint
-            } else {
-                IntersectionKind::Crossing
-            },
-        }));
+        result
+            .intersections
+            .push(Intersection::Point(PointIntersection {
+                point,
+                parameter_a: u,
+                parameter_b: t,
+                kind: if t == 0.0 || t == 1.0 || u == 0.0 || u == 1.0 {
+                    IntersectionKind::Endpoint
+                } else {
+                    IntersectionKind::Crossing
+                },
+            }));
     }
 
     Ok(result)
@@ -231,9 +227,7 @@ pub fn intersect_segments(
     tolerance: Tolerance,
 ) -> CoreResult<IntersectionResult> {
     match (a, b) {
-        (Segment::Line(line_a), Segment::Line(line_b)) => {
-            line_line(line_a, line_b, tolerance)
-        }
+        (Segment::Line(line_a), Segment::Line(line_b)) => line_line(line_a, line_b, tolerance),
         (Segment::Line(line), other) => line_curve(line, other, tolerance),
         (other, Segment::Line(line)) => {
             let mut result = line_curve(line, other, tolerance)?;

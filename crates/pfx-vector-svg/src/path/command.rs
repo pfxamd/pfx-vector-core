@@ -1,1 +1,60 @@
-#[derive(Clone,Debug,PartialEq)]pub enum SvgPathCommand{Move{relative:bool,x:f64,y:f64},Line{relative:bool,x:f64,y:f64},Horizontal{relative:bool,x:f64},Vertical{relative:bool,y:f64},Cubic{relative:bool,x1:f64,y1:f64,x2:f64,y2:f64,x:f64,y:f64},SmoothCubic{relative:bool,x2:f64,y2:f64,x:f64,y:f64},Quadratic{relative:bool,x1:f64,y1:f64,x:f64,y:f64},SmoothQuadratic{relative:bool,x:f64,y:f64},Arc{relative:bool,rx:f64,ry:f64,rotation:f64,large_arc:bool,sweep:bool,x:f64,y:f64},Close}
+#[derive(Clone, Debug, PartialEq)]
+pub enum SvgPathCommand {
+    Move {
+        relative: bool,
+        x: f64,
+        y: f64,
+    },
+    Line {
+        relative: bool,
+        x: f64,
+        y: f64,
+    },
+    Horizontal {
+        relative: bool,
+        x: f64,
+    },
+    Vertical {
+        relative: bool,
+        y: f64,
+    },
+    Cubic {
+        relative: bool,
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
+        x: f64,
+        y: f64,
+    },
+    SmoothCubic {
+        relative: bool,
+        x2: f64,
+        y2: f64,
+        x: f64,
+        y: f64,
+    },
+    Quadratic {
+        relative: bool,
+        x1: f64,
+        y1: f64,
+        x: f64,
+        y: f64,
+    },
+    SmoothQuadratic {
+        relative: bool,
+        x: f64,
+        y: f64,
+    },
+    Arc {
+        relative: bool,
+        rx: f64,
+        ry: f64,
+        rotation: f64,
+        large_arc: bool,
+        sweep: bool,
+        x: f64,
+        y: f64,
+    },
+    Close,
+}

@@ -1,5 +1,79 @@
-use crate::{CoreResult,Path,Point2,Tolerance,flatten_path};
-#[derive(Clone,Copy,Debug,Eq,PartialEq)]pub enum FillRule{NonZero,EvenOdd}
-#[derive(Clone,Copy,Debug,Eq,PartialEq)]pub enum PointClassification{Outside,Inside,Boundary}
-pub fn classify_point(path:&Path,p:Point2,rule:FillRule,tol:Tolerance)->CoreResult<PointClassification>{let mut winding=0i32;let mut parity=false;for sub in flatten_path(path,tol)?{let pts=&sub.points;if pts.len()<2{continue}for i in 0..pts.len(){let a=pts[i];let b=if i+1<pts.len(){pts[i+1]}else if sub.closed{pts[0]}else{break};let ab=b-a;let ap=p-a;let cross=ab.cross(ap).abs();if cross<=tol.absolute.max(tol.relative*ab.length()*ap.length())&&p.x>=a.x.min(b.x)-tol.absolute&&p.x<=a.x.max(b.x)+tol.absolute&&p.y>=a.y.min(b.y)-tol.absolute&&p.y<=a.y.max(b.y)+tol.absolute{return Ok(PointClassification::Boundary)}let crosses=(a.y>p.y)!=(b.y>p.y);if crosses{let x=a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y);if x>p.x{parity=!parity;if b.y>a.y{winding+=1}else{winding-=1}}}}}Ok(match rule{FillRule::EvenOdd=>if parity{PointClassification::Inside}else{PointClassification::Outside},FillRule::NonZero=>if winding!=0{PointClassification::Inside}else{PointClassification::Outside}})}
-pub fn contains_point(path:&Path,p:Point2,rule:FillRule,tol:Tolerance)->CoreResult<bool>{Ok(classify_point(path,p,rule,tol)?!=PointClassification::Outside)}
+use crate::{CoreResult, Path, Point2, Tolerance, flatten_path};
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FillRule {
+    NonZero,
+    EvenOdd,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PointClassification {
+    Outside,
+    Inside,
+    Boundary,
+}
+pub fn classify_point(
+    path: &Path,
+    p: Point2,
+    rule: FillRule,
+    tol: Tolerance,
+) -> CoreResult<PointClassification> {
+    let mut winding = 0i32;
+    let mut parity = false;
+    for sub in flatten_path(path, tol)? {
+        let pts = &sub.points;
+        if pts.len() < 2 {
+            continue;
+        }
+        for i in 0..pts.len() {
+            let a = pts[i];
+            let b = if i + 1 < pts.len() {
+                pts[i + 1]
+            } else if sub.closed {
+                pts[0]
+            } else {
+                break;
+            };
+            let ab = b - a;
+            let ap = p - a;
+            let cross = ab.cross(ap).abs();
+            if cross <= tol.absolute.max(tol.relative * ab.length() * ap.length())
+                && p.x >= a.x.min(b.x) - tol.absolute
+                && p.x <= a.x.max(b.x) + tol.absolute
+                && p.y >= a.y.min(b.y) - tol.absolute
+                && p.y <= a.y.max(b.y) + tol.absolute
+            {
+                return Ok(PointClassification::Boundary);
+            }
+            let crosses = (a.y > p.y) != (b.y > p.y);
+            if crosses {
+                let x = a.x + (p.y - a.y) * (b.x - a.x) / (b.y - a.y);
+                if x > p.x {
+                    parity = !parity;
+                    if b.y > a.y {
+                        winding += 1
+                    } else {
+                        winding -= 1
+                    }
+                }
+            }
+        }
+    }
+    Ok(match rule {
+        FillRule::EvenOdd => {
+            if parity {
+                PointClassification::Inside
+            } else {
+                PointClassification::Outside
+            }
+        }
+        FillRule::NonZero => {
+            if winding != 0 {
+                PointClassification::Inside
+            } else {
+                PointClassification::Outside
+            }
+        }
+    })
+}
+pub fn contains_point(path: &Path, p: Point2, rule: FillRule, tol: Tolerance) -> CoreResult<bool> {
+    Ok(classify_point(path, p, rule, tol)? != PointClassification::Outside)
+}

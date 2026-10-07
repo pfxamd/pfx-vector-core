@@ -1,19 +1,17 @@
 use crate::Subpath;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Path {
-    subpaths: Vec<Subpath>
+    subpaths: Vec<Subpath>,
 }
 impl Path {
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            subpaths: Vec::new()
+            subpaths: Vec::new(),
         }
     }
     pub(crate) fn from_subpaths(subpaths: Vec<Subpath>) -> Self {
-        Self {
-            subpaths
-        }
+        Self { subpaths }
     }
     #[must_use]
     pub fn subpaths(&self) -> &[Subpath] {
@@ -25,7 +23,7 @@ impl Path {
     }
     #[must_use]
     pub fn segment_count(&self) -> usize {
-        self.subpaths.iter().map(|s|s.segments().len()).sum()
+        self.subpaths.iter().map(|s| s.segments().len()).sum()
     }
     #[must_use]
     pub fn reversed(&self) -> Self {

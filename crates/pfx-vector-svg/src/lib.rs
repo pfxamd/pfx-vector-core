@@ -1,8 +1,9 @@
-#![forbid(unsafe_code)] //! SVG geometry boundary for PFx Vector Core.
+#![forbid(unsafe_code)]
+//! SVG geometry boundary for PFx Vector Core.
 mod geometry;
+pub mod path;
 mod transform;
 mod viewbox;
-pub mod path;
 pub use geometry::*;
 pub use path::*;
 pub use transform::*;

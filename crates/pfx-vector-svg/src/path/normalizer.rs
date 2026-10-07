@@ -42,12 +42,9 @@ pub fn svg_arc_to_center(
         ry *= scale;
     }
 
-    let numerator = (rx * rx * ry * ry
-        - rx * rx * y_prime * y_prime
-        - ry * ry * x_prime * x_prime)
-        .max(0.0);
-    let denominator =
-        rx * rx * y_prime * y_prime + ry * ry * x_prime * x_prime;
+    let numerator =
+        (rx * rx * ry * ry - rx * rx * y_prime * y_prime - ry * ry * x_prime * x_prime).max(0.0);
+    let denominator = rx * rx * y_prime * y_prime + ry * ry * x_prime * x_prime;
     let sign = if large_arc == sweep { -1.0 } else { 1.0 };
     let coefficient = if denominator == 0.0 {
         0.0

@@ -1,21 +1,28 @@
-use crate::{
-    Point2, Segment, Tolerance
-};
+use crate::{Point2, Segment, Tolerance};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Subpath {
-    start: Point2, segments: Vec<Segment>, closed: bool
+    start: Point2,
+    segments: Vec<Segment>,
+    closed: bool,
 }
 impl Subpath {
-    pub(crate) fn new(start: Point2, segments: Vec<Segment>, closed: bool, tol: Tolerance) -> Option<Self> {
+    pub(crate) fn new(
+        start: Point2,
+        segments: Vec<Segment>,
+        closed: bool,
+        tol: Tolerance,
+    ) -> Option<Self> {
         let mut current = start;
         for s in &segments {
             if !current.almost_eq(s.start(), tol) {
-                return None
+                return None;
             }
             current = s.end();
         }
         Some(Self {
-            start, segments, closed
+            start,
+            segments,
+            closed,
         })
     }
     #[must_use]
@@ -36,14 +43,16 @@ impl Subpath {
     }
     #[must_use]
     pub fn end(&self) -> Point2 {
-        self.segments.last().map_or(self.start, |s|s.end())
+        self.segments.last().map_or(self.start, |s| s.end())
     }
     #[must_use]
     pub fn reversed(&self) -> Self {
         let start = self.end();
-        let segs = self.segments.iter().rev().map(|s|s.reversed()).collect();
+        let segs = self.segments.iter().rev().map(|s| s.reversed()).collect();
         Self {
-            start, segments: segs, closed: self.closed
+            start,
+            segments: segs,
+            closed: self.closed,
         }
     }
 }

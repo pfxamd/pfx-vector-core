@@ -47,24 +47,15 @@ fn solve_t_for_length(
         let mid = (low + high) * 0.5;
         let length = match segment {
             Segment::Line(_) => total * mid,
-            Segment::Quadratic(curve) => adaptive_simpson(
-                |t| curve.derivative_at(t).length(),
-                0.0,
-                mid,
-                tolerance,
-            )?,
-            Segment::Cubic(curve) => adaptive_simpson(
-                |t| curve.derivative_at(t).length(),
-                0.0,
-                mid,
-                tolerance,
-            )?,
-            Segment::Arc(arc) => adaptive_simpson(
-                |t| arc.derivative_at(t).length(),
-                0.0,
-                mid,
-                tolerance,
-            )?,
+            Segment::Quadratic(curve) => {
+                adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, mid, tolerance)?
+            }
+            Segment::Cubic(curve) => {
+                adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, mid, tolerance)?
+            }
+            Segment::Arc(arc) => {
+                adaptive_simpson(|t| arc.derivative_at(t).length(), 0.0, mid, tolerance)?
+            }
         };
 
         if (length - target).abs() <= tolerance.absolute.max(tolerance.relative * total) {

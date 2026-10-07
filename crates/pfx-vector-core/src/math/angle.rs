@@ -24,7 +24,8 @@ impl Angle {
     }
     #[must_use]
     pub fn normalized_signed(self) -> Self {
-        let a = (self.0+core::f64::consts::PI).rem_euclid(core::f64::consts::TAU)-core::f64::consts::PI;
+        let a = (self.0 + core::f64::consts::PI).rem_euclid(core::f64::consts::TAU)
+            - core::f64::consts::PI;
         Self(a)
     }
 }

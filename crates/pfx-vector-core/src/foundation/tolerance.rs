@@ -1,13 +1,24 @@
 use super::Scalar;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tolerance {
-    pub absolute: Scalar, pub relative: Scalar, pub angular: Scalar, pub flatness: Scalar,
+    pub absolute: Scalar,
+    pub relative: Scalar,
+    pub angular: Scalar,
+    pub flatness: Scalar,
 }
 impl Tolerance {
     #[must_use]
-    pub const fn new(absolute: Scalar, relative: Scalar, angular: Scalar, flatness: Scalar) -> Self {
+    pub const fn new(
+        absolute: Scalar,
+        relative: Scalar,
+        angular: Scalar,
+        flatness: Scalar,
+    ) -> Self {
         Self {
-            absolute, relative, angular, flatness
+            absolute,
+            relative,
+            angular,
+            flatness,
         }
     }
     #[inline]

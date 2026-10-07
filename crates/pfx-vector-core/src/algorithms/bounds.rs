@@ -1,6 +1,4 @@
-use crate::{
-    Bounds, CoreResult, Path, Tolerance, Transform2D, transform_path
-};
+use crate::{Bounds, CoreResult, Path, Tolerance, Transform2D, transform_path};
 #[must_use]
 pub fn path_bounds(path: &Path) -> Bounds {
     let mut bounds = Bounds::Empty;
@@ -11,6 +9,10 @@ pub fn path_bounds(path: &Path) -> Bounds {
     }
     bounds
 }
-pub fn transformed_path_bounds(path: &Path, transform: Transform2D, tolerance: Tolerance) -> CoreResult<Bounds> {
+pub fn transformed_path_bounds(
+    path: &Path,
+    transform: Transform2D,
+    tolerance: Tolerance,
+) -> CoreResult<Bounds> {
     Ok(path_bounds(&transform_path(path, transform, tolerance)?))
 }
