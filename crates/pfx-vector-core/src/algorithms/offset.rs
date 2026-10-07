@@ -300,10 +300,24 @@ pub fn stroke_to_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) ->
 }
 
 pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Path> {
+    let mut result = Path::new();
+
+    for component in stroke_components(path, style, tolerance)? {
+        result = union_component(result, component, tolerance)?;
+    }
+
+    Ok(result)
+}
+
+pub(crate) fn stroke_components(
+    path: &Path,
+    style: &StrokeStyle,
+    tolerance: Tolerance,
+) -> CoreResult<Vec<Path>> {
     style.validate()?;
 
     if style.width == 0.0 || path.is_empty() {
-        return Ok(Path::new());
+        return Ok(Vec::new());
     }
 
     if !normalized_dash_pattern(style).is_empty() {
@@ -311,11 +325,11 @@ pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> C
         let mut solid_style = style.clone();
         solid_style.dash_array.clear();
         solid_style.dash_offset = 0.0;
-        return outline_path(&dashed, &solid_style, tolerance);
+        return stroke_components(&dashed, &solid_style, tolerance);
     }
 
     let half_width = style.width * 0.5;
-    let mut result = Path::new();
+    let mut components = Vec::new();
 
     for subpath in path.subpaths() {
         let mut segments = subpath.segments().to_vec();
@@ -332,8 +346,7 @@ pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> C
         }
 
         for &segment in &segments {
-            let ribbon = segment_ribbon(segment, half_width, tolerance)?;
-            result = union_component(result, ribbon, tolerance)?;
+            components.push(segment_ribbon(segment, half_width, tolerance)?);
         }
 
         let join_count = if subpath.is_closed() {
@@ -355,13 +368,13 @@ pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> C
                 style.miter_limit,
                 tolerance,
             )? {
-                result = union_component(result, join, tolerance)?;
+                components.push(join);
             }
         }
 
         if !subpath.is_closed() {
             if let Some(cap) = cap_component(segments[0], true, half_width, style.cap, tolerance)? {
-                result = union_component(result, cap, tolerance)?;
+                components.push(cap);
             }
 
             if let Some(cap) = cap_component(
@@ -371,12 +384,12 @@ pub fn outline_path(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> C
                 style.cap,
                 tolerance,
             )? {
-                result = union_component(result, cap, tolerance)?;
+                components.push(cap);
             }
         }
     }
 
-    Ok(result)
+    Ok(components)
 }
 
 fn union_component(mut result: Path, component: Path, tolerance: Tolerance) -> CoreResult<Path> {
