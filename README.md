@@ -2,7 +2,46 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.16.0`.
+**Status:** `v0.17.0`.
+
+## v0.17 precise nearest-point engine
+
+Nearest-point queries now resolve against the original vector primitives instead of treating adaptively flattened edges as the final geometry.
+
+```rust
+let nearest = closest_point(&path, query, tolerance)?;
+
+let segment_nearest = closest_point_on_segment(
+    segment,
+    query,
+    tolerance,
+)?;
+```
+
+The returned path result identifies the original `subpath_index`, `segment_index`, source parameter `t`, geometric distance, and path-distance coordinate. Lines use direct projection, quadratic and cubic Béziers solve stationary distance candidates on their native polynomial form, and elliptical arcs solve candidates on the native ellipse over the actual arc sweep.
+
+`PathSpatialIndex` and `IncrementalPathSpatialIndex` now maintain source-segment bounds for nearest-query broad-phase pruning. Candidate segments are then refined with the same native nearest solver, so indexed and direct queries share the same final geometry semantics. Adaptive flattening remains in the indexes for fill/stroke workloads but is no longer the final nearest-point representation.
+
+### Web API
+
+```text
+closestPoint(data, x, y)
+```
+
+The result exposes:
+
+```text
+x, y
+distance, distanceSquared
+subpath, segment, t
+pathDistance
+```
+
+Current nearest-point limits:
+
+- Bézier and elliptical stationary-point solving is bounded numerical geometry rather than symbolic general-cubic output
+- path-distance coordinates inherit the existing numerical arc-length tolerance
+- snapping policy, selection radius, handles, and editor interaction remain outside the geometry core
 
 ## v0.16 native affine arc transforms
 
@@ -646,7 +685,7 @@ Tolerance-sensitive operations include:
 - deterministic AABB spatial broad-phase pruning
 - reusable indexed path queries
 - adaptive curve flattening
-- closest-point approximation over indexed flattened edges and geometry-backed stroke hit testing
+- native closest-point refinement with source-segment spatial broad phase and geometry-backed stroke hit testing
 - advanced curve intersections via bounded subdivision and local refinement
 - general curve offsets via adaptive cubic fitting
 - self-intersection normalization through geometric splitting, fill-side classification, and face walking

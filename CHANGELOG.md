@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.17.0 - 2026-10-07
+
+### Added
+
+- Public `SegmentClosestPoint` and `closest_point_on_segment` APIs for source-native nearest-point queries.
+- Native nearest-point solving for line, quadratic Bézier, cubic Bézier, and elliptical-arc segments.
+- Polynomial stationary-point solving for quadratic and cubic Bézier distance minimization.
+- Native elliptical-arc stationary-point solving over the selected arc sweep.
+- Source-segment spatial broad phases in `PathSpatialIndex` and `IncrementalPathSpatialIndex`.
+- WebAssembly `closest_point_svg` and TypeScript `closestPoint`, returning geometry distance, source subpath/segment, source parameter `t`, and path-distance coordinate.
+- Robustness coverage for coarse flatness, large coordinates, non-finite queries, indexed refinement, and incremental-index synchronization.
+- Criterion benchmark coverage for precise cubic nearest-point queries.
+
+### Changed
+
+- `closest_point` now evaluates the original path segments instead of returning the nearest point on adaptively flattened edges.
+- `PathSpatialIndex::closest_point` and `IncrementalPathSpatialIndex::closest_point` now use source-segment bounds only as a broad phase and refine against native source geometry.
+- Nearest-point result geometry and source parameter are no longer controlled by `Tolerance.flatness`; tolerance still participates in numerical classification and arc-length reporting.
+
+### Scope limits
+
+- Bézier and elliptical nearest-point solving is numerical and bounded; it does not claim symbolic closed-form output for general cubic geometry.
+- `PathLocation.distance` continues to use the existing tolerance-controlled numerical arc-length integration.
+- Spatial nearest queries remain CPU/single-process geometry operations; scene selection policy and snapping UX remain outside the core.
+
 ## 0.16.0 - 2026-10-07
 
 ### Added
