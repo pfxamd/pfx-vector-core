@@ -103,6 +103,45 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    c.bench_function("tessellate rectangle fill", |b| {
+        b.iter(|| {
+            tessellate_fill(
+                black_box(&boolean_a),
+                black_box(FillRule::NonZero),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    let circle = circle_to_path(Circle::new(Point2::new(0.0, 0.0), 100.0).unwrap()).unwrap();
+    let mesh_tolerance = Tolerance {
+        flatness: 0.1,
+        ..tolerance
+    };
+
+    c.bench_function("tessellate circle fill", |b| {
+        b.iter(|| {
+            tessellate_fill(
+                black_box(&circle),
+                black_box(FillRule::NonZero),
+                black_box(mesh_tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("tessellate cubic stroke", |b| {
+        b.iter(|| {
+            tessellate_stroke(
+                black_box(&outline_source),
+                black_box(&outline_style),
+                black_box(mesh_tolerance),
+            )
+            .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);

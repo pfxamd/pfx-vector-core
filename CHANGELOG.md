@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.0 - 2026-10-07
+
+### Added
+
+- Native fill tessellation through `tessellate_fill`, producing indexed `Mesh2D` triangle data.
+- Stroke tessellation through `tessellate_stroke`, reusing the v0.4 outline engine before triangulation.
+- Concave polygon triangulation through deterministic ear clipping.
+- Hole elimination by explicit contour grouping and bridge construction before triangulation.
+- `NonZero` and `EvenOdd` fill semantics, including redundant nested contours, multiple holes, and islands inside holes.
+- Positive-winding triangle output with validated index ranges.
+- Local-coordinate area predicates to remain stable under large world-coordinate translations.
+- Adaptive curve flattening at the tessellation boundary using the existing `Tolerance.flatness` contract.
+- WebAssembly mesh exports for SVG fill and stroke tessellation.
+- TypeScript `tessellateFill` and `tessellateStroke` APIs returning flat vertex buffers and `u32`-style index arrays.
+- Criterion benchmarks for rectangle fill, curved fill, and stroke tessellation.
+
+### Changed
+
+- Tessellation deliberately converts curves to piecewise-linear contours only at the mesh-generation boundary; source path geometry remains unchanged.
+- Boundary orientation is derived from actual fill semantics instead of trusting source contour winding alone.
+- Ear validation treats points on candidate ear diagonals as blockers, preventing invalid clipping in concave polygons.
+
+### Scope limits
+
+- Fill tessellation currently requires closed subpaths.
+- General self-intersecting contour normalization is not guaranteed; ambiguous contour-side classification can return `UnsupportedCase`.
+- Mesh output is 2D indexed triangles only; GPU buffers, shaders, antialiasing, fringe geometry, and renderer-specific vertex attributes are outside the core.
+- Tessellation accuracy for curves is controlled by flattening tolerance and is therefore approximate by design.
+- Dashed stroke tessellation remains limited by the current outline engine, which defers dashed expansion.
+
 ## 0.4.0 - 2026-10-07
 
 ### Added

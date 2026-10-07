@@ -27,6 +27,15 @@ export interface VectorWasmBindings {
     join: StrokeJoin,
     miterLimit: number,
   ): string;
+  tessellate_fill_svg(data: string, evenOdd: boolean, flatness: number): string;
+  tessellate_stroke_svg(
+    data: string,
+    width: number,
+    cap: StrokeCap,
+    join: StrokeJoin,
+    miterLimit: number,
+    flatness: number,
+  ): string;
 }
 
 export interface Bounds {
@@ -48,6 +57,15 @@ export interface PathPoint {
 export interface IntersectionPoint {
   x: number;
   y: number;
+}
+
+export interface Mesh2D {
+  vertices: number[];
+  indices: number[];
+}
+
+export interface TessellationOptions {
+  flatness?: number;
 }
 
 export interface OffsetOptions {
@@ -107,5 +125,32 @@ export function createVectorCore(wasm: VectorWasmBindings) {
         options.join ?? "miter",
         options.miterLimit ?? 4,
       ),
+    tessellateFill: (
+      data: string,
+      rule: "nonzero" | "evenodd" = "nonzero",
+      options: TessellationOptions = {},
+    ) =>
+      JSON.parse(
+        wasm.tessellate_fill_svg(
+          data,
+          rule === "evenodd",
+          options.flatness ?? 1e-4,
+        ),
+      ) as Mesh2D,
+    tessellateStroke: (
+      data: string,
+      width: number,
+      options: OutlineOptions & TessellationOptions = {},
+    ) =>
+      JSON.parse(
+        wasm.tessellate_stroke_svg(
+          data,
+          width,
+          options.cap ?? "butt",
+          options.join ?? "miter",
+          options.miterLimit ?? 4,
+          options.flatness ?? 1e-4,
+        ),
+      ) as Mesh2D,
   };
 }

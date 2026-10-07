@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
-    BooleanOperation, Bounds, FillRule, OffsetStyle, Point2, StrokeCap, StrokeJoin, StrokeStyle,
-    Tolerance, boolean_paths, contains_point, flatten_path, intersect_segments, offset_path,
-    outline_path, path_length, point_at_length,
+    BooleanOperation, Bounds, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap, StrokeJoin,
+    StrokeStyle, Tolerance, boolean_paths, contains_point, flatten_path, intersect_segments,
+    offset_path, outline_path, path_length, point_at_length, tessellate_fill, tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -212,3 +212,73 @@ pub fn outline_path_svg(
 
     Ok(serialize_path(&result, SerializeOptions::default()))
 }
+
+fn mesh_json(mesh: &Mesh2D) -> String {
+    let vertices = mesh
+        .vertices
+        .iter()
+        .flat_map(|point| [point.x.to_string(), point.y.to_string()])
+        .collect::<Vec<_>>()
+        .join(",");
+    let indices = mesh
+        .indices
+        .iter()
+        .map(u32::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+
+    format!("{{\"vertices\":[{vertices}],\"indices\":[{indices}]}}")
+}
+
+#[wasm_bindgen]
+pub fn tessellate_fill_svg(
+    data: &str,
+    even_odd: bool,
+    flatness: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let tolerance = Tolerance {
+        flatness: flatness.max(1.0e-12),
+        ..Tolerance::default()
+    };
+    let mesh = tessellate_fill(
+        &path,
+        if even_odd {
+            FillRule::EvenOdd
+        } else {
+            FillRule::NonZero
+        },
+        tolerance,
+    )
+    .map_err(js_err)?;
+
+    Ok(mesh_json(&mesh))
+}
+
+#[wasm_bindgen]
+pub fn tessellate_stroke_svg(
+    data: &str,
+    width: f64,
+    cap: &str,
+    join: &str,
+    miter_limit: f64,
+    flatness: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let tolerance = Tolerance {
+        flatness: flatness.max(1.0e-12),
+        ..Tolerance::default()
+    };
+    let style = StrokeStyle {
+        width,
+        cap: parse_stroke_cap(cap)?,
+        join: parse_stroke_join(join)?,
+        miter_limit,
+        dash_array: Vec::new(),
+        dash_offset: 0.0,
+    };
+    let mesh = tessellate_stroke(&path, &style, tolerance).map_err(js_err)?;
+
+    Ok(mesh_json(&mesh))
+}
+

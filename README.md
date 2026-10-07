@@ -1,8 +1,59 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, advanced intersections, Boolean operations, and offset/outline construction. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, advanced intersections, Boolean operations, and offset/outline construction, and 2D tessellation. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.4.0`.
+**Status:** `v0.5.0`.
+
+## v0.5 tessellation and triangulation
+
+The core now converts filled paths and expanded strokes into indexed triangle meshes:
+
+```rust
+let fill_mesh = tessellate_fill(
+    &path,
+    FillRule::NonZero,
+    tolerance,
+)?;
+
+let stroke_mesh = tessellate_stroke(
+    &path,
+    &stroke_style,
+    tolerance,
+)?;
+```
+
+`Mesh2D` contains:
+
+```text
+vertices: Vec<Point2>
+indices:  Vec<u32>
+```
+
+The triangulation pipeline:
+
+- adaptively flattens curves at the requested geometric tolerance
+- resolves actual fill boundaries using `NonZero` or `EvenOdd`
+- normalizes contour orientation
+- groups holes with their containing outer contours
+- bridges holes into triangulable simple polygons
+- ear-clips concave polygons
+- emits counter-clockwise triangles with deterministic index order
+
+Curve flattening happens only for mesh generation. The original `Line / Quadratic / Cubic / Arc` path remains unchanged.
+
+### Web API
+
+```text
+tessellateFill(data, rule, { flatness })
+tessellateStroke(data, width, { cap, join, miterLimit, flatness })
+```
+
+The web mesh format uses a flat numeric vertex buffer:
+
+```text
+vertices = [x0, y0, x1, y1, ...]
+indices  = [i0, i1, i2, ...]
+```
 
 ## v0.4 offset and outline engine
 
@@ -127,6 +178,18 @@ Tolerance-sensitive operations include:
 - advanced curve intersections via bounded subdivision and local refinement
 - general curve offsets via adaptive cubic fitting
 - Boolean/offset topology through explicit geometric side classification and cleanup
+- tessellation through adaptive flattening, contour topology, hole bridging, and ear clipping
+
+## Validated tessellation scope
+
+Validated cases include convex and concave polygons, multiple disjoint contours, holes, multiple holes, nested islands, `NonZero` and `EvenOdd` semantics, curved paths, stroke expansion, reversed contour orientation, large translated coordinates, and positive triangle winding.
+
+Current tessellation limits:
+
+- fill tessellation requires closed subpaths
+- self-intersecting contour normalization is not guaranteed
+- mesh output contains geometry only; renderer/GPU concerns remain outside the core
+- curve tessellation accuracy follows the explicit flatness tolerance
 
 ## Validated offset/outline scope
 
