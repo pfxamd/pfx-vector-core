@@ -72,6 +72,43 @@ pub(crate) fn segment_parameter_at_length_with_total(
     Ok((low + high) * 0.5)
 }
 
+pub(crate) fn segment_length_to_t(
+    segment: Segment,
+    t: Scalar,
+    tolerance: Tolerance,
+) -> CoreResult<Scalar> {
+    let t = t.clamp(0.0, 1.0);
+    if t == 0.0 {
+        return Ok(0.0);
+    }
+    if t == 1.0 {
+        return segment_length(segment, tolerance);
+    }
+
+    match segment {
+        Segment::Line(line) => Ok(line.length() * t),
+        Segment::Quadratic(curve) => {
+            let (left, _) = curve.split(t);
+            segment_length(Segment::Quadratic(left), tolerance)
+        }
+        Segment::Cubic(curve) => {
+            let (left, _) = curve.split(t);
+            segment_length(Segment::Cubic(left), tolerance)
+        }
+        Segment::Arc(arc) => {
+            let partial = crate::EllipticalArc::new(
+                arc.center,
+                arc.radius_x,
+                arc.radius_y,
+                arc.rotation,
+                arc.start_angle,
+                crate::Angle::radians(arc.sweep_angle.as_radians() * t),
+            );
+            segment_length(Segment::Arc(partial), tolerance)
+        }
+    }
+}
+
 pub fn segment_parameter_at_length(
     segment: Segment,
     distance: Scalar,
