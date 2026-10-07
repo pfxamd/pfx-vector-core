@@ -60,6 +60,49 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    c.bench_function("offset rectangle", |b| {
+        b.iter(|| {
+            offset_path(
+                black_box(&boolean_a),
+                black_box(10.0),
+                black_box(OffsetStyle::default()),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    let mut outline_builder = PathBuilder::new();
+    outline_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(25.0, 50.0),
+            Point2::new(75.0, -50.0),
+            Point2::new(100.0, 0.0),
+        )
+        .unwrap();
+    let outline_source = outline_builder.finish().unwrap();
+    let outline_style = StrokeStyle {
+        width: 8.0,
+        cap: StrokeCap::Round,
+        join: StrokeJoin::Round,
+        miter_limit: 4.0,
+        dash_array: Vec::new(),
+        dash_offset: 0.0,
+    };
+
+    c.bench_function("outline cubic path", |b| {
+        b.iter(|| {
+            outline_path(
+                black_box(&outline_source),
+                black_box(&outline_style),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);

@@ -1,3 +1,6 @@
+export type StrokeCap = "butt" | "round" | "square";
+export type StrokeJoin = "miter" | "round" | "bevel";
+
 export interface VectorWasmBindings {
   validate_path(data: string): boolean;
   path_length_svg(data: string): number;
@@ -11,6 +14,19 @@ export interface VectorWasmBindings {
   boolean_intersection_svg(a: string, b: string): string;
   boolean_difference_svg(a: string, b: string): string;
   boolean_xor_svg(a: string, b: string): string;
+  offset_path_svg(
+    data: string,
+    distance: number,
+    join: StrokeJoin,
+    miterLimit: number,
+  ): string;
+  outline_path_svg(
+    data: string,
+    width: number,
+    cap: StrokeCap,
+    join: StrokeJoin,
+    miterLimit: number,
+  ): string;
 }
 
 export interface Bounds {
@@ -32,6 +48,15 @@ export interface PathPoint {
 export interface IntersectionPoint {
   x: number;
   y: number;
+}
+
+export interface OffsetOptions {
+  join?: StrokeJoin;
+  miterLimit?: number;
+}
+
+export interface OutlineOptions extends OffsetOptions {
+  cap?: StrokeCap;
 }
 
 export function createVectorCore(wasm: VectorWasmBindings) {
@@ -59,5 +84,28 @@ export function createVectorCore(wasm: VectorWasmBindings) {
     subtractPaths: (a: string, b: string) =>
       wasm.boolean_difference_svg(a, b),
     xorPaths: (a: string, b: string) => wasm.boolean_xor_svg(a, b),
+    offsetPath: (
+      data: string,
+      distance: number,
+      options: OffsetOptions = {},
+    ) =>
+      wasm.offset_path_svg(
+        data,
+        distance,
+        options.join ?? "miter",
+        options.miterLimit ?? 4,
+      ),
+    outlinePath: (
+      data: string,
+      width: number,
+      options: OutlineOptions = {},
+    ) =>
+      wasm.outline_path_svg(
+        data,
+        width,
+        options.cap ?? "butt",
+        options.join ?? "miter",
+        options.miterLimit ?? 4,
+      ),
   };
 }

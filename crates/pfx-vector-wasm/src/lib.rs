@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
-    BooleanOperation, Bounds, FillRule, Point2, Tolerance, boolean_paths, contains_point,
-    flatten_path, intersect_segments, path_length, point_at_length,
+    BooleanOperation, Bounds, FillRule, OffsetStyle, Point2, StrokeCap, StrokeJoin, StrokeStyle,
+    Tolerance, boolean_paths, contains_point, flatten_path, intersect_segments, offset_path,
+    outline_path, path_length, point_at_length,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -149,3 +150,66 @@ pub fn boolean_difference_svg(a: &str, b: &str) -> Result<String, JsValue> {
 pub fn boolean_xor_svg(a: &str, b: &str) -> Result<String, JsValue> {
     boolean_svg(a, b, BooleanOperation::Xor)
 }
+
+fn parse_stroke_join(value: &str) -> Result<StrokeJoin, JsValue> {
+    match value {
+        "miter" => Ok(StrokeJoin::Miter),
+        "round" => Ok(StrokeJoin::Round),
+        "bevel" => Ok(StrokeJoin::Bevel),
+        _ => Err(JsValue::from_str("invalid stroke join")),
+    }
+}
+
+fn parse_stroke_cap(value: &str) -> Result<StrokeCap, JsValue> {
+    match value {
+        "butt" => Ok(StrokeCap::Butt),
+        "round" => Ok(StrokeCap::Round),
+        "square" => Ok(StrokeCap::Square),
+        _ => Err(JsValue::from_str("invalid stroke cap")),
+    }
+}
+
+#[wasm_bindgen]
+pub fn offset_path_svg(
+    data: &str,
+    distance: f64,
+    join: &str,
+    miter_limit: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let result = offset_path(
+        &path,
+        distance,
+        OffsetStyle {
+            join: parse_stroke_join(join)?,
+            miter_limit,
+        },
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+
+    Ok(serialize_path(&result, SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn outline_path_svg(
+    data: &str,
+    width: f64,
+    cap: &str,
+    join: &str,
+    miter_limit: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let style = StrokeStyle {
+        width,
+        cap: parse_stroke_cap(cap)?,
+        join: parse_stroke_join(join)?,
+        miter_limit,
+        dash_array: Vec::new(),
+        dash_offset: 0.0,
+    };
+    let result = outline_path(&path, &style, Tolerance::default()).map_err(js_err)?;
+
+    Ok(serialize_path(&result, SerializeOptions::default()))
+}
+
