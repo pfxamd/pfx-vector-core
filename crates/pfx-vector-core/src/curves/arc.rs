@@ -1,5 +1,7 @@
 use crate::{Angle, Bounds, Point2, Scalar, Vector2};
 
+const ANGLE_EPSILON: Scalar = 1.0e-12;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EllipticalArc {
     pub center: Point2,
@@ -58,10 +60,23 @@ impl EllipticalArc {
     #[must_use]
     pub fn bounds(self) -> Bounds {
         let mut bounds = Bounds::from_points(&[self.point_at(0.0), self.point_at(1.0)]);
+        let rotation = self.rotation.as_radians();
+        let (sin_rotation, cos_rotation) = rotation.sin_cos();
 
-        for index in 0..360 {
-            let t = f64::from(index) / 359.0;
-            bounds = bounds.include(self.point_at(t));
+        let x_extremum =
+            (-self.radius_y * sin_rotation).atan2(self.radius_x * cos_rotation);
+        let y_extremum =
+            (self.radius_y * cos_rotation).atan2(self.radius_x * sin_rotation);
+
+        for angle in [
+            x_extremum,
+            x_extremum + core::f64::consts::PI,
+            y_extremum,
+            y_extremum + core::f64::consts::PI,
+        ] {
+            if self.contains_angle(angle) {
+                bounds = bounds.include(self.point_at_angle(angle));
+            }
         }
 
         bounds
@@ -76,6 +91,33 @@ impl EllipticalArc {
             self.rotation,
             Angle::radians(self.start_angle.as_radians() + self.sweep_angle.as_radians()),
             Angle::radians(-self.sweep_angle.as_radians()),
+        )
+    }
+
+    #[must_use]
+    pub(crate) fn contains_angle(self, angle: Scalar) -> bool {
+        let sweep = self.sweep_angle.as_radians();
+        if sweep.abs() >= core::f64::consts::TAU - ANGLE_EPSILON {
+            return true;
+        }
+
+        if sweep >= 0.0 {
+            (angle - self.start_angle.as_radians()).rem_euclid(core::f64::consts::TAU)
+                <= sweep + ANGLE_EPSILON
+        } else {
+            (self.start_angle.as_radians() - angle).rem_euclid(core::f64::consts::TAU)
+                <= -sweep + ANGLE_EPSILON
+        }
+    }
+
+    #[must_use]
+    fn point_at_angle(self, angle: Scalar) -> Point2 {
+        let (s, c) = angle.sin_cos();
+        let (sr, cr) = self.rotation.as_radians().sin_cos();
+
+        Point2::new(
+            self.center.x + self.radius_x * c * cr - self.radius_y * s * sr,
+            self.center.y + self.radius_x * c * sr + self.radius_y * s * cr,
         )
     }
 }
