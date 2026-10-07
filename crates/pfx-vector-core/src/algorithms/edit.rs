@@ -215,12 +215,20 @@ pub fn remove_segment(
     let removed = segment_at(subpath, address.segment_index)?;
 
     let replacements = if subpath.is_closed() {
-        if segments.len() == 1 {
+        let mut ring = segments.to_vec();
+        if !subpath.end().almost_eq(subpath.start(), tolerance) {
+            ring.push(Segment::Line(LineSegment::new(
+                subpath.end(),
+                subpath.start(),
+            )));
+        }
+
+        if ring.len() == 1 {
             Vec::new()
         } else {
-            let mut remaining = Vec::with_capacity(segments.len() - 1);
-            remaining.extend_from_slice(&segments[address.segment_index + 1..]);
-            remaining.extend_from_slice(&segments[..address.segment_index]);
+            let mut remaining = Vec::with_capacity(ring.len() - 1);
+            remaining.extend_from_slice(&ring[address.segment_index + 1..]);
+            remaining.extend_from_slice(&ring[..address.segment_index]);
             vec![
                 Subpath::new(removed.end(), remaining, false, tolerance)
                     .ok_or(CoreError::InvalidGeometry)?,
@@ -277,7 +285,7 @@ pub fn remove_subpath(path: &Path, subpath_index: usize) -> CoreResult<PathEditR
         edited,
         path,
         PathEditKind::RemoveSubpath,
-        Vec::new(),
+        vec![subpath_index],
         true,
     ))
 }
