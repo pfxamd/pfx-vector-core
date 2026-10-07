@@ -415,7 +415,6 @@ fn normalization_preserves_native_arc_segments_for_simple_circle() {
     );
 }
 
-
 fn multi_turn_arc(turns: f64) -> Path {
     let arc = EllipticalArc::new(
         Point2::new(0.0, 0.0),
@@ -444,17 +443,21 @@ fn double_revolution_arc_normalizes_to_one_boundary_for_nonzero() {
 
     assert_eq!(normalized.subpaths().len(), 1);
     assert_eq!(normalized.segment_count(), 1);
-    assert!(contains_point(
-        &normalized,
-        Point2::new(0.0, 0.0),
-        FillRule::NonZero,
-        Tolerance::default()
-    )
-    .unwrap());
-    assert!(normalized.subpaths()[0]
-        .segments()
-        .iter()
-        .all(|segment| matches!(segment, Segment::Arc(_))));
+    assert!(
+        contains_point(
+            &normalized,
+            Point2::new(0.0, 0.0),
+            FillRule::NonZero,
+            Tolerance::default()
+        )
+        .unwrap()
+    );
+    assert!(
+        normalized.subpaths()[0]
+            .segments()
+            .iter()
+            .all(|segment| matches!(segment, Segment::Arc(_)))
+    );
 }
 
 #[test]
@@ -474,11 +477,13 @@ fn triple_revolution_arc_preserves_one_boundary_under_evenodd() {
 
     assert_eq!(normalized.subpaths().len(), 1);
     assert_eq!(normalized.segment_count(), 1);
-    assert!(contains_point(
-        &normalized,
-        Point2::new(0.0, 0.0),
-        FillRule::NonZero,
-        Tolerance::default()
-    )
-    .unwrap());
+    assert!(
+        contains_point(
+            &normalized,
+            Point2::new(0.0, 0.0),
+            FillRule::NonZero,
+            Tolerance::default()
+        )
+        .unwrap()
+    );
 }
