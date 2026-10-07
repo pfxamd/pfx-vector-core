@@ -162,6 +162,28 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    c.bench_function("stroke hit cubic path build per query", |b| {
+        b.iter(|| {
+            stroke_contains_point(
+                black_box(&outline_source),
+                black_box(&outline_style),
+                black_box(Point2::new(50.0, 1.0)),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    let stroke_hit_index =
+        StrokeHitIndex::build(&outline_source, &outline_style, tolerance).unwrap();
+    c.bench_function("stroke hit cubic path cached index", |b| {
+        b.iter(|| {
+            stroke_hit_index
+                .contains_point(black_box(Point2::new(50.0, 1.0)))
+                .unwrap()
+        })
+    });
+
     let dashed_outline_style = StrokeStyle {
         dash_array: vec![12.0, 8.0, 2.0, 4.0],
         dash_offset: 3.0,
