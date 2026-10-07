@@ -1,6 +1,7 @@
 mod boolean;
 mod bounds;
 mod convert;
+mod dynamic_spatial;
 mod fill;
 mod flatten;
 mod hit;
@@ -16,6 +17,7 @@ mod transform;
 pub use boolean::*;
 pub use bounds::*;
 pub use convert::*;
+pub use dynamic_spatial::*;
 pub use fill::*;
 pub use flatten::*;
 pub use hit::*;
