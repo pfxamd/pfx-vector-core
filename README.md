@@ -2,7 +2,49 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.10.0`.
+**Status:** `v0.11.0`.
+
+## v0.11 dash and stroke pattern engine
+
+Stroke dash patterns are now first-class geometry rather than a deferred rendering concern:
+
+```rust
+let style = StrokeStyle {
+    width: 4.0,
+    dash_array: vec![12.0, 6.0, 2.0, 6.0],
+    dash_offset: 3.0,
+    ..StrokeStyle::default()
+};
+
+let dashed = dash_path(&path, &style, tolerance)?;
+let outline = outline_path(&path, &style, tolerance)?;
+let mesh = tessellate_stroke(&path, &style, tolerance)?;
+```
+
+The dash engine works in source-path arc length. It normalizes odd-length patterns, applies dash phase per subpath, inverts arc length to source-segment parameters, and slices geometry without flattening source primitives. Line, quadratic Bézier, cubic Bézier, and elliptical-arc dash fragments therefore remain native segment types.
+
+Closed paths include their closing edge in dash measurement. When a painted interval crosses the start seam, the two edge fragments are rejoined so caps are not introduced artificially at the closure.
+
+The public `segment_parameter_at_length` helper exposes the same bounded length inversion used by dash slicing.
+
+Dashed geometry is integrated into:
+
+- `outline_path` / `stroke_to_path`
+- `tessellate_stroke`
+- stroke bounds
+- direct stroke hit testing
+- `PathSpatialIndex` and `IncrementalPathSpatialIndex` stroke queries
+- WebAssembly and TypeScript APIs
+
+### Web API
+
+```text
+dashPath(data, [12, 6, 2, 6], 3)
+outlinePath(data, width, { cap, join, miterLimit, dashArray, dashOffset })
+tessellateStroke(data, width, { cap, join, miterLimit, dashArray, dashOffset, flatness })
+```
+
+Dash expansion has an explicit iteration bound and returns `IterationLimit` instead of attempting unbounded expansion for pathological ultra-dense patterns. Empty and all-zero dash arrays retain solid-stroke behavior.
 
 ## v0.10 incremental path spatial engine
 
@@ -432,7 +474,7 @@ Current limits:
 
 - offset inputs must be closed
 - self-intersecting filled contours are normalized before offset construction
-- dashed outline expansion is deferred
+- dashed outlines are supported through curve-preserving dash expansion; pathological ultra-dense patterns may return `IterationLimit`
 - severe cusp/degenerate tangent cases may return a defined failure
 
 ## Naming

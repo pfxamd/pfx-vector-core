@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.11.0 - 2026-10-07
+
+### Added
+
+- Public `dash_path` geometry expansion for stroke dash patterns.
+- Odd-length dash-array normalization, dash offset/phase handling, and deterministic per-subpath pattern restart.
+- Arc-length-based dash splitting with the public `segment_parameter_at_length` helper.
+- Native curve preservation while slicing lines, quadratic Béziers, cubic Béziers, and elliptical arcs.
+- Closed-path dash wrapping across the start seam without introducing artificial caps.
+- Dashed stroke support in `outline_path`, `stroke_to_path`, and `tessellate_stroke`.
+- Dashed stroke semantics in stroke bounds and direct hit testing.
+- Dashed hit-query support for `PathSpatialIndex` and `IncrementalPathSpatialIndex`.
+- WebAssembly `dash_path_svg` and dashed outline support.
+- TypeScript `dashPath` plus `dashArray` / `dashOffset` options on outline and stroke tessellation APIs.
+- Robustness tests for phase offsets, closed seams, native cubic/arc preservation, indexed hit testing, large translated coordinates, and dashed tessellation area.
+- Criterion benchmark coverage for dash expansion and dashed cubic outlining.
+
+### Changed
+
+- Non-empty dash arrays no longer return `UnsupportedCase` from the outline engine.
+- Stroke tessellation now expands dash patterns before outline triangulation.
+- `PathSpatialIndex` retains the source path snapshot needed to preserve dash semantics during indexed stroke queries.
+- The web tessellation wrapper composes curve-preserving dash expansion with the existing stroke tessellation boundary.
+
+### Scope limits
+
+- Dash expansion is bounded; pathological patterns that would require excessive fragments return `IterationLimit`.
+- Empty and all-zero dash arrays retain solid-stroke behavior.
+- Dash placement follows numerical arc-length integration and inherits the supplied `Tolerance`.
+- Existing stroke hit testing remains a flattened centerline-distance query; exact cap/join boundary classification is outside this release.
+
 ## 0.10.0 - 2026-10-07
 
 ### Added
