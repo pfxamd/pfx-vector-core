@@ -331,4 +331,3 @@ pub fn normalize_fill_contours_svg(data: &str, even_odd: bool) -> Result<String,
 
     Ok(serialize_path(&normalized, SerializeOptions::default()))
 }
-
