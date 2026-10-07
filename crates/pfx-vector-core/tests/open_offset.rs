@@ -309,3 +309,116 @@ fn zero_distance_open_offset_is_identity() {
 
     assert_eq!(result, path);
 }
+
+
+fn exact_offset_point(segment: Segment, t: f64, distance: f64) -> Point2 {
+    let derivative = match segment {
+        Segment::Line(line) => line.direction(),
+        Segment::Quadratic(curve) => curve.derivative_at(t),
+        Segment::Cubic(curve) => curve.derivative_at(t),
+        Segment::Arc(arc) => arc.derivative_at(t),
+    };
+    let tangent = derivative.normalized(Tolerance::default()).unwrap();
+    segment.point_at(t) + tangent.perpendicular() * distance
+}
+
+#[test]
+fn cubic_offset_stays_within_requested_flatness() {
+    let curve = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(20.0, 80.0),
+        Point2::new(80.0, -70.0),
+        Point2::new(120.0, 10.0),
+    );
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(curve.p0)
+        .unwrap()
+        .cubic_to(curve.p1, curve.p2, curve.p3)
+        .unwrap();
+    let path = builder.finish().unwrap();
+    let tolerance = Tolerance {
+        flatness: 5.0e-4,
+        ..Tolerance::default()
+    };
+    let distance = 7.0;
+    let offset = offset_path(&path, distance, OffsetStyle::default(), tolerance).unwrap();
+
+    for step in 0..=100 {
+        let t = step as f64 / 100.0;
+        let expected = exact_offset_point(Segment::Cubic(curve), t, distance);
+        let nearest = closest_point(&offset, expected, tolerance).unwrap();
+        assert!(
+            nearest.distance <= tolerance.flatness * 1.5,
+            "t={t}, error={}, flatness={}",
+            nearest.distance,
+            tolerance.flatness
+        );
+    }
+}
+
+#[test]
+fn elliptical_arc_offset_stays_within_requested_flatness() {
+    let arc = EllipticalArc::new(
+        Point2::new(15.0, -8.0),
+        36.0,
+        11.0,
+        Angle::degrees(27.0),
+        Angle::degrees(-35.0),
+        Angle::degrees(250.0),
+    );
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(arc.point_at(0.0))
+        .unwrap()
+        .arc_to(arc)
+        .unwrap();
+    let path = builder.finish().unwrap();
+    let tolerance = Tolerance {
+        flatness: 5.0e-4,
+        ..Tolerance::default()
+    };
+    let distance = 2.0;
+    let offset = offset_path(&path, distance, OffsetStyle::default(), tolerance).unwrap();
+
+    for step in 0..=120 {
+        let t = step as f64 / 120.0;
+        let expected = exact_offset_point(Segment::Arc(arc), t, distance);
+        let nearest = closest_point(&offset, expected, tolerance).unwrap();
+        assert!(
+            nearest.distance <= tolerance.flatness * 1.5,
+            "t={t}, error={}, flatness={}",
+            nearest.distance,
+            tolerance.flatness
+        );
+    }
+}
+
+#[test]
+fn high_curvature_offset_splits_before_curvature_singularity() {
+    let curve = QuadraticBezier::new(
+        Point2::new(-10.0, 0.0),
+        Point2::new(0.0, 20.0),
+        Point2::new(10.0, 0.0),
+    );
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(curve.p0)
+        .unwrap()
+        .quad_to(curve.p1, curve.p2)
+        .unwrap();
+    let path = builder.finish().unwrap();
+    let tolerance = Tolerance {
+        flatness: 1.0e-3,
+        ..Tolerance::default()
+    };
+
+    let result = offset_path(&path, 4.0, OffsetStyle::default(), tolerance).unwrap();
+    let segments = only_subpath(&result).segments();
+
+    assert!(segments.len() > 1);
+    assert!(segments.iter().all(|segment| matches!(segment, Segment::Cubic(_))));
+    assert!(segments.iter().all(|segment| {
+        segment.start().is_finite() && segment.end().is_finite()
+    }));
+}

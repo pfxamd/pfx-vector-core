@@ -5,8 +5,13 @@ use crate::{
     dash_path, normalize_self_intersections, normalized_dash_pattern,
 };
 
-const MAX_OFFSET_DEPTH: u32 = 18;
-const SAMPLE_PARAMETERS: [Scalar; 3] = [0.25, 0.5, 0.75];
+const MAX_OFFSET_DEPTH: u32 = 20;
+const OFFSET_VALIDATION_PARAMETERS: [Scalar; 15] = [
+    0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75,
+    0.8125, 0.875, 0.9375,
+];
+const OFFSET_SINGULARITY_SAMPLES: usize = 16;
+const OFFSET_PARAMETER_EPSILON: Scalar = 1.0e-10;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OffsetStyle {
@@ -550,6 +555,28 @@ fn fit_offset_interval(
         return Err(CoreError::ToleranceNotMet);
     }
 
+    if let Some(split) = find_offset_singularity(segment, distance, t0, t1, tolerance) {
+        fit_offset_interval(
+            segment,
+            distance,
+            t0,
+            split,
+            tolerance,
+            depth - 1,
+            output,
+        )?;
+        fit_offset_interval(
+            segment,
+            distance,
+            split,
+            t1,
+            tolerance,
+            depth - 1,
+            output,
+        )?;
+        return Ok(());
+    }
+
     let p0 = offset_point(segment, t0, distance, tolerance)?;
     let p3 = offset_point(segment, t1, distance, tolerance)?;
     let derivative0 = offset_derivative(segment, t0, distance, tolerance)?;
@@ -564,13 +591,14 @@ fn fit_offset_interval(
     );
 
     let allowed_error = offset_error_tolerance(segment, distance, tolerance);
-    let mut maximum_error: Scalar = 0.0;
-
-    for u in SAMPLE_PARAMETERS {
-        let t = t0 + span * u;
-        let expected = offset_point(segment, t, distance, tolerance)?;
-        maximum_error = maximum_error.max(candidate.point_at(u).distance_to(expected));
-    }
+    let maximum_error = validate_offset_candidate(
+        segment,
+        distance,
+        t0,
+        t1,
+        candidate,
+        tolerance,
+    )?;
 
     if maximum_error <= allowed_error {
         output.push(Segment::Cubic(candidate));
@@ -578,6 +606,10 @@ fn fit_offset_interval(
     }
 
     let midpoint = (t0 + t1) * 0.5;
+    if midpoint - t0 <= OFFSET_PARAMETER_EPSILON || t1 - midpoint <= OFFSET_PARAMETER_EPSILON {
+        return Err(CoreError::ToleranceNotMet);
+    }
+
     fit_offset_interval(
         segment,
         distance,
@@ -614,17 +646,24 @@ fn offset_derivative(
     distance: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Vector2> {
-    let h = 1.0e-5;
-    let t0 = (t - h).max(0.0);
-    let t1 = (t + h).min(1.0);
+    let derivative = segment_derivative(segment, t);
+    let speed = derivative.length();
+    let scale = derivative.x.abs().max(derivative.y.abs()).max(1.0);
 
-    if t1 <= t0 {
-        return Err(CoreError::DegenerateOperation);
+    if tolerance.nearly_zero(speed, scale) {
+        return Ok(Vector2::new(0.0, 0.0));
     }
 
-    let p0 = offset_point(segment, t0, distance, tolerance)?;
-    let p1 = offset_point(segment, t1, distance, tolerance)?;
-    Ok((p1 - p0) / (t1 - t0))
+    let second_derivative = segment_second_derivative(segment, t);
+    let signed_curvature =
+        derivative.cross(second_derivative) / (speed * speed * speed);
+    let offset_scale = 1.0 - distance * signed_curvature;
+
+    if !offset_scale.is_finite() {
+        return Err(CoreError::InvalidNumber);
+    }
+
+    Ok(derivative * offset_scale)
 }
 
 fn stable_segment_tangent(
@@ -651,6 +690,161 @@ fn segment_derivative(segment: Segment, t: Scalar) -> Vector2 {
         Segment::Arc(arc) => arc.derivative_at(t),
     }
 }
+fn segment_second_derivative(segment: Segment, t: Scalar) -> Vector2 {
+    match segment {
+        Segment::Line(_) => Vector2::new(0.0, 0.0),
+        Segment::Quadratic(curve) => {
+            ((curve.p2 - curve.p1) - (curve.p1 - curve.p0)) * 2.0
+        }
+        Segment::Cubic(curve) => {
+            let first = (curve.p2 - curve.p1) - (curve.p1 - curve.p0);
+            let second = (curve.p3 - curve.p2) - (curve.p2 - curve.p1);
+            first * (6.0 * (1.0 - t)) + second * (6.0 * t)
+        }
+        Segment::Arc(arc) => {
+            let theta =
+                arc.start_angle.as_radians() + arc.sweep_angle.as_radians() * t;
+            let (sin_theta, cos_theta) = theta.sin_cos();
+            let (sin_rotation, cos_rotation) = arc.rotation.as_radians().sin_cos();
+            let sweep_squared = arc.sweep_angle.as_radians().powi(2);
+
+            Vector2::new(
+                (-arc.radius_x * cos_theta * cos_rotation
+                    + arc.radius_y * sin_theta * sin_rotation)
+                    * sweep_squared,
+                (-arc.radius_x * cos_theta * sin_rotation
+                    - arc.radius_y * sin_theta * cos_rotation)
+                    * sweep_squared,
+            )
+        }
+    }
+}
+
+fn offset_scale_at(
+    segment: Segment,
+    t: Scalar,
+    distance: Scalar,
+    tolerance: Tolerance,
+) -> CoreResult<Option<Scalar>> {
+    let derivative = segment_derivative(segment, t);
+    let speed = derivative.length();
+    let scale = derivative.x.abs().max(derivative.y.abs()).max(1.0);
+
+    if tolerance.nearly_zero(speed, scale) {
+        return Ok(None);
+    }
+
+    let second_derivative = segment_second_derivative(segment, t);
+    let signed_curvature =
+        derivative.cross(second_derivative) / (speed * speed * speed);
+    let factor = 1.0 - distance * signed_curvature;
+
+    if !factor.is_finite() {
+        return Err(CoreError::InvalidNumber);
+    }
+
+    Ok(Some(factor))
+}
+
+fn find_offset_singularity(
+    segment: Segment,
+    distance: Scalar,
+    t0: Scalar,
+    t1: Scalar,
+    tolerance: Tolerance,
+) -> Option<Scalar> {
+    let span = t1 - t0;
+    if span <= OFFSET_PARAMETER_EPSILON * 2.0 {
+        return None;
+    }
+
+    let mut previous_t = t0;
+    let mut previous = offset_scale_at(segment, previous_t, distance, tolerance)
+        .ok()
+        .flatten();
+
+    for sample in 1..=OFFSET_SINGULARITY_SAMPLES {
+        let t = t0 + span * sample as Scalar / OFFSET_SINGULARITY_SAMPLES as Scalar;
+        let current = offset_scale_at(segment, t, distance, tolerance)
+            .ok()
+            .flatten();
+
+        if sample < OFFSET_SINGULARITY_SAMPLES
+            && current.is_some_and(|value| value.abs() <= 1.0e-8)
+        {
+            return Some(t);
+        }
+
+        if let (Some(left), Some(right)) = (previous, current)
+            && left * right < 0.0
+        {
+            return bisect_offset_singularity(
+                segment,
+                distance,
+                previous_t,
+                t,
+                left,
+                tolerance,
+            );
+        }
+
+        previous_t = t;
+        previous = current;
+    }
+
+    None
+}
+
+fn bisect_offset_singularity(
+    segment: Segment,
+    distance: Scalar,
+    mut low: Scalar,
+    mut high: Scalar,
+    mut low_value: Scalar,
+    tolerance: Tolerance,
+) -> Option<Scalar> {
+    for _ in 0..64 {
+        let midpoint = (low + high) * 0.5;
+        let value = offset_scale_at(segment, midpoint, distance, tolerance)
+            .ok()
+            .flatten()?;
+
+        if value.abs() <= 1.0e-12 || high - low <= OFFSET_PARAMETER_EPSILON {
+            return Some(midpoint);
+        }
+
+        if low_value * value <= 0.0 {
+            high = midpoint;
+        } else {
+            low = midpoint;
+            low_value = value;
+        }
+    }
+
+    Some((low + high) * 0.5)
+}
+
+fn validate_offset_candidate(
+    segment: Segment,
+    distance: Scalar,
+    t0: Scalar,
+    t1: Scalar,
+    candidate: CubicBezier,
+    tolerance: Tolerance,
+) -> CoreResult<Scalar> {
+    let span = t1 - t0;
+    let mut maximum_error: Scalar = 0.0;
+
+    for u in OFFSET_VALIDATION_PARAMETERS {
+        let t = t0 + span * u;
+        let expected = offset_point(segment, t, distance, tolerance)?;
+        let actual = candidate.point_at(u);
+        maximum_error = maximum_error.max(actual.distance_to(expected));
+    }
+
+    Ok(maximum_error)
+}
+
 
 fn offset_error_tolerance(segment: Segment, distance: Scalar, tolerance: Tolerance) -> Scalar {
     let bounds = segment.bounds();
