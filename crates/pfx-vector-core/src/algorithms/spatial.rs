@@ -231,11 +231,15 @@ impl PathSpatialIndex {
     }
 
     pub fn classify_point(&self, point: Point2, rule: FillRule) -> CoreResult<PointClassification> {
-        if self.edges.is_empty() {
+        if !point.is_finite() {
+            return Err(CoreError::InvalidNumber);
+        }
+        if self.segments.is_empty() && self.edges.is_empty() {
             return Ok(PointClassification::Outside);
         }
 
-        let Bounds::Finite { max, .. } = self.spatial.bounds() else {
+        let bounds = self.segment_spatial.bounds().union(self.spatial.bounds());
+        let Bounds::Finite { max, .. } = bounds else {
             return Ok(PointClassification::Outside);
         };
 
@@ -248,50 +252,14 @@ impl PathSpatialIndex {
             min: Point2::new(point.x - numerical, point.y - numerical),
             max: Point2::new(max.x + numerical, point.y + numerical),
         };
-        let candidates = self.spatial.query_bounds(query, numerical)?;
-        let mut winding = 0i32;
-        let mut parity = false;
+        let source_candidates = self.segment_spatial.query_bounds(query, numerical)?;
+        let flattened_candidates = self.spatial.query_bounds(query, numerical)?;
 
-        for index in candidates {
-            let edge = self.edges[index];
-            let a = edge.start;
-            let b = edge.end;
-            let ab = b - a;
-            let ap = point - a;
-            let cross = ab.cross(ap).abs();
-
-            if cross
-                <= self
-                    .tolerance
-                    .absolute
-                    .max(self.tolerance.relative * ab.length() * ap.length())
-                && point.x >= a.x.min(b.x) - self.tolerance.absolute
-                && point.x <= a.x.max(b.x) + self.tolerance.absolute
-                && point.y >= a.y.min(b.y) - self.tolerance.absolute
-                && point.y <= a.y.max(b.y) + self.tolerance.absolute
-            {
-                return Ok(PointClassification::Boundary);
-            }
-
-            let crosses = (a.y > point.y) != (b.y > point.y);
-            if crosses {
-                let x = a.x + (point.y - a.y) * (b.x - a.x) / (b.y - a.y);
-                if x > point.x {
-                    parity = !parity;
-                    if b.y > a.y {
-                        winding += 1;
-                    } else {
-                        winding -= 1;
-                    }
-                }
-            }
+        if source_candidates.is_empty() && flattened_candidates.is_empty() {
+            return Ok(PointClassification::Outside);
         }
 
-        Ok(match rule {
-            FillRule::EvenOdd if parity => PointClassification::Inside,
-            FillRule::NonZero if winding != 0 => PointClassification::Inside,
-            _ => PointClassification::Outside,
-        })
+        crate::classify_point(&self.path, point, rule, self.tolerance)
     }
 
     pub fn contains_point(&self, point: Point2, rule: FillRule) -> CoreResult<bool> {

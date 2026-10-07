@@ -235,3 +235,39 @@ fn path_spatial_nearest_refines_against_source_curve() {
     assert!(result.point.distance_to(Point2::new(5.0, 5.0)) <= 1.0e-8);
     assert!((result.distance - 3.0).abs() <= 1.0e-8);
 }
+
+
+#[test]
+fn path_spatial_fill_refines_against_source_curve() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(0.0, 10.0),
+            Point2::new(10.0, 10.0),
+            Point2::new(10.0, 0.0),
+        )
+        .unwrap()
+        .close()
+        .unwrap();
+    let path = builder.finish().unwrap();
+    let tolerance = Tolerance {
+        flatness: 1000.0,
+        ..Tolerance::default()
+    };
+    let index = PathSpatialIndex::build(&path, tolerance).unwrap();
+
+    assert_eq!(
+        index
+            .classify_point(Point2::new(5.0, 4.0), FillRule::NonZero)
+            .unwrap(),
+        PointClassification::Inside
+    );
+    assert_eq!(
+        index
+            .classify_point(Point2::new(5.0, 8.0), FillRule::NonZero)
+            .unwrap(),
+        PointClassification::Outside
+    );
+}

@@ -339,3 +339,56 @@ fn incremental_nearest_refines_against_source_curve_after_sync() {
     assert!(result.point.distance_to(Point2::new(5.0, 5.0)) <= 1.0e-8);
     assert!((result.distance - 3.0).abs() <= 1.0e-8);
 }
+
+
+#[test]
+fn incremental_fill_refines_against_source_curve_after_sync() {
+    let tolerance = Tolerance {
+        flatness: 1000.0,
+        ..Tolerance::default()
+    };
+
+    let mut first_builder = PathBuilder::new();
+    first_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(0.0, 6.0),
+            Point2::new(10.0, 6.0),
+            Point2::new(10.0, 0.0),
+        )
+        .unwrap()
+        .close()
+        .unwrap();
+    let first = first_builder.finish().unwrap();
+
+    let mut second_builder = PathBuilder::new();
+    second_builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(0.0, 10.0),
+            Point2::new(10.0, 10.0),
+            Point2::new(10.0, 0.0),
+        )
+        .unwrap()
+        .close()
+        .unwrap();
+    let second = second_builder.finish().unwrap();
+
+    let mut index = IncrementalPathSpatialIndex::build(&first, tolerance).unwrap();
+    index.sync_path(&second).unwrap();
+
+    assert_eq!(
+        index
+            .classify_point(Point2::new(5.0, 4.0), FillRule::NonZero)
+            .unwrap(),
+        PointClassification::Inside
+    );
+    assert_eq!(
+        index
+            .classify_point(Point2::new(5.0, 8.0), FillRule::NonZero)
+            .unwrap(),
+        PointClassification::Outside
+    );
+}
