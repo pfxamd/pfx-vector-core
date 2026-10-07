@@ -1,5 +1,5 @@
 use crate::{
-    CoreError, CoreResult, FillRule, Path, Point2, PointClassification, Scalar, StrokeStyle,
+    CoreError, CoreResult, FillRule, Path, Point2, Scalar, StrokeStyle,
     Tolerance, flatten_path, normalize_self_intersections, outline_path,
 };
 
