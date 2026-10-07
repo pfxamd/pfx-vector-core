@@ -1,5 +1,5 @@
 use crate::{
-    Angle, CoreError, CoreResult, EllipticalArc, LineSegment, Path, Point2, Scalar, Segment,
+    Angle, CoreError, CoreResult, EllipticalArc, LineSegment, Path, Scalar, Segment,
     Subpath, Tolerance, segment_length, segment_parameter_at_length,
 };
 
