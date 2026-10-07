@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
     fn number(&mut self) -> Result<f64, SvgError> {
         self.skip_separators();
         let start = self.position;
-        let bytes = self.bytes();
+        let bytes = self.input.as_bytes();
 
         if matches!(bytes.get(self.position), Some(b'+' | b'-')) {
             self.position += 1;
