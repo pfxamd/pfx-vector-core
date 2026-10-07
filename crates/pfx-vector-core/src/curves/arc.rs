@@ -43,4 +43,15 @@ impl EllipticalArc {
             self.center.y + self.radius_x * ca * sr + self.radius_y * sa * cr,
         )
     }
+    #[must_use]
+    pub fn derivative_at(self, t: Scalar) -> crate::Vector2 {
+        let angle = self.angle_at(t);
+        let (sa, ca) = angle.sin_cos();
+        let (sr, cr) = self.rotation.as_radians().sin_cos();
+        let sweep = self.sweep_angle.as_radians();
+        crate::Vector2::new(
+            (-self.radius_x * sa * cr - self.radius_y * ca * sr) * sweep,
+            (-self.radius_x * sa * sr + self.radius_y * ca * cr) * sweep,
+        )
+    }
 }
