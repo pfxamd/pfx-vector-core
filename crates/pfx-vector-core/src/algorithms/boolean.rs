@@ -219,6 +219,16 @@ fn classify_single_path_boundary(
         return Err(CoreError::ToleranceNotMet);
     };
 
+    eprintln!(
+        "NORM_FRAGMENT start=({:.9},{:.9}) end=({:.9},{:.9}) mid=({:.9},{:.9}) sides=({left},{right})",
+        fragment.start().x,
+        fragment.start().y,
+        fragment.end().x,
+        fragment.end().y,
+        midpoint.x,
+        midpoint.y,
+    );
+
     if left == right {
         Ok(None)
     } else if left {
@@ -254,6 +264,23 @@ fn stitch_normalized_fragments(
 
             let previous = *chain.last().expect("chain is never empty");
             let Some(index) = face_continuation(&fragments, current, previous, tolerance) else {
+                eprintln!(
+                    "NORM_STITCH_MISS current=({:.9},{:.9}) start=({:.9},{:.9}) remaining={}",
+                    current.x,
+                    current.y,
+                    start.x,
+                    start.y,
+                    fragments.len(),
+                );
+                for fragment in &fragments {
+                    eprintln!(
+                        "NORM_REMAIN start=({:.9},{:.9}) end=({:.9},{:.9})",
+                        fragment.segment.start().x,
+                        fragment.segment.start().y,
+                        fragment.segment.end().x,
+                        fragment.segment.end().y,
+                    );
+                }
                 return Err(CoreError::NonConvergent);
             };
 
