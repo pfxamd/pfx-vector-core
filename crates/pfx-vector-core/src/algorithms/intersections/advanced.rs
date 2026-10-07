@@ -450,8 +450,12 @@ fn coalesce_tangent_neighborhoods(
             let residual_tolerance =
                 intersection_residual_tolerance(tangent.point, tangent.point, tolerance);
             let spatial_radius = (residual_tolerance * geometry_scale).sqrt() * 2.0;
-            let speed_a = derivative(a, tangent.parameter_a).length().max(tolerance.absolute);
-            let speed_b = derivative(b, tangent.parameter_b).length().max(tolerance.absolute);
+            let speed_a = derivative(a, tangent.parameter_a)
+                .length()
+                .max(tolerance.absolute);
+            let speed_b = derivative(b, tangent.parameter_b)
+                .length()
+                .max(tolerance.absolute);
             let parameter_radius_a = spatial_radius / speed_a;
             let parameter_radius_b = spatial_radius / speed_b;
 
