@@ -211,17 +211,21 @@ pub fn fit_polyline_cubics(
     let left_tangent = endpoint_tangent(&clean, true, tolerance)?;
     let right_tangent = endpoint_tangent(&clean, false, tolerance)?;
     let mut curves = Vec::new();
+    let last = clean.len() - 1;
+    let mut context = FitContext {
+        points: &clean,
+        error_squared: max_error * max_error,
+        tolerance,
+        output: &mut curves,
+    };
 
     fit_cubic_recursive(
-        &clean,
+        &mut context,
         0,
-        clean.len() - 1,
+        last,
         left_tangent,
         right_tangent,
-        max_error * max_error,
-        tolerance,
         MAX_FIT_DEPTH,
-        &mut curves,
     )?;
 
     Ok(curves)
@@ -502,17 +506,24 @@ fn cyclic_chain(points: &[Point2], start: usize, end: usize) -> Vec<Point2> {
     result
 }
 
+struct FitContext<'a> {
+    points: &'a [Point2],
+    error_squared: Scalar,
+    tolerance: Tolerance,
+    output: &'a mut Vec<CubicBezier>,
+}
+
 fn fit_cubic_recursive(
-    points: &[Point2],
+    context: &mut FitContext<'_>,
     first: usize,
     last: usize,
     left_tangent: Vector2,
     right_tangent: Vector2,
-    error_squared: Scalar,
-    tolerance: Tolerance,
     depth: u32,
-    output: &mut Vec<CubicBezier>,
 ) -> CoreResult<()> {
+    let points = context.points;
+    let tolerance = context.tolerance;
+    let error_squared = context.error_squared;
     if depth == 0 {
         return Err(CoreError::IterationLimit);
     }
@@ -520,7 +531,7 @@ fn fit_cubic_recursive(
     let count = last - first + 1;
     if count == 2 {
         let distance = points[first].distance_to(points[last]) / 3.0;
-        output.push(CubicBezier::new(
+        context.output.push(CubicBezier::new(
             points[first],
             points[first] + left_tangent * distance,
             points[last] + right_tangent * distance,
@@ -542,7 +553,7 @@ fn fit_cubic_recursive(
     let (mut maximum_error, mut split) = maximum_fit_error(points, first, last, &parameters, curve);
 
     if maximum_error <= error_squared {
-        output.push(curve);
+        context.output.push(curve);
         return Ok(());
     }
 
@@ -568,7 +579,7 @@ fn fit_cubic_recursive(
             split = result.1;
 
             if maximum_error <= error_squared {
-                output.push(curve);
+                context.output.push(curve);
                 return Ok(());
             }
         }
@@ -581,26 +592,20 @@ fn fit_cubic_recursive(
     let center_tangent = center_tangent(points, split, tolerance)?;
 
     fit_cubic_recursive(
-        points,
+        context,
         first,
         split,
         left_tangent,
         center_tangent,
-        error_squared,
-        tolerance,
         depth - 1,
-        output,
     )?;
     fit_cubic_recursive(
-        points,
+        context,
         split,
         last,
         -center_tangent,
         right_tangent,
-        error_squared,
-        tolerance,
         depth - 1,
-        output,
     )
 }
 
