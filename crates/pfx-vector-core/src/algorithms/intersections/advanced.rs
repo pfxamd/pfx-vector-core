@@ -64,7 +64,7 @@ pub(super) fn intersect_curve_pair(
             extent_a <= spatial_tolerance * 4.0 && extent_b <= spatial_tolerance * 4.0;
 
         if node.depth >= MAX_SEARCH_DEPTH || parameter_small || spatial_small {
-            if let Some(hit) = candidate_from_box(a, b, node, tolerance, spatial_tolerance) {
+            if let Some(hit) = candidate_from_box(a, b, node, tolerance) {
                 push_unique(&mut result, hit, tolerance, spatial_tolerance);
             }
             continue;
@@ -116,7 +116,6 @@ fn candidate_from_box(
     b: Segment,
     node: SearchNode,
     tolerance: Tolerance,
-    spatial_tolerance: Scalar,
 ) -> Option<Intersection> {
     let a_samples = [node.a0, (node.a0 + node.a1) * 0.5, node.a1];
     let b_samples = [node.b0, (node.b0 + node.b1) * 0.5, node.b1];
