@@ -245,6 +245,23 @@ impl PathSpatialIndex {
             return Ok(PointClassification::Outside);
         }
 
+        let ray_y = point.y + numerical * 0.25;
+        let query = Bounds::Finite {
+            min: Point2::new(
+                point.x - numerical,
+                point.y.min(ray_y) - numerical,
+            ),
+            max: Point2::new(
+                max.x + numerical,
+                point.y.max(ray_y) + numerical,
+            ),
+        };
+        let source_candidates = self.segment_spatial.query_bounds(query, 0.0)?;
+        let edge_candidates = self.spatial.query_bounds(query, 0.0)?;
+        if source_candidates.is_empty() && edge_candidates.is_empty() {
+            return Ok(PointClassification::Outside);
+        }
+
         crate::classify_point(&self.path, point, rule, self.tolerance)
     }
 
