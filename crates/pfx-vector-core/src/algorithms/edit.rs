@@ -1,6 +1,6 @@
 use crate::{
-    Angle, CoreError, CoreResult, EllipticalArc, LineSegment, Path, Scalar, Segment,
-    Subpath, Tolerance, segment_length, segment_parameter_at_length,
+    Angle, CoreError, CoreResult, EllipticalArc, LineSegment, Path, Scalar, Segment, Subpath,
+    Tolerance, segment_length, segment_parameter_at_length,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
