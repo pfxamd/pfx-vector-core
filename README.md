@@ -2,7 +2,73 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.14.0`.
+**Status:** `v0.15.0`.
+
+## v0.15 path editing engine
+
+The core now exposes immutable path-edit operations intended for direct editor/node-tool integration.
+
+```rust
+let edit = split_segment(
+    &path,
+    SegmentAddress::new(0, 2),
+    0.5,
+    tolerance,
+)?;
+
+let updated = edit.path();
+let report = edit.report();
+
+index.sync_edit(&edit)?;
+```
+
+Each mutation returns a new `Path` inside `PathEditResult` plus a `PathEditReport` describing the edit kind, affected source subpaths, before/after subpath and segment counts, deterministic `subpath_delta` / `segment_delta`, and whether topology changed.
+
+### Editing operations
+
+- `split_segment` and `split_segment_at_length`
+- `insert_anchor`
+- `extract_segment` / `extract_subpath`
+- `replace_segment` / `replace_subpath`
+- `remove_segment` / `remove_subpath`
+- `reverse_subpath`
+- `set_subpath_closed`
+- `join_open_subpaths`
+
+Splitting preserves the native source primitive: line, quadratic Bézier, cubic Bézier, and elliptical arc segments remain their original segment type. Removing a middle segment from an open contour intentionally produces two open subpaths. Removing an edge from a closed contour opens it at that edge while preserving the other stored and implicit closing geometry.
+
+`join_open_subpaths` accepts explicit endpoint choices and reverses source subpaths when necessary. The selected endpoints must match within the supplied tolerance; the engine does not silently bridge arbitrary gaps.
+
+`IncrementalPathSpatialIndex::sync_edit` consumes `PathEditResult` directly and reuses the existing incremental spatial synchronization path.
+
+### Web API
+
+```text
+splitSegment(data, subpathIndex, segmentIndex, t)
+splitSegmentAtLength(data, subpathIndex, segmentIndex, distance)
+insertAnchor(data, subpathIndex, segmentIndex, t)
+extractSegment(data, subpathIndex, segmentIndex)
+extractSubpath(data, subpathIndex)
+replaceSegment(data, subpathIndex, segmentIndex, replacementData)
+replaceSubpath(data, subpathIndex, replacementData)
+removeSegment(data, subpathIndex, segmentIndex)
+removeSubpath(data, subpathIndex)
+reverseSubpath(data, subpathIndex)
+setSubpathClosed(data, subpathIndex, closed)
+joinSubpaths(data, firstIndex, firstEndpoint, secondIndex, secondEndpoint)
+transformPath(data, matrix, { flatness })
+```
+
+`transformPath` exposes the existing core `Transform2D` path transform through WebAssembly/TypeScript. Lines and Bézier segments retain native primitives; elliptical arcs currently follow the existing tolerance-controlled flattening path under transforms.
+
+Current editing limits:
+
+- segment/subpath addresses are deterministic positional indices, not persistent editor object IDs
+- topology edits can shift later indices; `PathEditReport` exposes count deltas and affected source subpaths so callers can update editor state explicitly
+- replacement segments must preserve the original segment endpoints within tolerance
+- joining subpaths requires matching selected endpoints within tolerance
+- editing remains snapshot-based; undo/redo history and selection state intentionally remain outside the geometry core
+- transformed arcs currently become line segments according to the supplied flatness tolerance
 
 ## v0.14 precise stroke hit-testing engine
 

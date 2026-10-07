@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.15.0 - 2026-10-07
+
+### Added
+
+- Public immutable path-editing API based on `PathEditResult` and `PathEditReport`.
+- `SegmentAddress` and explicit `SubpathEndpoint` addressing types.
+- Native segment splitting by parameter and by arc length.
+- Anchor insertion while preserving line, quadratic Bézier, cubic Bézier, and elliptical-arc primitives.
+- Segment and subpath extraction APIs.
+- Segment and subpath replacement APIs.
+- Segment and subpath removal APIs.
+- Subpath reversal and open/closed state editing.
+- Endpoint-aware joining of open subpaths, including deterministic source reversal when requested.
+- `subpath_delta` and `segment_delta` edit-report fields for deterministic index-shift handling.
+- `IncrementalPathSpatialIndex::sync_edit` for direct synchronization from edit results.
+- WebAssembly and TypeScript APIs for split, insert, extract, replace, remove, reverse, open/close, join, and path transforms.
+- TypeScript `transformPath` exposure for the existing core `Transform2D` path transform.
+- Robustness tests for native curve splitting, closed-contour edge removal, endpoint joins, replacement validation, edit reports, incremental spatial synchronization, invalid addresses, and large coordinates.
+- Criterion benchmarks for segment editing and edit-plus-incremental-index synchronization on 2000-segment paths.
+
+### Changed
+
+- Closed-contour segment removal now preserves the former implicit closing edge when opening the contour at the removed edge.
+- Path edits remain immutable snapshots instead of mutating shared editor state.
+- Topology-changing edits report deterministic count deltas rather than promising persistent object IDs.
+
+### Scope limits
+
+- Segment and subpath addresses are positional indices; topology edits can shift later indices.
+- Replacement segments must keep the original endpoints within tolerance.
+- Joining open subpaths requires selected endpoints to match within tolerance; arbitrary-gap auto-bridging is not performed.
+- Undo/redo, selection state, and persistent editor IDs remain outside the geometry core.
+- The existing `transform_path` behavior preserves lines/Béziers but flattens elliptical arcs according to the supplied tolerance.
+
 ## 0.14.0 - 2026-10-07
 
 ### Added
