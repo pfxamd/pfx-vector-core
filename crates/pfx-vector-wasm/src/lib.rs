@@ -1,11 +1,13 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
-    Point2, StrokeCap, StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path,
-    contains_point, contour_length, dash_path, fit_path_curves, flatten_path, intersect_segments,
+    Point2, SegmentAddress, StrokeCap, StrokeJoin, StrokeStyle, SubpathEndpoint, Tolerance,
+    Transform2D, boolean_paths, cleanup_path, contains_point, contour_length, dash_path,
+    fit_path_curves, flatten_path, intersect_segments, join_open_subpaths,
     normalize_self_intersections, offset_path, outline_path, path_length, point_at_length,
-    simplify_path, slice_contour, spatial_cross_candidate_pairs, stroke_contains_point,
-    tessellate_fill, tessellate_stroke,
+    remove_segment, remove_subpath, reverse_subpath, set_subpath_closed, simplify_path,
+    slice_contour, spatial_cross_candidate_pairs, split_segment, split_segment_at_length,
+    stroke_contains_point, tessellate_fill, tessellate_stroke, transform_path,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -61,6 +63,154 @@ pub fn slice_contour_svg(
     )
     .map_err(js_err)?;
     Ok(serialize_path(&sliced, SerializeOptions::default()))
+}
+
+
+#[wasm_bindgen]
+pub fn split_segment_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+    t: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = split_segment(
+        &path,
+        SegmentAddress::new(subpath_index as usize, segment_index as usize),
+        t,
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn split_segment_at_length_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+    distance: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = split_segment_at_length(
+        &path,
+        SegmentAddress::new(subpath_index as usize, segment_index as usize),
+        distance,
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn reverse_subpath_svg(data: &str, subpath_index: u32) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = reverse_subpath(&path, subpath_index as usize).map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn set_subpath_closed_svg(
+    data: &str,
+    subpath_index: u32,
+    closed: bool,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = set_subpath_closed(
+        &path,
+        subpath_index as usize,
+        closed,
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn remove_segment_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = remove_segment(
+        &path,
+        SegmentAddress::new(subpath_index as usize, segment_index as usize),
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn remove_subpath_svg(data: &str, subpath_index: u32) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = remove_subpath(&path, subpath_index as usize).map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn join_subpaths_svg(
+    data: &str,
+    first_index: u32,
+    first_at_start: bool,
+    second_index: u32,
+    second_at_start: bool,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let edit = join_open_subpaths(
+        &path,
+        first_index as usize,
+        if first_at_start {
+            SubpathEndpoint::Start
+        } else {
+            SubpathEndpoint::End
+        },
+        second_index as usize,
+        if second_at_start {
+            SubpathEndpoint::Start
+        } else {
+            SubpathEndpoint::End
+        },
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+fn parse_transform_matrix(value: &str) -> Result<Transform2D, JsValue> {
+    let values = value
+        .split(',')
+        .map(|part| {
+            part.trim()
+                .parse::<f64>()
+                .map_err(|_| JsValue::from_str("invalid transform matrix"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if values.len() != 6 {
+        return Err(JsValue::from_str("transform matrix must contain 6 values"));
+    }
+
+    Ok(Transform2D::new(
+        values[0], values[1], values[2], values[3], values[4], values[5],
+    ))
+}
+
+#[wasm_bindgen]
+pub fn transform_path_svg(
+    data: &str,
+    matrix: &str,
+    flatness: f64,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let tolerance = Tolerance {
+        flatness: flatness.max(1.0e-12),
+        ..Tolerance::default()
+    };
+    let transformed =
+        transform_path(&path, parse_transform_matrix(matrix)?, tolerance).map_err(js_err)?;
+    Ok(serialize_path(&transformed, SerializeOptions::default()))
 }
 
 #[wasm_bindgen]

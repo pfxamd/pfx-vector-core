@@ -387,6 +387,35 @@ fn bench_core(c: &mut Criterion) {
         )
     });
 
+    c.bench_function("split segment edit 2000 segment path", |b| {
+        b.iter(|| {
+            split_segment(
+                black_box(&incremental_base),
+                black_box(SegmentAddress::new(50, 10)),
+                black_box(0.5),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("split edit and incremental sync 2000 segments", |b| {
+        b.iter_batched(
+            || IncrementalPathSpatialIndex::build(&incremental_base, tolerance).unwrap(),
+            |mut index| {
+                let edit = split_segment(
+                    &incremental_base,
+                    SegmentAddress::new(50, 10),
+                    0.5,
+                    tolerance,
+                )
+                .unwrap();
+                black_box(index.sync_edit(&edit).unwrap())
+            },
+            BatchSize::SmallInput,
+        )
+    });
+
     let dense_index = PathSpatialIndex::build(&dense_path, tolerance).unwrap();
     c.bench_function("indexed nearest dense path", |b| {
         b.iter(|| {

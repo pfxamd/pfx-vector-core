@@ -1,5 +1,14 @@
 export type StrokeCap = "butt" | "round" | "square";
 export type StrokeJoin = "miter" | "round" | "bevel";
+export type SubpathEndpoint = "start" | "end";
+export type TransformMatrix = [
+  number,
+  number,
+  number,
+  number,
+  number,
+  number,
+];
 
 export interface VectorWasmBindings {
   validate_path(data: string): boolean;
@@ -12,6 +21,30 @@ export interface VectorWasmBindings {
     endDistance: number,
     wrap: boolean,
   ): string;
+  split_segment_svg(
+    data: string,
+    subpathIndex: number,
+    segmentIndex: number,
+    t: number,
+  ): string;
+  split_segment_at_length_svg(
+    data: string,
+    subpathIndex: number,
+    segmentIndex: number,
+    distance: number,
+  ): string;
+  reverse_subpath_svg(data: string, subpathIndex: number): string;
+  set_subpath_closed_svg(data: string, subpathIndex: number, closed: boolean): string;
+  remove_segment_svg(data: string, subpathIndex: number, segmentIndex: number): string;
+  remove_subpath_svg(data: string, subpathIndex: number): string;
+  join_subpaths_svg(
+    data: string,
+    firstIndex: number,
+    firstAtStart: boolean,
+    secondIndex: number,
+    secondAtStart: boolean,
+  ): string;
+  transform_path_svg(data: string, matrix: string, flatness: number): string;
   path_bounds_svg(data: string): string;
   point_at_length_svg(data: string, distance: number): string;
   hit_test_fill_svg(data: string, x: number, y: number, evenOdd: boolean): boolean;
@@ -174,6 +207,62 @@ export function createVectorCore(wasm: VectorWasmBindings) {
         totalLength,
       };
     },
+    splitSegment: (
+      data: string,
+      subpathIndex: number,
+      segmentIndex: number,
+      t: number,
+    ) => wasm.split_segment_svg(data, subpathIndex, segmentIndex, t),
+    splitSegmentAtLength: (
+      data: string,
+      subpathIndex: number,
+      segmentIndex: number,
+      distance: number,
+    ) =>
+      wasm.split_segment_at_length_svg(
+        data,
+        subpathIndex,
+        segmentIndex,
+        distance,
+      ),
+    insertAnchor: (
+      data: string,
+      subpathIndex: number,
+      segmentIndex: number,
+      t: number,
+    ) => wasm.split_segment_svg(data, subpathIndex, segmentIndex, t),
+    reverseSubpath: (data: string, subpathIndex: number) =>
+      wasm.reverse_subpath_svg(data, subpathIndex),
+    setSubpathClosed: (data: string, subpathIndex: number, closed: boolean) =>
+      wasm.set_subpath_closed_svg(data, subpathIndex, closed),
+    removeSegment: (data: string, subpathIndex: number, segmentIndex: number) =>
+      wasm.remove_segment_svg(data, subpathIndex, segmentIndex),
+    removeSubpath: (data: string, subpathIndex: number) =>
+      wasm.remove_subpath_svg(data, subpathIndex),
+    joinSubpaths: (
+      data: string,
+      firstIndex: number,
+      firstEndpoint: SubpathEndpoint,
+      secondIndex: number,
+      secondEndpoint: SubpathEndpoint,
+    ) =>
+      wasm.join_subpaths_svg(
+        data,
+        firstIndex,
+        firstEndpoint === "start",
+        secondIndex,
+        secondEndpoint === "start",
+      ),
+    transformPath: (
+      data: string,
+      matrix: TransformMatrix,
+      options: TessellationOptions = {},
+    ) =>
+      wasm.transform_path_svg(
+        data,
+        matrix.join(","),
+        options.flatness ?? 1e-4,
+      ),
     pathBounds: (data: string) =>
       JSON.parse(wasm.path_bounds_svg(data)) as Bounds | null,
     pointAtLength: (data: string, distance: number) =>
