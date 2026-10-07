@@ -247,7 +247,6 @@ fn partially_overlapping_arcs_report_parameter_ranges() {
     assert!((overlap.range_b.max - 0.5).abs() < 1.0e-10);
 }
 
-
 #[test]
 fn non_dyadic_quadratic_tangency_is_stable() {
     let tangent_parameter = 0.3;
@@ -272,10 +271,12 @@ fn non_dyadic_quadratic_tangency_is_stable() {
     assert_eq!(hits.len(), 1, "non-dyadic tangent hits: {hits:#?}");
     assert_eq!(hits[0].kind, IntersectionKind::Tangent);
     assert!((hits[0].parameter_a - tangent_parameter).abs() < 1.0e-6);
-    assert!(hits[0]
-        .point
-        .distance_to(Point2::new(tangent_parameter, 0.0))
-        < 1.0e-7);
+    assert!(
+        hits[0]
+            .point
+            .distance_to(Point2::new(tangent_parameter, 0.0))
+            < 1.0e-7
+    );
 }
 
 #[test]
@@ -316,12 +317,8 @@ fn advanced_intersections_are_symmetric() {
         Point2::new(100.0, 25.0),
     ));
 
-    let forward = point_hits(
-        &intersect_segments(quadratic, cubic, default_tolerance()).unwrap(),
-    );
-    let reverse = point_hits(
-        &intersect_segments(cubic, quadratic, default_tolerance()).unwrap(),
-    );
+    let forward = point_hits(&intersect_segments(quadratic, cubic, default_tolerance()).unwrap());
+    let reverse = point_hits(&intersect_segments(cubic, quadratic, default_tolerance()).unwrap());
 
     assert_eq!(forward.len(), reverse.len());
 
@@ -352,8 +349,5 @@ fn advanced_intersections_survive_large_translation() {
     let hits = point_hits(&result);
 
     assert_eq!(hits.len(), 1, "{hits:#?}");
-    assert!(hits[0]
-        .point
-        .distance_to(Point2::new(offset, offset))
-        < 1.0e-4);
+    assert!(hits[0].point.distance_to(Point2::new(offset, offset)) < 1.0e-4);
 }
