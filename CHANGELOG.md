@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0 - 2026-10-07
+
+### Added
+
+- Curve-preserving Boolean operations: `Union`, `Intersection`, `Difference`, and `XOR`.
+- Public Rust APIs: `boolean_union`, `boolean_intersection`, `boolean_difference`, `boolean_xor`, and the general `boolean_paths` entry point.
+- Explicit fill-rule Boolean API through `boolean_paths_with_fill_rules`.
+- Path fragmentation at exact intersection parameters while retaining line, quadratic Bézier, cubic Bézier, and elliptical-arc segment types.
+- Boundary-side topology classification: each fragment is tested on both sides and retained only when the Boolean set membership changes across it.
+- Directed contour reconstruction with output interior consistently oriented to the left of retained fragments.
+- Coincident-fragment deduplication and shared-edge removal.
+- WebAssembly Boolean exports for SVG path strings.
+- TypeScript wrapper methods for union, area intersection, subtraction, and XOR.
+- Criterion benchmark coverage for Boolean union.
+- Robustness tests covering shared boundaries, containment holes, identical/disjoint inputs, reversed orientation, `evenodd` holes, tangent circles, large translated coordinates, and commutative operations.
+
+### Changed
+
+- Boolean topology builds directly on the advanced intersection engine from v0.2 rather than flattening curves into polygonal approximations.
+- Closed-path implicit closing edges participate in Boolean intersection/splitting even when they are not stored as explicit line segments.
+- Boolean output converts source fill semantics into explicit directed contours that can be consumed with the standard nonzero rule.
+
+### Scope limits
+
+- Boolean operations currently require closed input subpaths; open paths return `UnsupportedCase`.
+- General normalization of self-intersecting input contours is not yet part of the validated Boolean scope.
+- General partial overlap detection for differently parameterized but geometrically identical Bézier curves remains limited by the v0.2 intersection overlap model.
+- General offsets, tessellation, rendering, and scene-graph/editor concerns remain deferred.
+
 ## 0.2.0 - 2026-10-07
 
 ### Added

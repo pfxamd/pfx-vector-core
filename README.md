@@ -1,10 +1,53 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, path mathematics, and an SVG geometry boundary. Rendering, DOM, UI, scene graphs, and editor state are intentionally outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, path mathematics, SVG geometry, advanced intersections, and curve-preserving Boolean path operations. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.2.0`.
+**Status:** `v0.3.0`.
 
-## v0.2 additions
+## v0.3 Boolean operations
+
+The core now exposes:
+
+```rust
+boolean_union(a, b, tolerance)
+boolean_intersection(a, b, tolerance)
+boolean_difference(a, b, tolerance)
+boolean_xor(a, b, tolerance)
+```
+
+A general API is also available:
+
+```rust
+boolean_paths(a, b, BooleanOperation::Union, tolerance)
+```
+
+For SVG fill semantics, `boolean_paths_with_fill_rules` accepts independent `NonZero` or `EvenOdd` rules for each input.
+
+The Boolean engine:
+
+- finds intersections with the native curve intersection engine
+- splits source segments at their actual parameters
+- preserves line, quadratic Bézier, cubic Bézier, and elliptical-arc fragments
+- classifies both sides of every fragment against the requested set operation
+- removes internal/shared boundaries
+- reverses fragments when required by the resulting topology
+- stitches retained fragments back into closed directed contours
+- represents holes explicitly through contour direction
+
+It does **not** flatten curves into polygons as the Boolean representation.
+
+### Web API
+
+The WebAssembly/TypeScript boundary exposes the same operations for SVG path data:
+
+```text
+unionPaths(a, b)
+intersectPathAreas(a, b)
+subtractPaths(a, b)
+xorPaths(a, b)
+```
+
+## v0.2 advanced intersections
 
 - quadratic-quadratic intersections
 - quadratic-cubic intersections
@@ -17,9 +60,7 @@
 - partial overlap ranges for compatible elliptical arcs
 - analytical elliptical-arc bounds
 - near-tangent false-positive hardening
-- deterministic intersection ordering and argument-order symmetry tests
-
-Advanced curve-pair intersections use parameter-space subdivision with bounds pruning and local numerical refinement. Search tolerance and final intersection acceptance are intentionally separate: a broad search may find candidates, but a result is accepted only when the geometric residual satisfies the core numerical tolerance.
+- deterministic intersection ordering
 
 ## v0.1 foundation
 
@@ -35,12 +76,10 @@ Advanced curve-pair intersections use parameter-space subdivision with bounds pr
 - closest-point queries
 - `nonzero` / `evenodd` fill hit testing
 - stroke styles, dash processing, stroke bounds, and stroke hit testing
-- basic line-based intersections
-- SVG path parsing and normalization for `M L H V C S Q T A Z`
-- SVG path serialization
+- SVG path parsing/normalization/serialization
 - SVG transform-list parsing
-- `viewBox` / `preserveAspectRatio` transform calculation
-- WebAssembly bridge and a thin TypeScript wrapper
+- `viewBox` / `preserveAspectRatio` mapping
+- WebAssembly bridge and TypeScript wrapper
 
 ## Workspace
 
@@ -63,7 +102,7 @@ The geometry core has no runtime third-party dependencies and the Rust workspace
 
 ## Numerical model
 
-The scalar type is `f64`. Approximate operations use explicit tolerance rather than a single hidden global epsilon. Invalid non-finite inputs are rejected at public construction/parsing boundaries where applicable. Topological results distinguish normal absence of a result from invalid geometry or numerical failure.
+The scalar type is `f64`. Approximate operations use explicit tolerance rather than a hidden global epsilon. Invalid non-finite inputs are rejected at public construction/parsing boundaries where applicable.
 
 Some operations are deliberately tolerance-driven:
 
@@ -73,19 +112,18 @@ Some operations are deliberately tolerance-driven:
 - stroke hit testing uses the flattened centerline representation.
 - arbitrary affine transforms of arc segments are flattened when an exact arc representation is not retained.
 - advanced curve intersections use bounded subdivision and local numerical refinement.
+- Boolean topology uses numerical side probes after exact curve fragmentation to determine set membership around each boundary fragment.
 
-These are documented behavior, not hidden precision claims.
+## Validated Boolean scope
 
-## Deliberately outside v0.2
+Validated cases include overlapping/disjoint/contained/identical closed paths, shared edges, holes, reversed input orientation, `evenodd` inputs, curved circle intersections, tangent circles, large translated coordinates, and set-operation symmetry.
 
-- Boolean path operations
-- general path offsets
-- tessellation / triangulation
-- GPU or raster rendering
-- scene graph / document model
-- editor selection, history, snapping, and guides
-- CSS cascade, DOM, filters, animation, scripting, and text shaping
-- general partial overlap of differently parameterized Bézier curves
+Current limits:
+
+- open subpaths are rejected
+- self-intersecting input normalization is not yet guaranteed by the Boolean engine
+- differently parameterized coincident Bézier overlaps are limited by current overlap detection
+- general path offsets are not yet included
 
 ## Naming
 
@@ -100,8 +138,6 @@ The repository follows **PFx Naming System v3.1.0** in advisory `balanced` mode.
 See [`AGENTS.md`](AGENTS.md) for the local contributor rules.
 
 ## Validation
-
-The repository contains unit tests, property tests, SVG specification-oriented cases, regression tests, advanced intersection robustness tests, a fuzz target, adversarial corpora, and Criterion benchmarks.
 
 ```bash
 python3 scripts/verify_structure.py
