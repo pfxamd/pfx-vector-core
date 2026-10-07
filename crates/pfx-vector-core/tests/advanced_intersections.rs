@@ -618,7 +618,6 @@ fn reversed_multi_revolution_arc_keeps_deterministic_ranges() {
     );
 }
 
-
 #[test]
 fn partial_overlap_ranges_are_symmetric_when_inputs_are_swapped() {
     let base = CubicBezier::new(

@@ -319,7 +319,6 @@ fn tangent_circles_do_not_create_intersection_area() {
     assert!(!inside(&union, 10.0, 5.0));
 }
 
-
 #[test]
 fn partial_shared_quadratic_boundary_is_split_for_boolean_topology() {
     let parent = QuadraticBezier::new(
