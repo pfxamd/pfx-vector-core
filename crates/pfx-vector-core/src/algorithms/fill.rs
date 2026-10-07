@@ -1,7 +1,7 @@
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
 use crate::{
-    CoreError, CoreResult, EllipticalArc, FillRule as _, LineSegment, Path, Point2, Scalar, Segment,
-    Tolerance, closest_point_on_segment,
+    CoreError, CoreResult, EllipticalArc, LineSegment, Path, Point2, Scalar, Segment, Tolerance,
+    closest_point_on_segment,
 };
 
 const ROOT_PARAMETER_EPSILON: Scalar = 1.0e-10;
@@ -36,9 +36,7 @@ pub fn classify_point(
 
     for subpath in path.subpaths() {
         let mut segments = subpath.segments().to_vec();
-        if subpath.is_closed()
-            && !subpath.end().almost_eq(subpath.start(), tolerance)
-        {
+        if subpath.is_closed() && !subpath.end().almost_eq(subpath.start(), tolerance) {
             segments.push(Segment::Line(LineSegment::new(
                 subpath.end(),
                 subpath.start(),
@@ -46,12 +44,7 @@ pub fn classify_point(
         }
 
         for &segment in &segments {
-            if segment
-                .bounds()
-                .distance_squared_to_point(point)
-                .sqrt()
-                <= boundary_tolerance
-            {
+            if segment.bounds().distance_squared_to_point(point).sqrt() <= boundary_tolerance {
                 let nearest = closest_point_on_segment(segment, point, tolerance)?;
                 if nearest.distance <= boundary_tolerance {
                     return Ok(PointClassification::Boundary);
