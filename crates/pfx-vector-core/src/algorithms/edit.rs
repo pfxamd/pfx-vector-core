@@ -32,6 +32,7 @@ pub enum PathEditKind {
     JoinSubpaths,
     SetClosed,
     ReplaceSegment,
+    ReplaceSubpath,
     RemoveSegment,
     RemoveSubpath,
 }
@@ -44,6 +45,8 @@ pub struct PathEditReport {
     pub subpaths_after: usize,
     pub segments_before: usize,
     pub segments_after: usize,
+    pub subpath_delta: isize,
+    pub segment_delta: isize,
     pub topology_changed: bool,
 }
 
@@ -175,6 +178,14 @@ pub fn set_subpath_closed(
     )
 }
 
+pub fn extract_segment(path: &Path, address: SegmentAddress) -> CoreResult<Segment> {
+    segment_at(subpath_at(path, address.subpath_index)?, address.segment_index)
+}
+
+pub fn extract_subpath(path: &Path, subpath_index: usize) -> CoreResult<Subpath> {
+    Ok(subpath_at(path, subpath_index)?.clone())
+}
+
 pub fn replace_segment(
     path: &Path,
     address: SegmentAddress,
@@ -202,6 +213,25 @@ pub fn replace_segment(
         vec![updated],
         PathEditKind::ReplaceSegment,
         false,
+    )
+}
+
+pub fn replace_subpath(
+    path: &Path,
+    subpath_index: usize,
+    replacement: Subpath,
+) -> CoreResult<PathEditResult> {
+    let original = subpath_at(path, subpath_index)?;
+    let topology_changed = original.segments().len() != replacement.segments().len()
+        || original.is_closed() != replacement.is_closed()
+        || original.start() != replacement.start();
+
+    replace_subpath_internal(
+        path,
+        subpath_index,
+        vec![replacement],
+        PathEditKind::ReplaceSubpath,
+        topology_changed,
     )
 }
 
@@ -382,6 +412,8 @@ fn edit_result(
             subpaths_after: edited.subpaths().len(),
             segments_before: original.segment_count(),
             segments_after: edited.segment_count(),
+            subpath_delta: edited.subpaths().len() as isize - original.subpaths().len() as isize,
+            segment_delta: edited.segment_count() as isize - original.segment_count() as isize,
             topology_changed,
         },
         path: edited,
