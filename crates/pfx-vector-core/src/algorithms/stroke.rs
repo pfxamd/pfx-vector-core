@@ -55,11 +55,7 @@ impl StrokeStyle {
             return Err(CoreError::InvalidGeometry);
         }
 
-        let maximum_reach = self.width
-            * self
-                .miter_limit
-                .max(core::f64::consts::SQRT_2)
-                .max(1.0);
+        let maximum_reach = self.width * self.miter_limit.max(core::f64::consts::SQRT_2).max(1.0);
         if !maximum_reach.is_finite() {
             return Err(CoreError::InvalidGeometry);
         }
