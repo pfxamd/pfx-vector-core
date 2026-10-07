@@ -310,7 +310,6 @@ fn zero_distance_open_offset_is_identity() {
     assert_eq!(result, path);
 }
 
-
 fn exact_offset_point(segment: Segment, t: f64, distance: f64) -> Point2 {
     let derivative = match segment {
         Segment::Line(line) => line.direction(),
@@ -417,8 +416,14 @@ fn high_curvature_offset_splits_before_curvature_singularity() {
     let segments = only_subpath(&result).segments();
 
     assert!(segments.len() > 1);
-    assert!(segments.iter().all(|segment| matches!(segment, Segment::Cubic(_))));
-    assert!(segments.iter().all(|segment| {
-        segment.start().is_finite() && segment.end().is_finite()
-    }));
+    assert!(
+        segments
+            .iter()
+            .all(|segment| matches!(segment, Segment::Cubic(_)))
+    );
+    assert!(
+        segments
+            .iter()
+            .all(|segment| { segment.start().is_finite() && segment.end().is_finite() })
+    );
 }

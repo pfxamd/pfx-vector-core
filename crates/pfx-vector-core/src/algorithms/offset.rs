@@ -556,24 +556,8 @@ fn fit_offset_interval(
     }
 
     if let Some(split) = find_offset_singularity(segment, distance, t0, t1, tolerance) {
-        fit_offset_interval(
-            segment,
-            distance,
-            t0,
-            split,
-            tolerance,
-            depth - 1,
-            output,
-        )?;
-        fit_offset_interval(
-            segment,
-            distance,
-            split,
-            t1,
-            tolerance,
-            depth - 1,
-            output,
-        )?;
+        fit_offset_interval(segment, distance, t0, split, tolerance, depth - 1, output)?;
+        fit_offset_interval(segment, distance, split, t1, tolerance, depth - 1, output)?;
         return Ok(());
     }
 
@@ -591,14 +575,7 @@ fn fit_offset_interval(
     );
 
     let allowed_error = offset_error_tolerance(segment, distance, tolerance);
-    let maximum_error = validate_offset_candidate(
-        segment,
-        distance,
-        t0,
-        t1,
-        candidate,
-        tolerance,
-    )?;
+    let maximum_error = validate_offset_candidate(segment, distance, t0, t1, candidate, tolerance)?;
 
     if maximum_error <= allowed_error {
         output.push(Segment::Cubic(candidate));
@@ -655,8 +632,7 @@ fn offset_derivative(
     }
 
     let second_derivative = segment_second_derivative(segment, t);
-    let signed_curvature =
-        derivative.cross(second_derivative) / (speed * speed * speed);
+    let signed_curvature = derivative.cross(second_derivative) / (speed * speed * speed);
     let offset_scale = 1.0 - distance * signed_curvature;
 
     if !offset_scale.is_finite() {
@@ -693,17 +669,14 @@ fn segment_derivative(segment: Segment, t: Scalar) -> Vector2 {
 fn segment_second_derivative(segment: Segment, t: Scalar) -> Vector2 {
     match segment {
         Segment::Line(_) => Vector2::new(0.0, 0.0),
-        Segment::Quadratic(curve) => {
-            ((curve.p2 - curve.p1) - (curve.p1 - curve.p0)) * 2.0
-        }
+        Segment::Quadratic(curve) => ((curve.p2 - curve.p1) - (curve.p1 - curve.p0)) * 2.0,
         Segment::Cubic(curve) => {
             let first = (curve.p2 - curve.p1) - (curve.p1 - curve.p0);
             let second = (curve.p3 - curve.p2) - (curve.p2 - curve.p1);
             first * (6.0 * (1.0 - t)) + second * (6.0 * t)
         }
         Segment::Arc(arc) => {
-            let theta =
-                arc.start_angle.as_radians() + arc.sweep_angle.as_radians() * t;
+            let theta = arc.start_angle.as_radians() + arc.sweep_angle.as_radians() * t;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let (sin_rotation, cos_rotation) = arc.rotation.as_radians().sin_cos();
             let sweep_squared = arc.sweep_angle.as_radians().powi(2);
@@ -769,8 +742,7 @@ fn find_offset_singularity(
             .ok()
             .flatten();
 
-        if sample < OFFSET_SINGULARITY_SAMPLES
-            && current.is_some_and(|value| value.abs() <= 1.0e-8)
+        if sample < OFFSET_SINGULARITY_SAMPLES && current.is_some_and(|value| value.abs() <= 1.0e-8)
         {
             return Some(t);
         }
@@ -778,14 +750,7 @@ fn find_offset_singularity(
         if let (Some(left), Some(right)) = (previous, current)
             && left * right < 0.0
         {
-            return bisect_offset_singularity(
-                segment,
-                distance,
-                previous_t,
-                t,
-                left,
-                tolerance,
-            );
+            return bisect_offset_singularity(segment, distance, previous_t, t, left, tolerance);
         }
 
         previous_t = t;
@@ -844,7 +809,6 @@ fn validate_offset_candidate(
 
     Ok(maximum_error)
 }
-
 
 fn offset_error_tolerance(segment: Segment, distance: Scalar, tolerance: Tolerance) -> Scalar {
     let bounds = segment.bounds();
