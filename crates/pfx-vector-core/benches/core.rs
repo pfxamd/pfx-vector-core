@@ -251,6 +251,36 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    let transform_arc = EllipticalArc::new(
+        Point2::new(20.0, -10.0),
+        80.0,
+        32.0,
+        Angle::degrees(27.0),
+        Angle::degrees(-40.0),
+        Angle::degrees(250.0),
+    );
+    let mut transform_arc_builder = PathBuilder::new();
+    transform_arc_builder
+        .move_to(transform_arc.point_at(0.0))
+        .unwrap()
+        .arc_to(transform_arc)
+        .unwrap();
+    let transform_arc_path = transform_arc_builder.finish().unwrap();
+    let affine_transform = Transform2D::scale(1.7, 0.6)
+        .then(Transform2D::skew_x(Angle::degrees(13.0)))
+        .then(Transform2D::rotation(Angle::degrees(21.0)));
+
+    c.bench_function("affine transform elliptical arc", |b| {
+        b.iter(|| {
+            transform_path(
+                black_box(&transform_arc_path),
+                black_box(affine_transform),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     let mut dense_builder = PathBuilder::new();
     dense_builder.move_to(Point2::new(0.0, 0.0)).unwrap();
     for index in 1..=1000 {

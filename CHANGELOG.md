@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16.0 - 2026-10-07
+
+### Added
+
+- Public `transform_elliptical_arc` for native affine transformation of elliptical arcs.
+- Native `EllipticalArc` preservation in `transform_path` for non-singular affine transforms.
+- Exact geometry preservation across translation, rotation, non-uniform scaling, skew, and reflection.
+- Reflection-aware sweep reversal so transformed parameter direction remains geometrically correct.
+- Regression coverage for skewed/non-uniform transforms, reflections, full ellipse sweeps, singular collapse, and non-finite matrices.
+- Criterion benchmark coverage for affine transformation of elliptical arcs.
+
+### Changed
+
+- `transformPath` through WebAssembly/TypeScript now preserves non-degenerate elliptical arcs instead of flattening them to line segments.
+- Singular affine transforms retain deterministic fallback behavior by flattening only when the transformed ellipse collapses and cannot be represented as a valid `EllipticalArc`.
+
+### Scope limits
+
+- Near-singular transforms whose minor radius falls within the configured tolerance are treated as singular and use the flattening fallback.
+- Path transforms remain immutable geometry snapshots; editor history, selection, and scene state remain outside the core.
+
 ## 0.15.0 - 2026-10-07
 
 ### Added

@@ -2,7 +2,38 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.15.0`.
+**Status:** `v0.16.0`.
+
+## v0.16 native affine arc transforms
+
+`transform_path` now preserves `EllipticalArc` segments under non-singular affine transforms instead of flattening them.
+
+```rust
+let transform = Transform2D::scale(1.5, 0.75)
+    .then(Transform2D::skew_x(Angle::degrees(12.0)))
+    .then(Transform2D::rotation(Angle::degrees(25.0)));
+
+let transformed_arc = transform_elliptical_arc(arc, transform, tolerance)?;
+let transformed_path = transform_path(&path, transform, tolerance)?;
+```
+
+The transformed ellipse axes are recovered from the affine image of the source ellipse basis. Translation, rotation, non-uniform scaling, skew, and reflection therefore retain native arc geometry. Reflections reverse sweep orientation while preserving the transformed parameterized curve.
+
+### Web API
+
+No API change is required:
+
+```text
+transformPath(data, matrix, { flatness })
+```
+
+The `flatness` tolerance is now used for arc fallback only when a transform collapses an ellipse to degenerate line geometry.
+
+Current transform limits:
+
+- singular or tolerance-near-singular arc transforms fall back to adaptive line geometry
+- non-finite transforms are rejected as `InvalidNumber`
+- path transforms remain geometry-only; editor history and state stay outside the core
 
 ## v0.15 path editing engine
 
@@ -59,7 +90,7 @@ joinSubpaths(data, firstIndex, firstEndpoint, secondIndex, secondEndpoint)
 transformPath(data, matrix, { flatness })
 ```
 
-`transformPath` exposes the existing core `Transform2D` path transform through WebAssembly/TypeScript. Lines and Bézier segments retain native primitives; elliptical arcs currently follow the existing tolerance-controlled flattening path under transforms.
+`transformPath` exposes the existing core `Transform2D` path transform through WebAssembly/TypeScript. Lines and Bézier segments retain native primitives. Starting in v0.16, non-degenerate elliptical arcs also remain native under affine transforms.
 
 Current editing limits:
 
@@ -68,7 +99,6 @@ Current editing limits:
 - replacement segments must preserve the original segment endpoints within tolerance
 - joining subpaths requires matching selected endpoints within tolerance
 - editing remains snapshot-based; undo/redo history and selection state intentionally remain outside the geometry core
-- transformed arcs currently become line segments according to the supplied flatness tolerance
 
 ## v0.14 precise stroke hit-testing engine
 
