@@ -196,7 +196,6 @@ fn open_fill_subpaths_are_explicitly_rejected() {
     );
 }
 
-
 #[test]
 fn multiple_holes_preserve_total_filled_area() {
     let outer = rect_path(0.0, 0.0, 40.0, 30.0);
@@ -230,7 +229,11 @@ fn generated_triangles_have_valid_indices_and_positive_winding() {
 
     assert_eq!(mesh.indices.len() % 3, 0);
     for triangle in mesh.indices.chunks_exact(3) {
-        assert!(triangle.iter().all(|index| (*index as usize) < mesh.vertices.len()));
+        assert!(
+            triangle
+                .iter()
+                .all(|index| (*index as usize) < mesh.vertices.len())
+        );
         let a = mesh.vertices[triangle[0] as usize];
         let b = mesh.vertices[triangle[1] as usize];
         let c = mesh.vertices[triangle[2] as usize];
