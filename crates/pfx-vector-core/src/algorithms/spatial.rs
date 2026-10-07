@@ -472,29 +472,6 @@ fn bounds_overlap(left: Bounds, right: Bounds, padding: Scalar) -> bool {
         && left_max.y + padding >= right_min.y
 }
 
-fn bounds_distance_squared_to_point(bounds: Bounds, point: Point2) -> Scalar {
-    let Some((min, max)) = finite_bounds(bounds) else {
-        return Scalar::INFINITY;
-    };
-
-    let dx = if point.x < min.x {
-        min.x - point.x
-    } else if point.x > max.x {
-        point.x - max.x
-    } else {
-        0.0
-    };
-    let dy = if point.y < min.y {
-        min.y - point.y
-    } else if point.y > max.y {
-        point.y - max.y
-    } else {
-        0.0
-    };
-
-    dx * dx + dy * dy
-}
-
 fn finite_bounds(bounds: Bounds) -> Option<(Point2, Point2)> {
     match bounds {
         Bounds::Empty => None,
