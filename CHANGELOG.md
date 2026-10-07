@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.4.0 - 2026-10-07
+
+### Added
+
+- Closed-path geometric offsets through `offset_path` with positive outward and negative inward distances.
+- Explicit fill-rule offsets through `offset_path_with_fill_rule`, including validated `EvenOdd` hole behavior.
+- Stroke-to-filled-path conversion through `outline_path` and `stroke_to_path`.
+- `OffsetStyle` with miter, round, and bevel join selection plus miter limits.
+- Butt, round, and square cap geometry for open-path outlines.
+- Exact line offsets and exact circular-arc offsets.
+- Adaptive cubic approximation for quadratic Bézier, cubic Bézier, and non-circular elliptical-arc offsets.
+- Boolean cleanup of per-segment ribbons and join/cap components, allowing crossing open centerlines to resolve into clean filled outline areas.
+- WebAssembly exports for SVG path offset and outline operations.
+- TypeScript `offsetPath` and `outlinePath` APIs with typed cap/join options.
+- Criterion benchmarks for rectangle offset and cubic-path outlining.
+- Robustness coverage for holes, `EvenOdd` contours, large coordinates, inward collapse, curved geometry, miter fallback, closed rings, and crossing centerlines.
+
+### Changed
+
+- Offset area construction reuses the Boolean topology engine from v0.3 for outward union and inward difference.
+- Full circular stroke outlines retain native arc geometry when possible.
+- General curve offsets are fitted adaptively against geometric error tolerance instead of using a fixed segment count.
+
+### Scope limits
+
+- `offset_path` requires closed input subpaths.
+- Dashed stroke expansion is not part of v0.4; non-empty dash arrays return `UnsupportedCase` from the outline engine.
+- Mathematical offsets of Bézier curves and general ellipses are not themselves Bézier/ellipse primitives, so v0.4 represents them as adaptive cubic approximations within tolerance.
+- Severe cusps or degenerate tangents may return `DegenerateOperation` or `ToleranceNotMet` rather than invent unstable geometry.
+- General self-intersecting filled-contour normalization remains outside the guaranteed offset scope.
+- Tessellation, rendering, and scene-graph/editor concerns remain deferred.
+
 ## 0.3.0 - 2026-10-07
 
 ### Added

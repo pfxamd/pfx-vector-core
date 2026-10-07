@@ -1,84 +1,99 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, path mathematics, SVG geometry, advanced intersections, and curve-preserving Boolean path operations. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, advanced intersections, Boolean operations, and offset/outline construction. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.3.0`.
+**Status:** `v0.4.0`.
 
-## v0.3 Boolean operations
+## v0.4 offset and outline engine
 
 The core now exposes:
 
 ```rust
-boolean_union(a, b, tolerance)
-boolean_intersection(a, b, tolerance)
-boolean_difference(a, b, tolerance)
-boolean_xor(a, b, tolerance)
+offset_path(path, distance, OffsetStyle::default(), tolerance)
+outline_path(path, &stroke_style, tolerance)
+stroke_to_path(path, &stroke_style, tolerance)
 ```
 
-A general API is also available:
+For compound SVG fill semantics:
 
 ```rust
-boolean_paths(a, b, BooleanOperation::Union, tolerance)
+offset_path_with_fill_rule(
+    path,
+    FillRule::EvenOdd,
+    distance,
+    OffsetStyle::default(),
+    tolerance,
+)
 ```
 
-For SVG fill semantics, `boolean_paths_with_fill_rules` accepts independent `NonZero` or `EvenOdd` rules for each input.
+Offset semantics are set-oriented for closed paths:
 
-The Boolean engine:
+- positive distance expands the filled area
+- negative distance contracts the filled area
+- holes shrink on outward offsets and expand on inward offsets
+- complete inward collapse returns an empty path
 
-- finds intersections with the native curve intersection engine
-- splits source segments at their actual parameters
-- preserves line, quadratic Bézier, cubic Bézier, and elliptical-arc fragments
-- classifies both sides of every fragment against the requested set operation
-- removes internal/shared boundaries
-- reverses fragments when required by the resulting topology
-- stitches retained fragments back into closed directed contours
-- represents holes explicitly through contour direction
+Outline construction supports:
 
-It does **not** flatten curves into polygons as the Boolean representation.
+- `Butt / Round / Square` caps
+- `Miter / Round / Bevel` joins
+- miter-limit fallback
+- open and closed source paths
+- Boolean cleanup of overlapping segment ribbons, joins, caps, and crossing centerlines
+
+### Curve representation
+
+Offsets are not flattened into a fixed polygonal approximation.
+
+- lines stay exact lines
+- circular arcs stay exact circular arcs when the offset radius remains regular
+- quadratic/cubic Bézier offsets use adaptive cubic fitting
+- general elliptical-arc offsets use adaptive cubic fitting
+- adaptive fitting is checked against the requested geometric tolerance
+
+This distinction is intentional: a true parallel curve of a general Bézier or ellipse is not itself exactly representable by the same primitive type.
 
 ### Web API
 
-The WebAssembly/TypeScript boundary exposes the same operations for SVG path data:
+The TypeScript wrapper now provides:
 
 ```text
-unionPaths(a, b)
-intersectPathAreas(a, b)
-subtractPaths(a, b)
-xorPaths(a, b)
+offsetPath(data, distance, { join, miterLimit })
+outlinePath(data, width, { cap, join, miterLimit })
 ```
+
+## v0.3 Boolean operations
+
+- `Union / Intersection / Difference / XOR`
+- native curve fragmentation at actual intersection parameters
+- line, quadratic, cubic, and arc preservation
+- `NonZero / EvenOdd` input semantics
+- shared-edge removal
+- directed output contours and holes
+- WebAssembly and TypeScript Boolean APIs
 
 ## v0.2 advanced intersections
 
-- quadratic-quadratic intersections
-- quadratic-cubic intersections
-- cubic-cubic intersections
-- Bézier-arc intersections
-- arc-arc intersections
-- stable parameters on both intersecting segments
-- crossing, tangent, and endpoint classification
-- equivalent/reversed Bézier overlap detection
-- partial overlap ranges for compatible elliptical arcs
+- quadratic-quadratic
+- quadratic-cubic
+- cubic-cubic
+- Bézier-arc
+- arc-arc
+- crossing/tangent/endpoint classification
+- stable parameters on both segments
+- overlap support for validated coincident cases
 - analytical elliptical-arc bounds
-- near-tangent false-positive hardening
-- deterministic intersection ordering
 
 ## v0.1 foundation
 
 - `f64` geometry with explicit `Tolerance`
 - points, vectors, angles, affine transforms, and bounds
-- line, rectangle, rounded rectangle, circle, ellipse, polyline, and polygon geometry
-- quadratic and cubic Bézier curves
-- elliptical arcs
-- `Path → Subpath → Segment` topology and `PathBuilder`
-- path length and point/tangent-at-length queries
-- adaptive flattening
-- tight curve/arc bounds
-- closest-point queries
-- `nonzero` / `evenodd` fill hit testing
-- stroke styles, dash processing, stroke bounds, and stroke hit testing
+- primitive shapes, Bézier curves, and elliptical arcs
+- `Path → Subpath → Segment` topology
+- measurement, adaptive flattening, nearest-point queries
+- fill/stroke hit testing
 - SVG path parsing/normalization/serialization
-- SVG transform-list parsing
-- `viewBox` / `preserveAspectRatio` mapping
+- transform and `viewBox` handling
 - WebAssembly bridge and TypeScript wrapper
 
 ## Workspace
@@ -102,28 +117,27 @@ The geometry core has no runtime third-party dependencies and the Rust workspace
 
 ## Numerical model
 
-The scalar type is `f64`. Approximate operations use explicit tolerance rather than a hidden global epsilon. Invalid non-finite inputs are rejected at public construction/parsing boundaries where applicable.
+The scalar type is `f64`. Approximate operations use explicit tolerance rather than a hidden global epsilon.
 
-Some operations are deliberately tolerance-driven:
+Tolerance-sensitive operations include:
 
-- Bézier/arc length uses adaptive numerical integration.
-- curve and arc flattening is adaptive.
-- closest-point-on-curves currently uses the flattened representation as its search basis.
-- stroke hit testing uses the flattened centerline representation.
-- arbitrary affine transforms of arc segments are flattened when an exact arc representation is not retained.
-- advanced curve intersections use bounded subdivision and local numerical refinement.
-- Boolean topology uses numerical side probes after exact curve fragmentation to determine set membership around each boundary fragment.
+- Bézier/arc length via adaptive numerical integration
+- adaptive curve flattening
+- closest-point and stroke hit-testing approximations
+- advanced curve intersections via bounded subdivision and local refinement
+- general curve offsets via adaptive cubic fitting
+- Boolean/offset topology through explicit geometric side classification and cleanup
 
-## Validated Boolean scope
+## Validated offset/outline scope
 
-Validated cases include overlapping/disjoint/contained/identical closed paths, shared edges, holes, reversed input orientation, `evenodd` inputs, curved circle intersections, tangent circles, large translated coordinates, and set-operation symmetry.
+Validated cases include outward/inward rectangle offsets, circular offsets, closed outline rings, holes, `EvenOdd` holes, cubic and elliptical outlines, all cap types, all join modes, miter fallback, crossing open centerlines, large translated coordinates, and complete inward collapse.
 
 Current limits:
 
-- open subpaths are rejected
-- self-intersecting input normalization is not yet guaranteed by the Boolean engine
-- differently parameterized coincident Bézier overlaps are limited by current overlap detection
-- general path offsets are not yet included
+- offset inputs must be closed
+- dashed outline expansion is deferred
+- severe cusp/degenerate tangent cases may return a defined failure
+- general self-intersecting filled-contour offset normalization is not guaranteed
 
 ## Naming
 
