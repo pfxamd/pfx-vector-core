@@ -2,9 +2,26 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, path mathematics, and an SVG geometry boundary. Rendering, DOM, UI, scene graphs, and editor state are intentionally outside the core.
 
-**Status:** `v0.1.0`.
+**Status:** `v0.2.0`.
 
-## v0.1 scope
+## v0.2 additions
+
+- quadratic-quadratic intersections
+- quadratic-cubic intersections
+- cubic-cubic intersections
+- Bézier-arc intersections
+- arc-arc intersections
+- stable parameters on both intersecting segments
+- crossing, tangent, and endpoint classification
+- equivalent/reversed Bézier overlap detection
+- partial overlap ranges for compatible elliptical arcs
+- analytical elliptical-arc bounds
+- near-tangent false-positive hardening
+- deterministic intersection ordering and argument-order symmetry tests
+
+Advanced curve-pair intersections use parameter-space subdivision with bounds pruning and local numerical refinement. Search tolerance and final intersection acceptance are intentionally separate: a broad search may find candidates, but a result is accepted only when the geometric residual satisfies the core numerical tolerance.
+
+## v0.1 foundation
 
 - `f64` geometry with explicit `Tolerance`
 - points, vectors, angles, affine transforms, and bounds
@@ -18,7 +35,7 @@
 - closest-point queries
 - `nonzero` / `evenodd` fill hit testing
 - stroke styles, dash processing, stroke bounds, and stroke hit testing
-- basic intersections: line-line, line-quadratic, line-cubic, and line-arc
+- basic line-based intersections
 - SVG path parsing and normalization for `M L H V C S Q T A Z`
 - SVG path serialization
 - SVG transform-list parsing
@@ -48,8 +65,6 @@ The geometry core has no runtime third-party dependencies and the Rust workspace
 
 The scalar type is `f64`. Approximate operations use explicit tolerance rather than a single hidden global epsilon. Invalid non-finite inputs are rejected at public construction/parsing boundaries where applicable. Topological results distinguish normal absence of a result from invalid geometry or numerical failure.
 
-### Approximate operations in v0.1
-
 Some operations are deliberately tolerance-driven:
 
 - Bézier/arc length uses adaptive numerical integration.
@@ -57,10 +72,11 @@ Some operations are deliberately tolerance-driven:
 - closest-point-on-curves currently uses the flattened representation as its search basis.
 - stroke hit testing uses the flattened centerline representation.
 - arbitrary affine transforms of arc segments are flattened when an exact arc representation is not retained.
+- advanced curve intersections use bounded subdivision and local numerical refinement.
 
 These are documented behavior, not hidden precision claims.
 
-## Deliberately outside v0.1
+## Deliberately outside v0.2
 
 - Boolean path operations
 - general path offsets
@@ -69,7 +85,7 @@ These are documented behavior, not hidden precision claims.
 - scene graph / document model
 - editor selection, history, snapping, and guides
 - CSS cascade, DOM, filters, animation, scripting, and text shaping
-- full curve-curve / arc-arc intersection engine
+- general partial overlap of differently parameterized Bézier curves
 
 ## Naming
 
@@ -85,12 +101,13 @@ See [`AGENTS.md`](AGENTS.md) for the local contributor rules.
 
 ## Validation
 
-The repository contains unit tests, property tests, SVG specification-oriented cases, regression tests, a fuzz target, adversarial corpora, and Criterion benchmarks.
+The repository contains unit tests, property tests, SVG specification-oriented cases, regression tests, advanced intersection robustness tests, a fuzz target, adversarial corpora, and Criterion benchmarks.
 
 ```bash
 python3 scripts/verify_structure.py
-cargo fmt --all
-cargo clippy --workspace --all-targets --all-features
+cargo fmt --all -- --check
+cargo check --workspace --all-targets --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo bench -p pfx-vector-core --no-run
 cargo build -p pfx-vector-wasm --target wasm32-unknown-unknown
@@ -104,4 +121,8 @@ npm install
 npm run typecheck
 ```
 
-Rust `1.85` is the declared minimum version because the workspace uses Edition 2024. Current stable Rust is recommended.\n\n## License\n\nApache-2.0.
+Rust `1.85` is the declared minimum version because the workspace uses Edition 2024. Current stable Rust is recommended.
+
+## License
+
+Apache-2.0.
