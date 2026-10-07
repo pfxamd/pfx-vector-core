@@ -59,10 +59,10 @@ pub fn classify_point(
             dedup_sorted(&mut roots, tolerance);
 
             for root in roots {
-                if root < -tolerance.absolute || root > 1.0 + tolerance.absolute {
+                if !(0.0..=1.0).contains(&root) {
                     continue;
                 }
-                let parameter = root.clamp(0.0, 1.0);
+                let parameter = root;
                 let intersection = segment.point_at(parameter);
                 if intersection.x <= point.x {
                     continue;
@@ -106,30 +106,9 @@ pub fn classify_point(
                     endpoint_events.push((intersection.x, direction));
                 }
 
-                if (point.x + 2.0).abs() < 0.01 && point.y.abs() < 0.01 {
-                    eprintln!(
-                        "FILL_EVENT q=({:.12},{:.12}) ray={:.12} seg={} t={:.15} x={:.12} dir={} endpoint={}",
-                        point.x,
-                        point.y,
-                        ray_y,
-                        segment_index,
-                        parameter,
-                        intersection.x,
-                        direction,
-                        endpoint,
-                    );
-                }
-
                 winding += i32::from(direction);
             }
         }
-    }
-
-    if (point.x + 2.0).abs() < 0.01 && point.y.abs() < 0.01 {
-        eprintln!(
-            "FILL_RESULT q=({:.12},{:.12}) winding={winding}",
-            point.x, point.y
-        );
     }
 
     Ok(match rule {
