@@ -170,8 +170,16 @@ fn low_miter_limit_falls_back_to_bevel_on_outer_corner() {
 
     let segments = only_subpath(&result).segments();
     assert_eq!(segments.len(), 3);
-    assert!(segments[0].end().almost_eq(Point2::new(10.0, -2.0), tolerance));
-    assert!(segments[1].end().almost_eq(Point2::new(12.0, 0.0), tolerance));
+    assert!(
+        segments[0]
+            .end()
+            .almost_eq(Point2::new(10.0, -2.0), tolerance)
+    );
+    assert!(
+        segments[1]
+            .end()
+            .almost_eq(Point2::new(12.0, 0.0), tolerance)
+    );
 }
 
 #[test]
