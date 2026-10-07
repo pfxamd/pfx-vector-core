@@ -302,8 +302,7 @@ pub fn cleanup_path_svg(
 #[wasm_bindgen]
 pub fn simplify_path_svg(data: &str, max_deviation: f64) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
-    let simplified =
-        simplify_path(&path, max_deviation, Tolerance::default()).map_err(js_err)?;
+    let simplified = simplify_path(&path, max_deviation, Tolerance::default()).map_err(js_err)?;
 
     Ok(serialize_path(&simplified, SerializeOptions::default()))
 }
@@ -315,4 +314,3 @@ pub fn fit_path_curves_svg(data: &str, max_error: f64) -> Result<String, JsValue
 
     Ok(serialize_path(&fitted, SerializeOptions::default()))
 }
-
