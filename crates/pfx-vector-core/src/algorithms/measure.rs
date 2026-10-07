@@ -1,4 +1,4 @@
-use crate::numeric::adaptive_simpson;
+use crate::numeric::{adaptive_simpson, solve_quadratic};
 use crate::{
     CoreError, CoreResult, Path, PathLocation, Point2, Scalar, Segment, Tolerance, Vector2,
 };
@@ -7,15 +7,109 @@ pub fn segment_length(segment: Segment, tolerance: Tolerance) -> CoreResult<Scal
     match segment {
         Segment::Line(line) => Ok(line.length()),
         Segment::Quadratic(curve) => {
-            adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, 1.0, tolerance)
+            if let Some(length) = line_like_bezier_length(Segment::Quadratic(curve), tolerance) {
+                Ok(length)
+            } else {
+                adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, 1.0, tolerance)
+            }
         }
         Segment::Cubic(curve) => {
-            adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, 1.0, tolerance)
+            if let Some(length) = line_like_bezier_length(Segment::Cubic(curve), tolerance) {
+                Ok(length)
+            } else {
+                adaptive_simpson(|t| curve.derivative_at(t).length(), 0.0, 1.0, tolerance)
+            }
         }
         Segment::Arc(arc) => {
             adaptive_simpson(|t| arc.derivative_at(t).length(), 0.0, 1.0, tolerance)
         }
     }
+}
+
+fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Scalar> {
+    let controls = match segment {
+        Segment::Quadratic(curve) => vec![curve.p0, curve.p1, curve.p2],
+        Segment::Cubic(curve) => vec![curve.p0, curve.p1, curve.p2, curve.p3],
+        _ => return None,
+    };
+
+    let mut origin = controls[0];
+    let mut axis = Vector2::new(0.0, 0.0);
+    let mut axis_length_squared = 0.0;
+
+    for &left in &controls {
+        for &right in &controls {
+            let candidate = right - left;
+            let candidate_length_squared = candidate.length_squared();
+            if candidate_length_squared > axis_length_squared {
+                origin = left;
+                axis = candidate;
+                axis_length_squared = candidate_length_squared;
+            }
+        }
+    }
+
+    if axis_length_squared <= tolerance.absolute * tolerance.absolute {
+        return Some(0.0);
+    }
+
+    let axis_length = axis_length_squared.sqrt();
+    let unit = axis / axis_length;
+    let coordinate_scale = controls.iter().fold(1.0_f64, |scale, point| {
+        scale.max(point.x.abs()).max(point.y.abs())
+    });
+    let geometric_tolerance =
+        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+
+    if controls
+        .iter()
+        .any(|point| axis.cross(*point - origin).abs() / axis_length > geometric_tolerance)
+    {
+        return None;
+    }
+
+    let project = |point: Point2| (point - origin).dot(unit);
+    let mut parameters = vec![0.0, 1.0];
+
+    match segment {
+        Segment::Quadratic(curve) => {
+            let p0 = project(curve.p0);
+            let p1 = project(curve.p1);
+            let p2 = project(curve.p2);
+            let linear = 2.0 * (p1 - p0);
+            let quadratic = p0 - 2.0 * p1 + p2;
+            parameters.extend(solve_quadratic(0.0, 2.0 * quadratic, linear));
+        }
+        Segment::Cubic(curve) => {
+            let p0 = project(curve.p0);
+            let p1 = project(curve.p1);
+            let p2 = project(curve.p2);
+            let p3 = project(curve.p3);
+            let linear = 3.0 * (p1 - p0);
+            let quadratic = 3.0 * (p0 - 2.0 * p1 + p2);
+            let cubic = -p0 + 3.0 * p1 - 3.0 * p2 + p3;
+            parameters.extend(solve_quadratic(
+                3.0 * cubic,
+                2.0 * quadratic,
+                linear,
+            ));
+        }
+        _ => unreachable!("line-like length is only used for Bézier segments"),
+    }
+
+    parameters.retain(|parameter| {
+        parameter.is_finite() && *parameter > 0.0 && *parameter < 1.0
+    });
+    parameters.sort_by(Scalar::total_cmp);
+    parameters.dedup_by(|left, right| (*left - *right).abs() <= 1.0e-12);
+
+    let projected_point = |t: Scalar| project(segment.point_at(t));
+    let mut length = 0.0;
+    for pair in parameters.windows(2) {
+        length += (projected_point(pair[1]) - projected_point(pair[0])).abs();
+    }
+
+    Some(length)
 }
 
 pub fn path_length(path: &Path, tolerance: Tolerance) -> CoreResult<Scalar> {
