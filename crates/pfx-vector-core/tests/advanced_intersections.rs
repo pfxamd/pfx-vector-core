@@ -167,7 +167,7 @@ fn interior_arc_tangency_is_classified_as_tangent() {
     let result = intersect_segments(left, right, default_tolerance()).unwrap();
     let hits = point_hits(&result);
 
-    assert_eq!(hits.len(), 1);
+    assert_eq!(hits.len(), 1, "tangent hits: {hits:#?}");
     assert!(hits[0].point.distance_to(Point2::new(10.0, 0.0)) < 1.0e-4);
     assert_eq!(hits[0].kind, IntersectionKind::Tangent);
 }
