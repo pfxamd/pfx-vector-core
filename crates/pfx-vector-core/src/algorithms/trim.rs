@@ -121,13 +121,7 @@ pub fn split_contour_at_length(
     let split = distance.clamp(0.0, total);
     Ok((
         slice_contour(subpath, 0.0, split, ContourSliceMode::Clamp, tolerance)?,
-        slice_contour(
-            subpath,
-            split,
-            total,
-            ContourSliceMode::Clamp,
-            tolerance,
-        )?,
+        slice_contour(subpath, split, total, ContourSliceMode::Clamp, tolerance)?,
     ))
 }
 
