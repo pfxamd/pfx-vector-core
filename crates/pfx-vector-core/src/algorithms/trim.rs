@@ -88,8 +88,7 @@ pub fn slice_contour(
             let mut segments = if end <= total {
                 slice_trace_interval(&trace, &lengths, start, end, tolerance)?
             } else {
-                let mut first =
-                    slice_trace_interval(&trace, &lengths, start, total, tolerance)?;
+                let mut first = slice_trace_interval(&trace, &lengths, start, total, tolerance)?;
                 first.extend(slice_trace_interval(
                     &trace,
                     &lengths,
@@ -121,13 +120,7 @@ pub fn split_contour_at_length(
     let total = contour_length(subpath, tolerance)?;
     let split = distance.clamp(0.0, total);
     Ok((
-        slice_contour(
-            subpath,
-            0.0,
-            split,
-            ContourSliceMode::Clamp,
-            tolerance,
-        )?,
+        slice_contour(subpath, 0.0, split, ContourSliceMode::Clamp, tolerance)?,
         slice_contour(
             subpath,
             split,
