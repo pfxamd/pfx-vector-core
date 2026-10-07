@@ -196,11 +196,7 @@ fn parse_dash_array(value: &str) -> Result<Vec<f64>, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn dash_path_svg(
-    data: &str,
-    dash_array: &str,
-    dash_offset: f64,
-) -> Result<String, JsValue> {
+pub fn dash_path_svg(data: &str, dash_array: &str, dash_offset: f64) -> Result<String, JsValue> {
     let path = parse_path(data).map_err(js_err)?;
     let style = StrokeStyle {
         dash_array: parse_dash_array(dash_array)?,
