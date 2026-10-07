@@ -19,7 +19,8 @@ pub mod prelude {
     pub use crate::{
         Angle, Bounds, ContourSliceMode, CubicBezier, DynamicSpatialIndex, EllipticalArc,
         IncrementalPathSpatialIndex, LineSegment, Path, PathBuilder, PathSpatialIndex, Point2,
-        QuadraticBezier, SpatialIndex, StrokeCap, StrokeJoin, StrokeStyle, Tolerance, Transform2D,
+        QuadraticBezier, SpatialIndex, StrokeCap, StrokeHitIndex, StrokeJoin, StrokeStyle,
+        Tolerance, Transform2D,
         Vector2, contour_length, dash_path, segment_parameter_at_length, slice_contour,
         split_contour_at_length,
     };

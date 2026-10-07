@@ -319,24 +319,16 @@ impl IncrementalPathSpatialIndex {
             return Ok(false);
         }
 
-        if !crate::normalized_dash_pattern(style).is_empty() {
-            return crate::stroke_contains_point(&self.snapshot, style, point, self.tolerance);
+        let radius = crate::algorithms::stroke::stroke_query_radius(style, self.tolerance);
+        if self
+            .spatial
+            .query_bounds(square_bounds(point, radius), 0.0)?
+            .is_empty()
+        {
+            return Ok(false);
         }
 
-        let radius = style.width * 0.5 + self.tolerance.absolute;
-        let query = square_bounds(point, radius);
-        for edge_id in self.spatial.query_bounds(query, 0.0)? {
-            let edge = self
-                .edges
-                .get(&edge_id)
-                .copied()
-                .ok_or(CoreError::InvalidGeometry)?;
-            if distance_to_segment(point, edge.start, edge.end) <= radius {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
+        crate::stroke_contains_point(&self.snapshot, style, point, self.tolerance)
     }
 
     pub fn closest_point(&self, point: Point2) -> CoreResult<crate::ClosestPointResult> {

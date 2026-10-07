@@ -1,7 +1,7 @@
 use super::trim::{contour_trace_with_lengths, slice_trace_interval};
 use crate::{
-    Bounds, CoreError, CoreResult, Path, PathBuilder, Point2, Scalar, Segment, Subpath, Tolerance,
-    flatten_path,
+    Bounds, CoreError, CoreResult, FillRule, Path, PathBuilder, PathSpatialIndex, Point2, Scalar,
+    Segment, Subpath, Tolerance, outline_path, path_bounds,
 };
 
 const MAX_DASH_STEPS: usize = 262_144;
@@ -262,76 +262,72 @@ fn append_segment(builder: &mut PathBuilder, segment: Segment) -> CoreResult<()>
     Ok(())
 }
 
-pub fn stroke_bounds(path: &Path, style: &StrokeStyle, tol: Tolerance) -> CoreResult<Bounds> {
-    style.validate()?;
-    if !normalized_dash_pattern(style).is_empty() {
-        let dashed = dash_path(path, style, tol)?;
-        let mut solid = style.clone();
-        solid.dash_array.clear();
-        solid.dash_offset = 0.0;
-        return stroke_bounds(&dashed, &solid, tol);
-    }
-
-    let half = style.width * 0.5;
-    let mut bounds = Bounds::Empty;
-    for subpath in flatten_path(path, tol)? {
-        for point in subpath.points {
-            bounds = bounds
-                .include(Point2::new(point.x - half, point.y - half))
-                .include(Point2::new(point.x + half, point.y + half));
-        }
-    }
-    Ok(bounds)
+#[derive(Clone, Debug)]
+pub struct StrokeHitIndex {
+    outline: Path,
+    spatial: PathSpatialIndex,
 }
 
-fn distance_to_segment(point: Point2, start: Point2, end: Point2) -> Scalar {
-    let direction = end - start;
-    let denominator = direction.dot(direction);
-    if denominator == 0.0 {
-        return point.distance_to(start);
+impl StrokeHitIndex {
+    pub fn build(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Self> {
+        style.validate()?;
+        let outline = outline_path(path, style, tolerance)?;
+        let spatial = PathSpatialIndex::build(&outline, tolerance)?;
+        Ok(Self { outline, spatial })
     }
 
-    let t = ((point - start).dot(direction) / denominator).clamp(0.0, 1.0);
-    point.distance_to(start + direction * t)
+    #[must_use]
+    pub fn outline(&self) -> &Path {
+        &self.outline
+    }
+
+    #[must_use]
+    pub const fn bounds(&self) -> Bounds {
+        self.spatial.bounds()
+    }
+
+    pub fn contains_point(&self, point: Point2) -> CoreResult<bool> {
+        if self.outline.is_empty() {
+            return Ok(false);
+        }
+
+        self.spatial.contains_point(point, FillRule::NonZero)
+    }
+}
+
+pub fn stroke_bounds(path: &Path, style: &StrokeStyle, tolerance: Tolerance) -> CoreResult<Bounds> {
+    style.validate()?;
+    if style.width == 0.0 || path.is_empty() {
+        return Ok(Bounds::Empty);
+    }
+
+    Ok(path_bounds(&outline_path(path, style, tolerance)?))
+}
+
+pub(crate) fn stroke_query_radius(style: &StrokeStyle, tolerance: Tolerance) -> Scalar {
+    let half = style.width * 0.5;
+    let cap_reach = match style.cap {
+        StrokeCap::Butt | StrokeCap::Round => half,
+        StrokeCap::Square => half * core::f64::consts::SQRT_2,
+    };
+    let join_reach = match style.join {
+        StrokeJoin::Miter => half * style.miter_limit.max(core::f64::consts::SQRT_2),
+        StrokeJoin::Round | StrokeJoin::Bevel => half * core::f64::consts::SQRT_2,
+    };
+
+    cap_reach.max(join_reach) + tolerance.absolute
 }
 
 pub fn stroke_contains_point(
     path: &Path,
     style: &StrokeStyle,
     point: Point2,
-    tol: Tolerance,
+    tolerance: Tolerance,
 ) -> CoreResult<bool> {
     style.validate()?;
-    if style.width == 0.0 {
+    if style.width == 0.0 || path.is_empty() {
         return Ok(false);
     }
 
-    if !normalized_dash_pattern(style).is_empty() {
-        let dashed = dash_path(path, style, tol)?;
-        let mut solid = style.clone();
-        solid.dash_array.clear();
-        solid.dash_offset = 0.0;
-        return stroke_contains_point(&dashed, &solid, point, tol);
-    }
-
-    let half = style.width * 0.5 + tol.absolute;
-    for subpath in flatten_path(path, tol)? {
-        for window in subpath.points.windows(2) {
-            if distance_to_segment(point, window[0], window[1]) <= half {
-                return Ok(true);
-            }
-        }
-        if subpath.closed
-            && subpath.points.len() > 2
-            && distance_to_segment(
-                point,
-                *subpath.points.last().expect("closed subpath is not empty"),
-                subpath.points[0],
-            ) <= half
-        {
-            return Ok(true);
-        }
-    }
-
-    Ok(false)
+    StrokeHitIndex::build(path, style, tolerance)?.contains_point(point)
 }
