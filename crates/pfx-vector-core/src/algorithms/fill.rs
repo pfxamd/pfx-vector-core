@@ -126,7 +126,10 @@ pub fn classify_point(
     }
 
     if (point.x + 2.0).abs() < 0.01 && point.y.abs() < 0.01 {
-        eprintln!("FILL_RESULT q=({:.12},{:.12}) winding={winding}", point.x, point.y);
+        eprintln!(
+            "FILL_RESULT q=({:.12},{:.12}) winding={winding}",
+            point.x, point.y
+        );
     }
 
     Ok(match rule {
