@@ -1,7 +1,7 @@
 use crate::{
     Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
     Path, PathBuilder, Point2, PointClassification, Scalar, Segment, Tolerance, Vector2,
-    classify_point, intersect_segments,
+    classify_point, intersect_segments, spatial_cross_candidate_pairs, spatial_self_candidate_pairs,
 };
 
 const PARAMETER_EPSILON: Scalar = 1.0e-10;
@@ -84,15 +84,20 @@ pub fn normalize_self_intersections(
         }
     }
 
-    for index_a in 0..segments.len() {
-        for index_b in index_a + 1..segments.len() {
-            let intersections = intersect_segments(
-                segments[index_a].segment,
-                segments[index_b].segment,
-                tolerance,
-            )?;
+    let segment_bounds: Vec<_> = segments
+        .iter()
+        .map(|working| working.segment.bounds())
+        .collect();
+    for (index_a, index_b) in
+        spatial_self_candidate_pairs(&segment_bounds, tolerance.absolute)?
+    {
+        let intersections = intersect_segments(
+            segments[index_a].segment,
+            segments[index_b].segment,
+            tolerance,
+        )?;
 
-            for intersection in intersections.intersections {
+        for intersection in intersections.intersections {
                 match intersection {
                     Intersection::Point(point) => {
                         add_parameter(&mut splits[index_a], point.parameter_a, tolerance);
@@ -106,7 +111,6 @@ pub fn normalize_self_intersections(
                     }
                 }
             }
-        }
     }
 
     normalize_split_parameters(&mut splits, tolerance);
@@ -367,12 +371,25 @@ pub fn boolean_paths_with_fill_rules(
     let mut splits_a = vec![vec![0.0, 1.0]; segments_a.len()];
     let mut splits_b = vec![vec![0.0, 1.0]; segments_b.len()];
 
-    for (index_a, segment_a) in segments_a.iter().enumerate() {
-        for (index_b, segment_b) in segments_b.iter().enumerate() {
-            let intersections =
-                intersect_segments(segment_a.segment, segment_b.segment, tolerance)?;
+    let bounds_a: Vec<_> = segments_a
+        .iter()
+        .map(|working| working.segment.bounds())
+        .collect();
+    let bounds_b: Vec<_> = segments_b
+        .iter()
+        .map(|working| working.segment.bounds())
+        .collect();
 
-            for intersection in intersections.intersections {
+    for (index_a, index_b) in
+        spatial_cross_candidate_pairs(&bounds_a, &bounds_b, tolerance.absolute)?
+    {
+        let intersections = intersect_segments(
+            segments_a[index_a].segment,
+            segments_b[index_b].segment,
+            tolerance,
+        )?;
+
+        for intersection in intersections.intersections {
                 match intersection {
                     Intersection::Point(point) => {
                         add_parameter(&mut splits_a[index_a], point.parameter_a, tolerance);
@@ -386,7 +403,6 @@ pub fn boolean_paths_with_fill_rules(
                     }
                 }
             }
-        }
     }
 
     normalize_split_parameters(&mut splits_a, tolerance);
