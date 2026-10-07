@@ -488,7 +488,6 @@ fn triple_revolution_arc_preserves_one_boundary_under_evenodd() {
     );
 }
 
-
 #[test]
 fn retraced_collinear_cubic_boundary_normalizes_without_topology_failure() {
     let mut builder = PathBuilder::new();
@@ -514,18 +513,22 @@ fn retraced_collinear_cubic_boundary_normalizes_without_topology_failure() {
 
     assert!(!normalized.is_empty());
     assert!(normalized.subpaths().iter().all(Subpath::is_closed));
-    assert!(contains_point(
-        &normalized,
-        Point2::new(5.0, -5.0),
-        FillRule::NonZero,
-        Tolerance::default()
-    )
-    .unwrap());
-    assert!(!contains_point(
-        &normalized,
-        Point2::new(5.0, 5.0),
-        FillRule::NonZero,
-        Tolerance::default()
-    )
-    .unwrap());
+    assert!(
+        contains_point(
+            &normalized,
+            Point2::new(5.0, -5.0),
+            FillRule::NonZero,
+            Tolerance::default()
+        )
+        .unwrap()
+    );
+    assert!(
+        !contains_point(
+            &normalized,
+            Point2::new(5.0, 5.0),
+            FillRule::NonZero,
+            Tolerance::default()
+        )
+        .unwrap()
+    );
 }

@@ -366,7 +366,6 @@ fn partial_shared_quadratic_boundary_is_split_for_boolean_topology() {
     assert!(!inside(&union, 50.0, 90.0));
 }
 
-
 #[test]
 fn line_and_nonlinearly_parameterized_quadratic_shared_edge_has_set_semantics() {
     let mut lower_builder = PathBuilder::new();
