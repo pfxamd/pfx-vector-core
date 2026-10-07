@@ -1,6 +1,6 @@
 use crate::{
-    CoreError, CoreResult, FillRule, Path, Point2, Scalar, StrokeStyle,
-    Tolerance, flatten_path, normalize_self_intersections, outline_path,
+    CoreError, CoreResult, FillRule, Path, Point2, Scalar, StrokeStyle, Tolerance, flatten_path,
+    normalize_self_intersections, outline_path,
 };
 
 #[derive(Clone, Debug, Default, PartialEq)]
