@@ -92,7 +92,7 @@ fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Sca
         _ => unreachable!("line-like length is only used for Bézier segments"),
     }
 
-    parameters.retain(|parameter| parameter.is_finite() && *parameter > 0.0 && *parameter < 1.0);
+    parameters.retain(|parameter| parameter.is_finite() && *parameter >= 0.0 && *parameter <= 1.0);
     parameters.sort_by(Scalar::total_cmp);
     parameters.dedup_by(|left, right| (*left - *right).abs() <= 1.0e-12);
 
