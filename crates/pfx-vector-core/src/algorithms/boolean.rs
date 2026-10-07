@@ -61,7 +61,6 @@ pub fn boolean_xor(a: &Path, b: &Path, tolerance: Tolerance) -> CoreResult<Path>
     boolean_paths(a, b, BooleanOperation::Xor, tolerance)
 }
 
-
 pub fn normalize_self_intersections(
     path: &Path,
     fill_rule: FillRule,
@@ -144,8 +143,7 @@ fn classify_single_path_boundary(
     let normal = tangent.perpendicular();
     let probe = probe_distance(fragment, midpoint, tolerance);
 
-    let Some((left, right)) =
-        classify_sides(path, fill_rule, midpoint, normal, probe, tolerance)?
+    let Some((left, right)) = classify_sides(path, fill_rule, midpoint, normal, probe, tolerance)?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
@@ -184,9 +182,7 @@ fn stitch_normalized_fragments(
             }
 
             let previous = *chain.last().expect("chain is never empty");
-            let Some(index) =
-                face_continuation(&fragments, current, previous, tolerance)
-            else {
+            let Some(index) = face_continuation(&fragments, current, previous, tolerance) else {
                 return Err(CoreError::NonConvergent);
             };
 

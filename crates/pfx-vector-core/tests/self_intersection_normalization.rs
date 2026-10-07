@@ -88,20 +88,10 @@ fn bow_tie_nonzero_and_evenodd_have_same_lobes() {
     for x in 0..=10 {
         for y in 0..=10 {
             let point = Point2::new(f64::from(x) + 0.23, f64::from(y) + 0.37);
-            let a = classify_point(
-                &nonzero,
-                point,
-                FillRule::NonZero,
-                Tolerance::default(),
-            )
-            .unwrap();
-            let b = classify_point(
-                &evenodd,
-                point,
-                FillRule::NonZero,
-                Tolerance::default(),
-            )
-            .unwrap();
+            let a =
+                classify_point(&nonzero, point, FillRule::NonZero, Tolerance::default()).unwrap();
+            let b =
+                classify_point(&evenodd, point, FillRule::NonZero, Tolerance::default()).unwrap();
             assert_eq!(a, b, "point=({},{})", point.x, point.y);
         }
     }
@@ -155,8 +145,7 @@ fn normalization_remains_stable_at_large_coordinates() {
 #[test]
 fn tessellation_accepts_self_intersecting_fill_directly() {
     let source = bow_tie(0.0);
-    let mesh =
-        tessellate_fill(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
+    let mesh = tessellate_fill(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
 
     assert!((mesh_area(&mesh) - 50.0).abs() < 1.0e-7);
     assert_eq!(mesh.triangle_count(), 2);
@@ -166,10 +155,8 @@ fn tessellation_accepts_self_intersecting_fill_directly() {
 fn tessellation_respects_double_winding_fill_rule() {
     let source = double_wound_square();
 
-    let nonzero =
-        tessellate_fill(&source, FillRule::NonZero, Tolerance::default()).unwrap();
-    let evenodd =
-        tessellate_fill(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
+    let nonzero = tessellate_fill(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+    let evenodd = tessellate_fill(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
 
     assert!((mesh_area(&nonzero) - 100.0).abs() < 1.0e-7);
     assert!(evenodd.is_empty());
