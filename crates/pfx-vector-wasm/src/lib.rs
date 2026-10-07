@@ -212,4 +212,3 @@ pub fn outline_path_svg(
 
     Ok(serialize_path(&result, SerializeOptions::default()))
 }
-
