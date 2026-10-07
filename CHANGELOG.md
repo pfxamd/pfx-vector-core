@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.8.0 - 2026-10-07
+
+### Added
+
+- Deterministic AABB spatial indexing through public `SpatialIndex`.
+- Prefix-max sweep indexing for bounded queries without third-party runtime dependencies.
+- Public `spatial_self_candidate_pairs` and `spatial_cross_candidate_pairs` helpers for broad-phase geometry pruning.
+- Reusable `PathSpatialIndex` built from one adaptive flattening pass.
+- Indexed fill classification and containment queries on `PathSpatialIndex`.
+- Indexed stroke hit testing using local bounding-box candidate queries.
+- Indexed closest-point queries with expanding-radius broad phase and exact line-edge refinement.
+- New `Bounds::intersects`, `Bounds::expanded`, and `Bounds::distance_squared_to_point` helpers.
+- Robustness tests comparing spatial candidate results to brute force, including 5000 sparse bounds and large translated coordinates.
+- Differential tests matching indexed fill, stroke, and nearest queries against the existing algorithms.
+- Criterion benchmark coverage for 10000-bound index construction, sparse self-candidate pruning, and indexed nearest queries.
+
+### Changed
+
+- Self-intersection normalization now prunes segment-pair tests by exact segment bounds before invoking the advanced intersection engine.
+- Boolean operations now prune cross-path segment pairs by AABB overlap before exact curve intersection.
+- Boolean and normalization side probes reuse a single `PathSpatialIndex` instead of repeatedly flattening and scanning the whole path.
+- WebAssembly `intersectPaths` now applies the same broad-phase pruning before exact segment intersection.
+- Spatial candidate ordering is normalized to deterministic item-index order.
+
+### Scope limits
+
+- `SpatialIndex` is immutable; callers rebuild it after geometry changes.
+- `PathSpatialIndex` indexes adaptively flattened edges, so fill/stroke/nearest accuracy follows the supplied `Tolerance.flatness`.
+- Spatial pruning is a broad phase only; exact geometric decisions remain in the existing intersection and topology engines.
+- The current index is optimized for deterministic CPU geometry workloads, not concurrent mutation or GPU-resident scene structures.
+
 ## 0.7.0 - 2026-10-07
 
 ### Added

@@ -210,6 +210,39 @@ fn bench_core(c: &mut Criterion) {
             .unwrap()
         })
     });
+
+    let sparse_bounds: Vec<_> = (0..10_000)
+        .map(|index| {
+            let x = index as f64 * 10.0;
+            Bounds::from_points(&[
+                Point2::new(x, 0.0),
+                Point2::new(x + 1.0, 1.0),
+            ])
+        })
+        .collect();
+
+    c.bench_function("spatial index build 10000 bounds", |b| {
+        b.iter(|| SpatialIndex::new(black_box(&sparse_bounds)))
+    });
+
+    c.bench_function("spatial self candidates 10000 sparse bounds", |b| {
+        b.iter(|| {
+            spatial_self_candidate_pairs(
+                black_box(&sparse_bounds),
+                black_box(tolerance.absolute),
+            )
+            .unwrap()
+        })
+    });
+
+    let dense_index = PathSpatialIndex::build(&dense_path, tolerance).unwrap();
+    c.bench_function("indexed nearest dense path", |b| {
+        b.iter(|| {
+            dense_index
+                .closest_point(black_box(Point2::new(10.0, 12.0)))
+                .unwrap()
+        })
+    });
 }
 
 criterion_group!(benches, bench_core);

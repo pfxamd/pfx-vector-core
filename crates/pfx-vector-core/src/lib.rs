@@ -17,8 +17,8 @@ pub use math::*;
 pub use path::*;
 pub mod prelude {
     pub use crate::{
-        Angle, Bounds, CubicBezier, EllipticalArc, LineSegment, Path, PathBuilder, Point2,
-        QuadraticBezier, Tolerance, Transform2D, Vector2,
+        Angle, Bounds, CubicBezier, EllipticalArc, LineSegment, Path, PathBuilder,
+        PathSpatialIndex, Point2, QuadraticBezier, SpatialIndex, Tolerance, Transform2D, Vector2,
     };
 }
 #[cfg(test)]

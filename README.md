@@ -1,8 +1,64 @@
 # PFx Vector Core
 
-`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
+`PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.7.0`.
+**Status:** `v0.8.0`.
+
+## v0.8 spatial acceleration
+
+The core now provides a deterministic broad-phase spatial index for large geometry sets:
+
+```rust
+let bounds = segments
+    .iter()
+    .map(|segment| segment.bounds())
+    .collect::<Vec<_>>();
+
+let index = SpatialIndex::new(&bounds);
+let candidates = index.query_bounds(query_bounds, tolerance.absolute)?;
+```
+
+For pairwise geometry work:
+
+```rust
+let self_pairs = spatial_self_candidate_pairs(
+    &bounds,
+    tolerance.absolute,
+)?;
+
+let cross_pairs = spatial_cross_candidate_pairs(
+    &bounds_a,
+    &bounds_b,
+    tolerance.absolute,
+)?;
+```
+
+These functions return only AABB-overlapping candidates. Exact intersections are still resolved by the curve intersection engine.
+
+### Reusable path index
+
+For repeated geometric queries, build a path index once:
+
+```rust
+let index = PathSpatialIndex::build(&path, tolerance)?;
+
+let inside = index.contains_point(point, FillRule::NonZero)?;
+let stroke_hit = index.stroke_contains_point(&stroke_style, point)?;
+let nearest = index.closest_point(point)?;
+```
+
+`PathSpatialIndex` performs one adaptive flattening pass and reuses the resulting edge index across queries.
+
+### Integrated acceleration
+
+The broad phase is now used automatically by:
+
+- self-intersection normalization
+- Boolean segment pairing
+- topology side probes through reusable indexed fill classification
+- WebAssembly path intersection queries
+
+The acceleration layer never replaces exact geometry. It only removes pairs or edges whose bounds prove they cannot participate.
 
 ## v0.7 self-intersection and contour normalization
 
@@ -271,6 +327,8 @@ The scalar type is `f64`. Approximate operations use explicit tolerance rather t
 Tolerance-sensitive operations include:
 
 - Bézier/arc length via adaptive numerical integration
+- deterministic AABB spatial broad-phase pruning
+- reusable indexed path queries
 - adaptive curve flattening
 - closest-point and stroke hit-testing approximations
 - advanced curve intersections via bounded subdivision and local refinement
@@ -280,6 +338,17 @@ Tolerance-sensitive operations include:
 - tessellation through adaptive flattening, contour topology, hole bridging, and ear clipping
 - path simplification through explicit geometric deviation thresholds
 - cubic fitting through least-squares approximation and iterative reparameterization
+
+## Validated spatial-acceleration scope
+
+Validated cases include exact agreement with brute-force candidate pairing, deterministic query ordering, empty bounds, padded queries, 5000 sparse bounds without quadratic candidate growth, large translated coordinates, fill-classification equivalence, stroke-hit equivalence, and nearest-point equivalence on dense paths.
+
+Current limits:
+
+- indexes are immutable snapshots and must be rebuilt after geometry changes
+- `PathSpatialIndex` uses flattened edges and inherits the configured flatness tolerance
+- the spatial layer is deliberately broad-phase only; it does not approximate exact curve intersections
+- no dynamic tree mutation, multithreaded index updates, or GPU spatial structures are part of this release
 
 ## Validated contour-normalization scope
 

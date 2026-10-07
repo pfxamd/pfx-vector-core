@@ -3,7 +3,8 @@ use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, FillRule, Mesh2D, OffsetStyle, Point2, StrokeCap,
     StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path, contains_point,
     fit_path_curves, flatten_path, intersect_segments, normalize_self_intersections, offset_path,
-    outline_path, path_length, point_at_length, simplify_path, tessellate_fill, tessellate_stroke,
+    outline_path, path_length, point_at_length, simplify_path, spatial_cross_candidate_pairs,
+    tessellate_fill, tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -97,22 +98,31 @@ pub fn intersect_paths_svg(a: &str, b: &str) -> Result<String, JsValue> {
     let pa = parse_path(a).map_err(js_err)?;
     let pb = parse_path(b).map_err(js_err)?;
     let tol = Tolerance::default();
+    let segments_a: Vec<_> = pa
+        .subpaths()
+        .iter()
+        .flat_map(|subpath| subpath.segments().iter().copied())
+        .collect();
+    let segments_b: Vec<_> = pb
+        .subpaths()
+        .iter()
+        .flat_map(|subpath| subpath.segments().iter().copied())
+        .collect();
+    let bounds_a: Vec<_> = segments_a.iter().map(|segment| segment.bounds()).collect();
+    let bounds_b: Vec<_> = segments_b.iter().map(|segment| segment.bounds()).collect();
+    let candidates =
+        spatial_cross_candidate_pairs(&bounds_a, &bounds_b, tol.absolute).map_err(js_err)?;
     let mut points = Vec::new();
-    for sa in pa.subpaths() {
-        for &ga in sa.segments() {
-            for sb in pb.subpaths() {
-                for &gb in sb.segments() {
-                    let r = match intersect_segments(ga, gb, tol) {
-                        Ok(v) => v,
-                        Err(pfx_vector_core::CoreError::UnsupportedCase) => continue,
-                        Err(e) => return Err(js_err(e)),
-                    };
-                    for hit in r.intersections {
-                        if let pfx_vector_core::Intersection::Point(p) = hit {
-                            points.push(p.point)
-                        }
-                    }
-                }
+
+    for (index_a, index_b) in candidates {
+        let r = match intersect_segments(segments_a[index_a], segments_b[index_b], tol) {
+            Ok(v) => v,
+            Err(pfx_vector_core::CoreError::UnsupportedCase) => continue,
+            Err(e) => return Err(js_err(e)),
+        };
+        for hit in r.intersections {
+            if let pfx_vector_core::Intersection::Point(p) = hit {
+                points.push(p.point);
             }
         }
     }
