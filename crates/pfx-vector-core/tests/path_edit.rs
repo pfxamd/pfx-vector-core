@@ -80,8 +80,7 @@ fn split_preserves_quadratic_cubic_and_arc_primitives() {
         .cubic_to(cubic.p1, cubic.p2, cubic.p3)
         .unwrap();
     let cubic_path = cubic_builder.finish().unwrap();
-    let cubic_edit =
-        split_segment(&cubic_path, SegmentAddress::new(0, 0), 0.6, tolerance).unwrap();
+    let cubic_edit = split_segment(&cubic_path, SegmentAddress::new(0, 0), 0.6, tolerance).unwrap();
     let cubic_segments = only_subpath(cubic_edit.path()).segments();
     assert!(matches!(cubic_segments[0], Segment::Cubic(_)));
     assert!(matches!(cubic_segments[1], Segment::Cubic(_)));
@@ -122,8 +121,7 @@ fn split_segment_at_length_uses_arc_length() {
     let path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 0.0)]);
     let tolerance = Tolerance::default();
 
-    let edit =
-        split_segment_at_length(&path, SegmentAddress::new(0, 0), 7.5, tolerance).unwrap();
+    let edit = split_segment_at_length(&path, SegmentAddress::new(0, 0), 7.5, tolerance).unwrap();
 
     assert!(
         only_subpath(edit.path()).segments()[0]
@@ -152,7 +150,10 @@ fn reverse_subpath_twice_restores_original_geometry() {
     ]);
 
     let reversed = reverse_subpath(&path, 0).unwrap();
-    assert_eq!(only_subpath(reversed.path()).start(), Point2::new(20.0, 0.0));
+    assert_eq!(
+        only_subpath(reversed.path()).start(),
+        Point2::new(20.0, 0.0)
+    );
     assert_eq!(only_subpath(reversed.path()).end(), Point2::new(0.0, 0.0));
 
     let restored = reverse_subpath(reversed.path(), 0).unwrap();
@@ -248,12 +249,7 @@ fn removing_middle_open_segment_splits_subpath() {
         Point2::new(30.0, 0.0),
     ]);
 
-    let edit = remove_segment(
-        &path,
-        SegmentAddress::new(0, 1),
-        Tolerance::default(),
-    )
-    .unwrap();
+    let edit = remove_segment(&path, SegmentAddress::new(0, 1), Tolerance::default()).unwrap();
 
     assert_eq!(edit.path.subpaths().len(), 2);
     assert_eq!(edit.path.subpaths()[0].start(), Point2::new(0.0, 0.0));
@@ -302,8 +298,10 @@ fn replace_segment_preserves_endpoints_and_changes_primitive() {
 #[test]
 fn replace_segment_rejects_endpoint_mismatch() {
     let path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 0.0)]);
-    let replacement =
-        Segment::Line(LineSegment::new(Point2::new(1.0, 0.0), Point2::new(10.0, 0.0)));
+    let replacement = Segment::Line(LineSegment::new(
+        Point2::new(1.0, 0.0),
+        Point2::new(10.0, 0.0),
+    ));
 
     assert_eq!(
         replace_segment(
@@ -359,10 +357,7 @@ fn incremental_spatial_index_can_sync_edit_result() {
 #[test]
 fn large_coordinate_split_remains_stable() {
     let base = 1.0e9;
-    let path = line_path(&[
-        Point2::new(base, base),
-        Point2::new(base + 100.0, base),
-    ]);
+    let path = line_path(&[Point2::new(base, base), Point2::new(base + 100.0, base)]);
     let tolerance = Tolerance::default();
 
     let edit = split_segment(&path, SegmentAddress::new(0, 0), 0.5, tolerance).unwrap();
@@ -377,21 +372,11 @@ fn invalid_split_parameter_and_address_are_rejected() {
     let path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 0.0)]);
 
     assert_eq!(
-        split_segment(
-            &path,
-            SegmentAddress::new(0, 0),
-            0.0,
-            Tolerance::default(),
-        ),
+        split_segment(&path, SegmentAddress::new(0, 0), 0.0, Tolerance::default(),),
         Err(CoreError::InvalidGeometry)
     );
     assert_eq!(
-        split_segment(
-            &path,
-            SegmentAddress::new(0, 5),
-            0.5,
-            Tolerance::default(),
-        ),
+        split_segment(&path, SegmentAddress::new(0, 5), 0.5, Tolerance::default(),),
         Err(CoreError::InvalidGeometry)
     );
 }
