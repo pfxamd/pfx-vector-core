@@ -314,3 +314,103 @@ fn ordinary_non_looping_cubic_is_not_artificially_split() {
     assert_eq!(normalized.subpaths().len(), 1);
     assert_eq!(normalized.segment_count(), 2);
 }
+
+
+#[test]
+fn touching_lobes_are_separated_at_shared_vertex() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(4.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(4.0, 4.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 4.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(-4.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(-4.0, -4.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, -4.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let source = builder.finish().unwrap();
+
+    let normalized =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert_eq!(normalized.subpaths().len(), 2);
+    assert!(inside(&normalized, 2.0, 2.0));
+    assert!(inside(&normalized, -2.0, -2.0));
+    assert!(!inside(&normalized, 2.0, -2.0));
+    assert!(!inside(&normalized, -2.0, 2.0));
+}
+
+#[test]
+fn opposite_double_winding_cancels_completely() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 10.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 10.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(0.0, 10.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 10.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap()
+        .close()
+        .unwrap();
+    let source = builder.finish().unwrap();
+
+    let nonzero =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+    let evenodd =
+        normalize_self_intersections(&source, FillRule::EvenOdd, Tolerance::default()).unwrap();
+
+    assert!(nonzero.is_empty());
+    assert!(evenodd.is_empty());
+}
+
+#[test]
+fn reversing_self_crossing_path_preserves_filled_set() {
+    let source = bow_tie(0.0);
+    let reversed = source.reversed();
+    let forward =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+    let backward =
+        normalize_self_intersections(&reversed, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    for x in 0..=10 {
+        for y in 0..=10 {
+            let x = f64::from(x) + 0.17;
+            let y = f64::from(y) + 0.29;
+            assert_eq!(inside(&forward, x, y), inside(&backward, x, y));
+        }
+    }
+}
+
+#[test]
+fn normalization_preserves_native_arc_segments_for_simple_circle() {
+    let source = circle_to_path(Circle::new(Point2::new(0.0, 0.0), 10.0).unwrap()).unwrap();
+    let normalized =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert_eq!(normalized.subpaths().len(), 1);
+    assert!(normalized
+        .subpaths()[0]
+        .segments()
+        .iter()
+        .all(|segment| matches!(segment, Segment::Arc(_))));
+}
