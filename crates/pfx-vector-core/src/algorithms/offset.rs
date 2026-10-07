@@ -7,8 +7,8 @@ use crate::{
 
 const MAX_OFFSET_DEPTH: u32 = 20;
 const OFFSET_VALIDATION_PARAMETERS: [Scalar; 15] = [
-    0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75,
-    0.8125, 0.875, 0.9375,
+    0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125,
+    0.875, 0.9375,
 ];
 const OFFSET_SINGULARITY_SAMPLES: usize = 16;
 const OFFSET_PARAMETER_EPSILON: Scalar = 1.0e-10;
@@ -708,8 +708,7 @@ fn offset_scale_at(
     }
 
     let second_derivative = segment_second_derivative(segment, t);
-    let signed_curvature =
-        derivative.cross(second_derivative) / (speed * speed * speed);
+    let signed_curvature = derivative.cross(second_derivative) / (speed * speed * speed);
     let factor = 1.0 - distance * signed_curvature;
 
     if !factor.is_finite() {
