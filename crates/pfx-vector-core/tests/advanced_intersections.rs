@@ -474,3 +474,135 @@ fn degree_elevated_quadratic_and_cubic_report_overlap() {
     assert!(overlap.range_b.min.abs() < 1.0e-8);
     assert!((overlap.range_b.max - 1.0).abs() < 1.0e-8);
 }
+
+
+fn overlap_hits(result: &IntersectionResult) -> Vec<OverlapIntersection> {
+    result
+        .intersections
+        .iter()
+        .filter_map(|intersection| match intersection {
+            Intersection::Overlap(overlap) => Some(*overlap),
+            Intersection::Point(_) => None,
+        })
+        .collect()
+}
+
+#[test]
+fn full_circles_with_different_rotation_cover_the_full_parameter_domain() {
+    let first = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        12.0,
+        12.0,
+        Angle::degrees(0.0),
+        Angle::degrees(0.0),
+        Angle::degrees(360.0),
+    ));
+    let second = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        12.0,
+        12.0,
+        Angle::degrees(60.0),
+        Angle::degrees(0.0),
+        Angle::degrees(360.0),
+    ));
+
+    let result = intersect_segments(first, second, default_tolerance()).unwrap();
+    let overlaps = overlap_hits(&result);
+
+    assert_eq!(overlaps.len(), 2, "{result:#?}");
+    let coverage_a: f64 = overlaps.iter().map(|overlap| overlap.range_a.length()).sum();
+    let coverage_b: f64 = overlaps.iter().map(|overlap| overlap.range_b.length()).sum();
+    assert!((coverage_a - 1.0).abs() < 1.0e-9);
+    assert!((coverage_b - 1.0).abs() < 1.0e-9);
+}
+
+#[test]
+fn swapped_ellipse_axes_and_rotation_report_same_overlap() {
+    let first = Segment::Arc(EllipticalArc::new(
+        Point2::new(5.0, -3.0),
+        20.0,
+        10.0,
+        Angle::degrees(0.0),
+        Angle::degrees(0.0),
+        Angle::degrees(180.0),
+    ));
+    let second = Segment::Arc(EllipticalArc::new(
+        Point2::new(5.0, -3.0),
+        10.0,
+        20.0,
+        Angle::degrees(-90.0),
+        Angle::degrees(90.0),
+        Angle::degrees(180.0),
+    ));
+
+    let result = intersect_segments(first, second, default_tolerance()).unwrap();
+    let overlaps = overlap_hits(&result);
+
+    assert_eq!(overlaps.len(), 1, "{result:#?}");
+    assert!((overlaps[0].range_a.length() - 1.0).abs() < 1.0e-9);
+    assert!((overlaps[0].range_b.length() - 1.0).abs() < 1.0e-9);
+}
+
+#[test]
+fn multi_revolution_arc_reports_each_parameter_overlap() {
+    let double_turn = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        10.0,
+        6.0,
+        Angle::degrees(25.0),
+        Angle::degrees(0.0),
+        Angle::degrees(720.0),
+    ));
+    let single_turn = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        10.0,
+        6.0,
+        Angle::degrees(25.0),
+        Angle::degrees(0.0),
+        Angle::degrees(360.0),
+    ));
+
+    let result = intersect_segments(double_turn, single_turn, default_tolerance()).unwrap();
+    let overlaps = overlap_hits(&result);
+
+    assert_eq!(overlaps.len(), 2, "{result:#?}");
+    assert!((overlaps[0].range_a.min - 0.0).abs() < 1.0e-9);
+    assert!((overlaps[0].range_a.max - 0.5).abs() < 1.0e-9);
+    assert!((overlaps[1].range_a.min - 0.5).abs() < 1.0e-9);
+    assert!((overlaps[1].range_a.max - 1.0).abs() < 1.0e-9);
+    assert!(overlaps
+        .iter()
+        .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9));
+}
+
+#[test]
+fn reversed_multi_revolution_arc_keeps_deterministic_ranges() {
+    let forward = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        14.0,
+        7.0,
+        Angle::degrees(15.0),
+        Angle::degrees(-30.0),
+        Angle::degrees(720.0),
+    ));
+    let reverse = Segment::Arc(EllipticalArc::new(
+        Point2::new(0.0, 0.0),
+        14.0,
+        7.0,
+        Angle::degrees(15.0),
+        Angle::degrees(330.0),
+        Angle::degrees(-360.0),
+    ));
+
+    let result = intersect_segments(forward, reverse, default_tolerance()).unwrap();
+    let overlaps = overlap_hits(&result);
+
+    assert_eq!(overlaps.len(), 2, "{result:#?}");
+    assert!(overlaps[0].range_a.min <= overlaps[1].range_a.min);
+    assert!(overlaps
+        .iter()
+        .all(|overlap| overlap.range_a.length() > 0.49));
+    assert!(overlaps
+        .iter()
+        .all(|overlap| (overlap.range_b.length() - 1.0).abs() < 1.0e-9));
+}

@@ -9,6 +9,7 @@ use crate::{
 const MAX_SEARCH_DEPTH: u32 = 36;
 const MAX_SEARCH_NODES: usize = 200_000;
 const PARAMETER_EPSILON: Scalar = 1.0e-8;
+const MAX_ARC_OVERLAP_ALIGNMENTS: usize = 4096;
 
 #[derive(Clone, Copy)]
 struct SearchNode {
@@ -478,10 +479,11 @@ fn detect_overlap(
         return Ok(Some(vec![Intersection::Overlap(overlap)]));
     }
 
-    if let (Segment::Arc(left), Segment::Arc(right)) = (a, b)
-        && let Some(overlap) = arc_overlap(left, right, tolerance)?
-    {
-        return Ok(Some(vec![overlap]));
+    if let (Segment::Arc(left), Segment::Arc(right)) = (a, b) {
+        let overlaps = arc_overlaps(left, right, tolerance)?;
+        if !overlaps.is_empty() {
+            return Ok(Some(overlaps));
+        }
     }
 
     Ok(None)
@@ -633,84 +635,172 @@ fn same_cubic(left: CubicBezier, right: CubicBezier, tolerance: Tolerance) -> bo
         && left.p3.almost_eq(right.p3, tolerance)
 }
 
-fn arc_overlap(
+#[derive(Clone, Copy, Debug)]
+struct CanonicalArcFrame {
+    center: Point2,
+    radius_x: Scalar,
+    radius_y: Scalar,
+    rotation: Scalar,
+    start: Scalar,
+    sweep: Scalar,
+    circle_like: bool,
+}
+
+fn arc_overlaps(
     left: EllipticalArc,
     right: EllipticalArc,
     tolerance: Tolerance,
-) -> CoreResult<Option<Intersection>> {
+) -> CoreResult<Vec<Intersection>> {
+    let left = canonical_arc_frame(left, tolerance);
+    let mut right = canonical_arc_frame(right, tolerance);
+
     if !left.center.almost_eq(right.center, tolerance)
         || !tolerance.almost_eq(left.radius_x, right.radius_x)
         || !tolerance.almost_eq(left.radius_y, right.radius_y)
-        || angle_distance(left.rotation.as_radians(), right.rotation.as_radians())
-            > tolerance.angular.max(1.0e-10)
     {
-        return Ok(None);
+        return Ok(Vec::new());
     }
 
-    let left_sweep = left.sweep_angle.as_radians();
-    let right_sweep = right.sweep_angle.as_radians();
+    let angle_epsilon = tolerance.angular.max(1.0e-10);
 
-    if left_sweep.abs() <= tolerance.angular || right_sweep.abs() <= tolerance.angular {
-        return Ok(None);
+    if left.circle_like && right.circle_like {
+        right.start += right.rotation - left.rotation;
+        right.rotation = left.rotation;
+    } else {
+        if left.circle_like != right.circle_like {
+            return Ok(Vec::new());
+        }
+
+        let half_turns =
+            ((right.rotation - left.rotation) / core::f64::consts::PI).round();
+        let rotation_delta =
+            right.rotation - left.rotation - half_turns * core::f64::consts::PI;
+        if rotation_delta.abs() > angle_epsilon {
+            return Ok(Vec::new());
+        }
+
+        right.start += half_turns * core::f64::consts::PI;
+        right.rotation = left.rotation;
     }
 
-    let left_start = left.start_angle.as_radians();
-    let left_end = left_start + left_sweep;
-    let left_low = left_start.min(left_end);
-    let left_high = left_start.max(left_end);
+    if left.sweep.abs() <= angle_epsilon || right.sweep.abs() <= angle_epsilon {
+        return Ok(Vec::new());
+    }
 
-    let mut best: Option<(Scalar, Scalar, Scalar)> = None;
+    let left_end = left.start + left.sweep;
+    let right_end = right.start + right.sweep;
+    let left_low = left.start.min(left_end);
+    let left_high = left.start.max(left_end);
+    let right_low = right.start.min(right_end);
+    let right_high = right.start.max(right_end);
+    let tau = core::f64::consts::TAU;
 
-    for turn in -2..=2 {
-        let shifted_start =
-            right.start_angle.as_radians() + Scalar::from(turn) * core::f64::consts::TAU;
-        let shifted_end = shifted_start + right_sweep;
-        let right_low = shifted_start.min(shifted_end);
-        let right_high = shifted_start.max(shifted_end);
-        let low = left_low.max(right_low);
-        let high = left_high.min(right_high);
-        let length = high - low;
+    let first_turn = ((left_low - right_high - angle_epsilon) / tau).ceil();
+    let last_turn = ((left_high - right_low + angle_epsilon) / tau).floor();
 
-        if length > tolerance.angular.max(1.0e-10)
-            && best.is_none_or(|(best_length, _, _)| length > best_length)
+    if !first_turn.is_finite() || !last_turn.is_finite() || last_turn < first_turn {
+        return Ok(Vec::new());
+    }
+
+    let alignment_count = last_turn - first_turn + 1.0;
+    if alignment_count > MAX_ARC_OVERLAP_ALIGNMENTS as Scalar {
+        return Err(CoreError::IterationLimit);
+    }
+
+    let first_turn = first_turn as i64;
+    let last_turn = last_turn as i64;
+    let mut overlaps = Vec::new();
+
+    for turn in first_turn..=last_turn {
+        let shifted_start = right.start + turn as Scalar * tau;
+        let shifted_end = shifted_start + right.sweep;
+        let shifted_low = shifted_start.min(shifted_end);
+        let shifted_high = shifted_start.max(shifted_end);
+        let low = left_low.max(shifted_low);
+        let high = left_high.min(shifted_high);
+
+        if high - low <= angle_epsilon {
+            continue;
+        }
+
+        let left_t0 = snap_parameter(((low - left.start) / left.sweep).clamp(0.0, 1.0), tolerance);
+        let left_t1 =
+            snap_parameter(((high - left.start) / left.sweep).clamp(0.0, 1.0), tolerance);
+        let right_t0 =
+            snap_parameter(((low - shifted_start) / right.sweep).clamp(0.0, 1.0), tolerance);
+        let right_t1 =
+            snap_parameter(((high - shifted_start) / right.sweep).clamp(0.0, 1.0), tolerance);
+
+        let overlap = OverlapIntersection {
+            range_a: Interval::new(left_t0.min(left_t1), left_t0.max(left_t1))?,
+            range_b: Interval::new(right_t0.min(right_t1), right_t0.max(right_t1))?,
+        };
+
+        if overlap.range_a.length() <= overlap_parameter_epsilon(tolerance)
+            || overlap.range_b.length() <= overlap_parameter_epsilon(tolerance)
         {
-            best = Some((length, low, high));
+            continue;
+        }
+
+        if !overlaps.iter().any(|existing| {
+            let Intersection::Overlap(existing) = existing else {
+                return false;
+            };
+            overlap_ranges_nearly_equal(*existing, overlap, tolerance)
+        }) {
+            overlaps.push(Intersection::Overlap(overlap));
         }
     }
 
-    let Some((_, low, high)) = best else {
-        return Ok(None);
-    };
+    overlaps.sort_by(|left, right| {
+        parameter_key(left)
+            .0
+            .total_cmp(&parameter_key(right).0)
+            .then_with(|| parameter_key(left).1.total_cmp(&parameter_key(right).1))
+    });
 
-    let left_t0 = ((low - left_start) / left_sweep).clamp(0.0, 1.0);
-    let left_t1 = ((high - left_start) / left_sweep).clamp(0.0, 1.0);
-
-    let mut right_parameters = None;
-    for turn in -2..=2 {
-        let shifted_start =
-            right.start_angle.as_radians() + Scalar::from(turn) * core::f64::consts::TAU;
-        let t0 = (low - shifted_start) / right_sweep;
-        let t1 = (high - shifted_start) / right_sweep;
-
-        if (-PARAMETER_EPSILON..=1.0 + PARAMETER_EPSILON).contains(&t0)
-            && (-PARAMETER_EPSILON..=1.0 + PARAMETER_EPSILON).contains(&t1)
-        {
-            right_parameters = Some((t0.clamp(0.0, 1.0), t1.clamp(0.0, 1.0)));
-            break;
-        }
-    }
-
-    let Some((right_t0, right_t1)) = right_parameters else {
-        return Ok(None);
-    };
-
-    Ok(Some(Intersection::Overlap(OverlapIntersection {
-        range_a: Interval::new(left_t0.min(left_t1), left_t0.max(left_t1))?,
-        range_b: Interval::new(right_t0.min(right_t1), right_t0.max(right_t1))?,
-    })))
+    Ok(overlaps)
 }
 
-fn angle_distance(left: Scalar, right: Scalar) -> Scalar {
-    let delta = (left - right).rem_euclid(core::f64::consts::TAU);
-    delta.min(core::f64::consts::TAU - delta)
+fn canonical_arc_frame(arc: EllipticalArc, tolerance: Tolerance) -> CanonicalArcFrame {
+    let mut radius_x = arc.radius_x;
+    let mut radius_y = arc.radius_y;
+    let mut rotation = arc.rotation.as_radians();
+    let mut start = arc.start_angle.as_radians();
+    let sweep = arc.sweep_angle.as_radians();
+    let circle_like = tolerance.almost_eq(radius_x, radius_y);
+
+    if circle_like {
+        let radius = (radius_x + radius_y) * 0.5;
+        start += rotation;
+        radius_x = radius;
+        radius_y = radius;
+        rotation = 0.0;
+    } else if radius_x < radius_y {
+        core::mem::swap(&mut radius_x, &mut radius_y);
+        rotation += core::f64::consts::FRAC_PI_2;
+        start -= core::f64::consts::FRAC_PI_2;
+    }
+
+    CanonicalArcFrame {
+        center: arc.center,
+        radius_x,
+        radius_y,
+        rotation,
+        start,
+        sweep,
+        circle_like,
+    }
+}
+
+fn overlap_ranges_nearly_equal(
+    left: OverlapIntersection,
+    right: OverlapIntersection,
+    tolerance: Tolerance,
+) -> bool {
+    let epsilon = overlap_parameter_epsilon(tolerance);
+    (left.range_a.min - right.range_a.min).abs() <= epsilon
+        && (left.range_a.max - right.range_a.max).abs() <= epsilon
+        && (left.range_b.min - right.range_b.min).abs() <= epsilon
+        && (left.range_b.max - right.range_b.max).abs() <= epsilon
 }
