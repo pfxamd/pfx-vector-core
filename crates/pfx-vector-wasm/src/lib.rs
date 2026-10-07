@@ -4,8 +4,8 @@ use pfx_vector_core::{
     Point2, StrokeCap, StrokeJoin, StrokeStyle, Tolerance, boolean_paths, cleanup_path,
     contains_point, contour_length, dash_path, fit_path_curves, flatten_path, intersect_segments,
     normalize_self_intersections, offset_path, outline_path, path_length, point_at_length,
-    simplify_path, slice_contour, spatial_cross_candidate_pairs, tessellate_fill,
-    tessellate_stroke,
+    simplify_path, slice_contour, spatial_cross_candidate_pairs, stroke_contains_point,
+    tessellate_fill, tessellate_stroke,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -104,6 +104,35 @@ pub fn hit_test_fill_svg(data: &str, x: f64, y: f64, even_odd: bool) -> Result<b
     )
     .map_err(js_err)
 }
+#[wasm_bindgen]
+pub fn hit_test_stroke_svg(
+    data: &str,
+    x: f64,
+    y: f64,
+    width: f64,
+    cap: &str,
+    join: &str,
+    miter_limit: f64,
+) -> Result<bool, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let style = StrokeStyle {
+        width,
+        cap: parse_stroke_cap(cap)?,
+        join: parse_stroke_join(join)?,
+        miter_limit,
+        dash_array: Vec::new(),
+        dash_offset: 0.0,
+    };
+
+    stroke_contains_point(
+        &path,
+        &style,
+        Point2::new(x, y),
+        Tolerance::default(),
+    )
+    .map_err(js_err)
+}
+
 #[wasm_bindgen]
 pub fn flatten_path_svg(data: &str, flatness: f64) -> Result<String, JsValue> {
     let p = parse_path(data).map_err(js_err)?;
