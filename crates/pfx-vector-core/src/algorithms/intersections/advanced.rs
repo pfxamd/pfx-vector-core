@@ -343,8 +343,7 @@ fn push_unique(
                 <= PARAMETER_EPSILON * 8.0
             && (existing_point.parameter_b - candidate_point.parameter_b).abs()
                 <= PARAMETER_EPSILON * 8.0;
-        let tangent_merge_distance =
-            spatial_tolerance.max(tolerance.flatness * 0.25);
+        let tangent_merge_distance = spatial_tolerance.max(tolerance.flatness * 0.25);
         let same_tangent_event = existing_point.kind == IntersectionKind::Tangent
             && candidate_point.kind == IntersectionKind::Tangent
             && point_distance <= tangent_merge_distance;
