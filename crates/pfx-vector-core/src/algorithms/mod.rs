@@ -1,3 +1,4 @@
+mod boolean;
 mod bounds;
 mod convert;
 mod fill;
@@ -8,6 +9,7 @@ mod measure;
 mod nearest;
 mod stroke;
 mod transform;
+pub use boolean::*;
 pub use bounds::*;
 pub use convert::*;
 pub use fill::*;
