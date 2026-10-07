@@ -256,15 +256,11 @@ fn repeated_sync_cycles_remain_deterministic() {
     for _ in 0..20 {
         let report_changed = index.sync_path(&changed).unwrap();
         assert!(!report_changed.full_rebuild);
-        let changed_result = index
-            .closest_point(Point2::new(30.0, 70.0))
-            .unwrap();
+        let changed_result = index.closest_point(Point2::new(30.0, 70.0)).unwrap();
 
         let report_original = index.sync_path(&original).unwrap();
         assert!(!report_original.full_rebuild);
-        let original_result = index
-            .closest_point(Point2::new(30.0, 70.0))
-            .unwrap();
+        let original_result = index.closest_point(Point2::new(30.0, 70.0)).unwrap();
 
         assert!(changed_result.distance.is_finite());
         assert!(original_result.distance.is_finite());
