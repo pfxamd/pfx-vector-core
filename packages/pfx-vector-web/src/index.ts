@@ -35,6 +35,19 @@ export interface VectorWasmBindings {
   ): string;
   reverse_subpath_svg(data: string, subpathIndex: number): string;
   set_subpath_closed_svg(data: string, subpathIndex: number, closed: boolean): string;
+  extract_segment_svg(data: string, subpathIndex: number, segmentIndex: number): string;
+  extract_subpath_svg(data: string, subpathIndex: number): string;
+  replace_segment_svg(
+    data: string,
+    subpathIndex: number,
+    segmentIndex: number,
+    replacementData: string,
+  ): string;
+  replace_subpath_svg(
+    data: string,
+    subpathIndex: number,
+    replacementData: string,
+  ): string;
   remove_segment_svg(data: string, subpathIndex: number, segmentIndex: number): string;
   remove_subpath_svg(data: string, subpathIndex: number): string;
   join_subpaths_svg(
@@ -235,6 +248,27 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       wasm.reverse_subpath_svg(data, subpathIndex),
     setSubpathClosed: (data: string, subpathIndex: number, closed: boolean) =>
       wasm.set_subpath_closed_svg(data, subpathIndex, closed),
+    extractSegment: (data: string, subpathIndex: number, segmentIndex: number) =>
+      wasm.extract_segment_svg(data, subpathIndex, segmentIndex),
+    extractSubpath: (data: string, subpathIndex: number) =>
+      wasm.extract_subpath_svg(data, subpathIndex),
+    replaceSegment: (
+      data: string,
+      subpathIndex: number,
+      segmentIndex: number,
+      replacementData: string,
+    ) =>
+      wasm.replace_segment_svg(
+        data,
+        subpathIndex,
+        segmentIndex,
+        replacementData,
+      ),
+    replaceSubpath: (
+      data: string,
+      subpathIndex: number,
+      replacementData: string,
+    ) => wasm.replace_subpath_svg(data, subpathIndex, replacementData),
     removeSegment: (data: string, subpathIndex: number, segmentIndex: number) =>
       wasm.remove_segment_svg(data, subpathIndex, segmentIndex),
     removeSubpath: (data: string, subpathIndex: number) =>

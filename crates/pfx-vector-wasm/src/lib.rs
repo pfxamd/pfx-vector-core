@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
-    Point2, SegmentAddress, StrokeCap, StrokeJoin, StrokeStyle, SubpathEndpoint, Tolerance,
-    Transform2D, boolean_paths, cleanup_path, contains_point, contour_length, dash_path,
-    fit_path_curves, flatten_path, intersect_segments, join_open_subpaths,
-    normalize_self_intersections, offset_path, outline_path, path_length, point_at_length,
-    remove_segment, remove_subpath, reverse_subpath, set_subpath_closed, simplify_path,
-    slice_contour, spatial_cross_candidate_pairs, split_segment, split_segment_at_length,
-    stroke_contains_point, tessellate_fill, tessellate_stroke, transform_path,
+    PathBuilder, Point2, Segment, SegmentAddress, StrokeCap, StrokeJoin, StrokeStyle, Subpath,
+    SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, contains_point,
+    contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves, flatten_path,
+    intersect_segments, join_open_subpaths, normalize_self_intersections, offset_path,
+    outline_path, path_length, point_at_length, remove_segment, remove_subpath, replace_segment,
+    replace_subpath, reverse_subpath, set_subpath_closed, simplify_path, slice_contour,
+    spatial_cross_candidate_pairs, split_segment, split_segment_at_length, stroke_contains_point,
+    tessellate_fill, tessellate_stroke, transform_path,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
@@ -65,6 +66,74 @@ pub fn slice_contour_svg(
     Ok(serialize_path(&sliced, SerializeOptions::default()))
 }
 
+
+fn append_edit_segment(builder: &mut PathBuilder, segment: Segment) -> Result<(), JsValue> {
+    match segment {
+        Segment::Line(line) => {
+            builder.line_to(line.end).map_err(js_err)?;
+        }
+        Segment::Quadratic(curve) => {
+            builder.quad_to(curve.p1, curve.p2).map_err(js_err)?;
+        }
+        Segment::Cubic(curve) => {
+            builder
+                .cubic_to(curve.p1, curve.p2, curve.p3)
+                .map_err(js_err)?;
+        }
+        Segment::Arc(arc) => {
+            builder.arc_to(arc).map_err(js_err)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn serialize_edit_segment(segment: Segment) -> Result<String, JsValue> {
+    let mut builder = PathBuilder::new();
+    builder.move_to(segment.start()).map_err(js_err)?;
+    append_edit_segment(&mut builder, segment)?;
+    let path = builder.finish().map_err(js_err)?;
+    Ok(serialize_path(&path, SerializeOptions::default()))
+}
+
+fn serialize_edit_subpath(subpath: &Subpath) -> Result<String, JsValue> {
+    let mut builder = PathBuilder::new();
+    builder.move_to(subpath.start()).map_err(js_err)?;
+
+    for &segment in subpath.segments() {
+        append_edit_segment(&mut builder, segment)?;
+    }
+
+    if subpath.is_closed() {
+        builder.close().map_err(js_err)?;
+    }
+
+    let path = builder.finish().map_err(js_err)?;
+    Ok(serialize_path(&path, SerializeOptions::default()))
+}
+
+fn parse_single_replacement_segment(data: &str) -> Result<Segment, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    if path.subpaths().len() != 1 || path.subpaths()[0].segments().len() != 1 {
+        return Err(JsValue::from_str(
+            "replacement must contain exactly one subpath and one segment",
+        ));
+    }
+
+    Ok(path.subpaths()[0].segments()[0])
+}
+
+fn parse_single_replacement_subpath(data: &str) -> Result<Subpath, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    if path.subpaths().len() != 1 {
+        return Err(JsValue::from_str(
+            "replacement must contain exactly one subpath",
+        ));
+    }
+
+    Ok(path.subpaths()[0].clone())
+}
+
 #[wasm_bindgen]
 pub fn split_segment_svg(
     data: &str,
@@ -117,6 +186,60 @@ pub fn set_subpath_closed_svg(
     let path = parse_path(data).map_err(js_err)?;
     let edit = set_subpath_closed(&path, subpath_index as usize, closed, Tolerance::default())
         .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+
+#[wasm_bindgen]
+pub fn extract_segment_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let segment = extract_segment(
+        &path,
+        SegmentAddress::new(subpath_index as usize, segment_index as usize),
+    )
+    .map_err(js_err)?;
+    serialize_edit_segment(segment)
+}
+
+#[wasm_bindgen]
+pub fn extract_subpath_svg(data: &str, subpath_index: u32) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let subpath = extract_subpath(&path, subpath_index as usize).map_err(js_err)?;
+    serialize_edit_subpath(&subpath)
+}
+
+#[wasm_bindgen]
+pub fn replace_segment_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+    replacement_data: &str,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let replacement = parse_single_replacement_segment(replacement_data)?;
+    let edit = replace_segment(
+        &path,
+        SegmentAddress::new(subpath_index as usize, segment_index as usize),
+        replacement,
+        Tolerance::default(),
+    )
+    .map_err(js_err)?;
+    Ok(serialize_path(edit.path(), SerializeOptions::default()))
+}
+
+#[wasm_bindgen]
+pub fn replace_subpath_svg(
+    data: &str,
+    subpath_index: u32,
+    replacement_data: &str,
+) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let replacement = parse_single_replacement_subpath(replacement_data)?;
+    let edit = replace_subpath(&path, subpath_index as usize, replacement).map_err(js_err)?;
     Ok(serialize_path(edit.path(), SerializeOptions::default()))
 }
 
