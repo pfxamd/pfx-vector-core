@@ -50,32 +50,14 @@ fn quadratic_fill_is_independent_of_flatness() {
         ..Tolerance::default()
     };
 
-    assert!(contains_point(
-        &path,
-        Point2::new(5.0, 2.0),
-        FillRule::NonZero,
-        coarse
-    )
-    .unwrap());
-    assert!(!contains_point(
-        &path,
-        Point2::new(5.0, 6.0),
-        FillRule::NonZero,
-        coarse
-    )
-    .unwrap());
+    assert!(contains_point(&path, Point2::new(5.0, 2.0), FillRule::NonZero, coarse).unwrap());
+    assert!(!contains_point(&path, Point2::new(5.0, 6.0), FillRule::NonZero, coarse).unwrap());
 }
 
 #[test]
 fn elliptical_arc_fill_is_independent_of_flatness() {
     let ellipse = ellipse_to_path(
-        Ellipse::new(
-            Point2::new(0.0, 0.0),
-            12.0,
-            5.0,
-            Angle::degrees(27.0),
-        )
-        .unwrap(),
+        Ellipse::new(Point2::new(0.0, 0.0), 12.0, 5.0, Angle::degrees(27.0)).unwrap(),
     )
     .unwrap();
     let coarse = Tolerance {
@@ -84,23 +66,11 @@ fn elliptical_arc_fill_is_independent_of_flatness() {
     };
 
     assert_eq!(
-        classify_point(
-            &ellipse,
-            Point2::new(0.0, 0.0),
-            FillRule::NonZero,
-            coarse
-        )
-        .unwrap(),
+        classify_point(&ellipse, Point2::new(0.0, 0.0), FillRule::NonZero, coarse).unwrap(),
         PointClassification::Inside
     );
     assert_eq!(
-        classify_point(
-            &ellipse,
-            Point2::new(20.0, 0.0),
-            FillRule::NonZero,
-            coarse
-        )
-        .unwrap(),
+        classify_point(&ellipse, Point2::new(20.0, 0.0), FillRule::NonZero, coarse).unwrap(),
         PointClassification::Outside
     );
 }

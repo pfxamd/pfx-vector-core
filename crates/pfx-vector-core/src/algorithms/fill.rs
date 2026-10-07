@@ -77,13 +77,8 @@ pub fn classify_point(
                     continue;
                 }
 
-                let before = crossing_side_before(
-                    &segments,
-                    segment_index,
-                    parameter,
-                    point.y,
-                    tolerance,
-                );
+                let before =
+                    crossing_side_before(&segments, segment_index, parameter, point.y, tolerance);
                 let after = crossing_side_after(segment, parameter, point.y, tolerance);
 
                 match (before, after) {
@@ -111,18 +106,11 @@ pub fn contains_point(
     Ok(classify_point(path, point, rule, tolerance)? != PointClassification::Outside)
 }
 
-fn horizontal_ray_parameters(
-    segment: Segment,
-    ray_y: Scalar,
-    tolerance: Tolerance,
-) -> Vec<Scalar> {
+fn horizontal_ray_parameters(segment: Segment, ray_y: Scalar, tolerance: Tolerance) -> Vec<Scalar> {
     let mut roots = match segment {
         Segment::Line(line) => {
             let delta_y = line.end.y - line.start.y;
-            if tolerance.nearly_zero(
-                delta_y,
-                line.start.y.abs().max(line.end.y.abs()).max(1.0),
-            ) {
+            if tolerance.nearly_zero(delta_y, line.start.y.abs().max(line.end.y.abs()).max(1.0)) {
                 Vec::new()
             } else {
                 vec![(ray_y - line.start.y) / delta_y]
@@ -160,21 +148,13 @@ fn arc_horizontal_parameters(
     let sine_coefficient = arc.radius_y * cos_rotation;
     let radius = cosine_coefficient.hypot(sine_coefficient);
 
-    if tolerance.nearly_zero(
-        radius,
-        arc.radius_x.abs().max(arc.radius_y.abs()).max(1.0),
-    ) {
+    if tolerance.nearly_zero(radius, arc.radius_x.abs().max(arc.radius_y.abs()).max(1.0)) {
         return Vec::new();
     }
 
     let value = (ray_y - arc.center.y) / radius;
     let numerical = tolerance.absolute
-        + tolerance.relative
-            * ray_y
-                .abs()
-                .max(arc.center.y.abs())
-                .max(radius)
-                .max(1.0);
+        + tolerance.relative * ray_y.abs().max(arc.center.y.abs()).max(radius).max(1.0);
     if value > 1.0 + numerical || value < -1.0 - numerical {
         return Vec::new();
     }
@@ -223,13 +203,7 @@ fn crossing_side_before(
     tolerance: Tolerance,
 ) -> Option<i8> {
     if parameter > ROOT_PARAMETER_EPSILON {
-        return sample_side(
-            segments[segment_index],
-            parameter,
-            -1.0,
-            ray_y,
-            tolerance,
-        );
+        return sample_side(segments[segment_index], parameter, -1.0, ray_y, tolerance);
     }
 
     if segment_index == 0 {
@@ -248,13 +222,7 @@ fn crossing_side_before(
         return None;
     }
 
-    sample_side(
-        segments[segment_index - 1],
-        1.0,
-        -1.0,
-        ray_y,
-        tolerance,
-    )
+    sample_side(segments[segment_index - 1], 1.0, -1.0, ray_y, tolerance)
 }
 
 fn crossing_side_after(
@@ -315,6 +283,5 @@ fn segment_derivative_y(segment: Segment, parameter: Scalar) -> Scalar {
 }
 
 fn point_tolerance(point: Point2, tolerance: Tolerance) -> Scalar {
-    tolerance.absolute
-        + tolerance.relative * point.x.abs().max(point.y.abs()).max(1.0)
+    tolerance.absolute + tolerance.relative * point.x.abs().max(point.y.abs()).max(1.0)
 }
