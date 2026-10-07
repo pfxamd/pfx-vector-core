@@ -234,3 +234,82 @@ fn nested_same_direction_contour_is_normalized_by_fill_semantics() {
     assert!(inside(&nonzero, 10.0, 10.0));
     assert!(!inside(&evenodd, 10.0, 10.0));
 }
+
+
+#[test]
+fn intrinsic_cubic_self_intersection_is_split_without_flattening() {
+    let curve = CubicBezier::new(
+        Point2::new(0.0, 0.0),
+        Point2::new(-20.0, -15.0),
+        Point2::new(-10.0, -10.0),
+        Point2::new(10.0, 10.0),
+    );
+    let first = 0.05358983848622473;
+    let second = 0.7464101615137753;
+    assert!(curve.point_at(first).distance_to(curve.point_at(second)) < 1.0e-9);
+
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(curve.p0)
+        .unwrap()
+        .cubic_to(curve.p1, curve.p2, curve.p3)
+        .unwrap()
+        .close()
+        .unwrap();
+    let source = builder.finish().unwrap();
+
+    let normalized =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert!(normalized.segment_count() > 2);
+    assert!(normalized.subpaths().iter().all(Subpath::is_closed));
+    assert!(normalized
+        .subpaths()
+        .iter()
+        .flat_map(|subpath| subpath.segments())
+        .any(|segment| matches!(segment, Segment::Cubic(_))));
+}
+
+#[test]
+fn tessellation_accepts_intrinsically_self_intersecting_cubic() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(-20.0, -15.0),
+            Point2::new(-10.0, -10.0),
+            Point2::new(10.0, 10.0),
+        )
+        .unwrap()
+        .close()
+        .unwrap();
+    let source = builder.finish().unwrap();
+
+    let mesh = tessellate_fill(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert!(!mesh.is_empty());
+    assert!(mesh.triangle_count() >= 2);
+}
+
+#[test]
+fn ordinary_non_looping_cubic_is_not_artificially_split() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .cubic_to(
+            Point2::new(3.0, 8.0),
+            Point2::new(7.0, 8.0),
+            Point2::new(10.0, 0.0),
+        )
+        .unwrap()
+        .close()
+        .unwrap();
+    let source = builder.finish().unwrap();
+    let normalized =
+        normalize_self_intersections(&source, FillRule::NonZero, Tolerance::default()).unwrap();
+
+    assert_eq!(normalized.subpaths().len(), 1);
+    assert_eq!(normalized.segment_count(), 2);
+}
