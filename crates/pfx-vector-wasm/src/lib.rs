@@ -149,4 +149,3 @@ pub fn boolean_difference_svg(a: &str, b: &str) -> Result<String, JsValue> {
 pub fn boolean_xor_svg(a: &str, b: &str) -> Result<String, JsValue> {
     boolean_svg(a, b, BooleanOperation::Xor)
 }
-
