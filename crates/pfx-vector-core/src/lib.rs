@@ -21,10 +21,10 @@ pub mod prelude {
         IncrementalPathSpatialIndex, LineSegment, Path, PathBuilder, PathEditResult,
         PathSpatialIndex, Point2, QuadraticBezier, SegmentAddress, SpatialIndex, StrokeCap,
         StrokeHitIndex, StrokeJoin, StrokeStyle, SubpathEndpoint, Tolerance, Transform2D, Vector2,
-        contour_length, dash_path, insert_anchor, join_open_subpaths, remove_segment,
-        remove_subpath, replace_segment, reverse_subpath, segment_parameter_at_length,
-        set_subpath_closed, slice_contour, split_contour_at_length, split_segment,
-        split_segment_at_length,
+        contour_length, dash_path, extract_segment, extract_subpath, insert_anchor,
+        join_open_subpaths, remove_segment, remove_subpath, replace_segment, replace_subpath,
+        reverse_subpath, segment_parameter_at_length, set_subpath_closed, slice_contour,
+        split_contour_at_length, split_segment, split_segment_at_length,
     };
 }
 #[cfg(test)]

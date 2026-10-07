@@ -37,6 +37,8 @@ fn split_line_inserts_anchor_and_reports_topology_change() {
     assert_eq!(edit.report().kind, PathEditKind::SplitSegment);
     assert_eq!(edit.report().segments_before, 1);
     assert_eq!(edit.report().segments_after, 2);
+    assert_eq!(edit.report().subpath_delta, 0);
+    assert_eq!(edit.report().segment_delta, 1);
     assert!(edit.report().topology_changed);
 }
 
@@ -252,6 +254,8 @@ fn removing_middle_open_segment_splits_subpath() {
     let edit = remove_segment(&path, SegmentAddress::new(0, 1), Tolerance::default()).unwrap();
 
     assert_eq!(edit.path.subpaths().len(), 2);
+    assert_eq!(edit.report().subpath_delta, 1);
+    assert_eq!(edit.report().segment_delta, -1);
     assert_eq!(edit.path.subpaths()[0].start(), Point2::new(0.0, 0.0));
     assert_eq!(edit.path.subpaths()[0].end(), Point2::new(10.0, 0.0));
     assert_eq!(edit.path.subpaths()[1].start(), Point2::new(20.0, 0.0));
@@ -379,4 +383,66 @@ fn invalid_split_parameter_and_address_are_rejected() {
         split_segment(&path, SegmentAddress::new(0, 5), 0.5, Tolerance::default(),),
         Err(CoreError::InvalidGeometry)
     );
+}
+
+
+#[test]
+fn extract_segment_and_subpath_return_source_geometry() {
+    let path = line_path(&[
+        Point2::new(0.0, 0.0),
+        Point2::new(10.0, 0.0),
+        Point2::new(20.0, 5.0),
+    ]);
+
+    let segment = extract_segment(&path, SegmentAddress::new(0, 1)).unwrap();
+    assert_eq!(segment, path.subpaths()[0].segments()[1]);
+
+    let subpath = extract_subpath(&path, 0).unwrap();
+    assert_eq!(subpath, path.subpaths()[0]);
+}
+
+#[test]
+fn replace_subpath_updates_selected_contour_and_report() {
+    let mut builder = PathBuilder::new();
+    builder
+        .move_to(Point2::new(0.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(10.0, 0.0))
+        .unwrap()
+        .move_to(Point2::new(20.0, 0.0))
+        .unwrap()
+        .line_to(Point2::new(30.0, 0.0))
+        .unwrap();
+    let path = builder.finish().unwrap();
+
+    let replacement_path = line_path(&[
+        Point2::new(100.0, 0.0),
+        Point2::new(110.0, 10.0),
+        Point2::new(120.0, 0.0),
+    ]);
+    let replacement = extract_subpath(&replacement_path, 0).unwrap();
+
+    let edit = replace_subpath(&path, 1, replacement.clone()).unwrap();
+
+    assert_eq!(edit.path.subpaths()[0], path.subpaths()[0]);
+    assert_eq!(edit.path.subpaths()[1], replacement);
+    assert_eq!(edit.report().kind, PathEditKind::ReplaceSubpath);
+    assert_eq!(edit.report().affected_subpaths, vec![1]);
+    assert_eq!(edit.report().subpath_delta, 0);
+    assert_eq!(edit.report().segment_delta, 1);
+    assert!(edit.report().topology_changed);
+}
+
+#[test]
+fn replace_subpath_same_topology_reports_no_index_shift() {
+    let path = line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 0.0)]);
+    let replacement_path =
+        line_path(&[Point2::new(0.0, 0.0), Point2::new(10.0, 5.0)]);
+    let replacement = extract_subpath(&replacement_path, 0).unwrap();
+
+    let edit = replace_subpath(&path, 0, replacement).unwrap();
+
+    assert_eq!(edit.report().subpath_delta, 0);
+    assert_eq!(edit.report().segment_delta, 0);
+    assert!(!edit.report().topology_changed);
 }

@@ -179,7 +179,10 @@ pub fn set_subpath_closed(
 }
 
 pub fn extract_segment(path: &Path, address: SegmentAddress) -> CoreResult<Segment> {
-    segment_at(subpath_at(path, address.subpath_index)?, address.segment_index)
+    segment_at(
+        subpath_at(path, address.subpath_index)?,
+        address.segment_index,
+    )
 }
 
 pub fn extract_subpath(path: &Path, subpath_index: usize) -> CoreResult<Subpath> {
