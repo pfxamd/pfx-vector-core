@@ -1,6 +1,6 @@
 use crate::{
     Angle, CoreError, CoreResult, CubicBezier, EllipticalArc, FillRule, Intersection, LineSegment,
-    Path, PathBuilder, Point2, PointClassification, QuadraticBezier, Scalar, Segment, Tolerance,
+    Path, PathBuilder, Point2, PointClassification, Scalar, Segment, Tolerance,
     Vector2, classify_point, intersect_segments,
 };
 
@@ -23,6 +23,16 @@ struct WorkingSegment {
 #[derive(Clone, Copy, Debug)]
 struct BoundaryFragment {
     segment: Segment,
+}
+
+#[derive(Clone, Copy)]
+struct BooleanContext<'a> {
+    a: &'a Path,
+    fill_a: FillRule,
+    b: &'a Path,
+    fill_b: FillRule,
+    operation: BooleanOperation,
+    tolerance: Tolerance,
 }
 
 #[must_use]
@@ -112,29 +122,18 @@ pub fn boolean_paths_with_fill_rules(
     normalize_split_parameters(&mut splits_a, tolerance);
     normalize_split_parameters(&mut splits_b, tolerance);
 
+    let context = BooleanContext {
+        a,
+        fill_a,
+        b,
+        fill_b,
+        operation,
+        tolerance,
+    };
+
     let mut fragments = Vec::new();
-    append_boolean_fragments(
-        &mut fragments,
-        &segments_a,
-        &splits_a,
-        a,
-        fill_a,
-        b,
-        fill_b,
-        operation,
-        tolerance,
-    )?;
-    append_boolean_fragments(
-        &mut fragments,
-        &segments_b,
-        &splits_b,
-        a,
-        fill_a,
-        b,
-        fill_b,
-        operation,
-        tolerance,
-    )?;
+    append_boolean_fragments(&mut fragments, &segments_a, &splits_a, context)?;
+    append_boolean_fragments(&mut fragments, &segments_b, &splits_b, context)?;
 
     deduplicate_fragments(&mut fragments, tolerance);
     stitch_fragments(fragments, tolerance)
@@ -220,13 +219,9 @@ fn append_boolean_fragments(
     output: &mut Vec<BoundaryFragment>,
     segments: &[WorkingSegment],
     splits: &[Vec<Scalar>],
-    a: &Path,
-    fill_a: FillRule,
-    b: &Path,
-    fill_b: FillRule,
-    operation: BooleanOperation,
-    tolerance: Tolerance,
+    context: BooleanContext<'_>,
 ) -> CoreResult<()> {
+    let tolerance = context.tolerance;
     for (working, parameters) in segments.iter().zip(splits) {
         for pair in parameters.windows(2) {
             let t0 = pair[0];
@@ -244,9 +239,7 @@ fn append_boolean_fragments(
                 continue;
             }
 
-            if let Some(oriented) =
-                classify_fragment_boundary(fragment, a, fill_a, b, fill_b, operation, tolerance)?
-            {
+            if let Some(oriented) = classify_fragment_boundary(fragment, context)? {
                 output.push(BoundaryFragment { segment: oriented });
             }
         }
@@ -257,29 +250,39 @@ fn append_boolean_fragments(
 
 fn classify_fragment_boundary(
     fragment: Segment,
-    a: &Path,
-    fill_a: FillRule,
-    b: &Path,
-    fill_b: FillRule,
-    operation: BooleanOperation,
-    tolerance: Tolerance,
+    context: BooleanContext<'_>,
 ) -> CoreResult<Option<Segment>> {
+    let tolerance = context.tolerance;
     let midpoint = fragment.point_at(0.5);
     let tangent = stable_tangent(fragment, tolerance)?;
     let normal = tangent.perpendicular();
     let probe = probe_distance(fragment, midpoint, tolerance);
 
-    let Some((left_a, right_a)) = classify_sides(a, fill_a, midpoint, normal, probe, tolerance)?
+    let Some((left_a, right_a)) = classify_sides(
+        context.a,
+        context.fill_a,
+        midpoint,
+        normal,
+        probe,
+        tolerance,
+    )?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
-    let Some((left_b, right_b)) = classify_sides(b, fill_b, midpoint, normal, probe, tolerance)?
+    let Some((left_b, right_b)) = classify_sides(
+        context.b,
+        context.fill_b,
+        midpoint,
+        normal,
+        probe,
+        tolerance,
+    )?
     else {
         return Err(CoreError::ToleranceNotMet);
     };
 
-    let left = operation_value(operation, left_a, left_b);
-    let right = operation_value(operation, right_a, right_b);
+    let left = operation_value(context.operation, left_a, left_b);
+    let right = operation_value(context.operation, right_a, right_b);
 
     if left == right {
         Ok(None)
