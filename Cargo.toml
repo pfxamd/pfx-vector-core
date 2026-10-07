@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pfx-vector-core",
+    "crates/pfx-vector-svg",
+    "crates/pfx-vector-wasm",
+]
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["pfxamd"]
+repository = "https://github.com/pfxamd/pfx-vector-core"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
