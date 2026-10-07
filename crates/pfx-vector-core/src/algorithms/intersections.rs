@@ -1,5 +1,10 @@
+mod advanced;
+
+use advanced::intersect_curve_pair;
 use crate::numeric::{clamp_unit, dedup_sorted, solve_cubic, solve_quadratic};
-use crate::{CoreError, CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance};
+use crate::{
+    CoreResult, Interval, LineSegment, Point2, Scalar, Segment, Tolerance, Vector2,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntersectionKind {
@@ -112,7 +117,7 @@ fn line_line(
         return Ok(IntersectionResult::default());
     };
 
-    let kind = if t == 0.0 || t == 1.0 || u == 0.0 || u == 1.0 {
+    let kind = if is_endpoint(t) || is_endpoint(u) {
         IntersectionKind::Endpoint
     } else {
         IntersectionKind::Crossing
@@ -167,21 +172,8 @@ fn line_curve(
                 ex * direction.y - ey * direction.x,
             )
         }
-        Segment::Arc(arc) => {
-            let mut builder = crate::PathBuilder::new();
-            builder.move_to(arc.point_at(0.0))?.arc_to(arc)?;
-            let path = builder.finish()?;
-            let flattened = crate::flatten_path(&path, tolerance)?;
-            let mut result = IntersectionResult::default();
-
-            for window in flattened[0].points.windows(2) {
-                let partial = line_line(line, LineSegment::new(window[0], window[1]), tolerance)?;
-                result.intersections.extend(partial.intersections);
-            }
-
-            return Ok(result);
-        }
         Segment::Line(other) => return line_line(line, other, tolerance),
+        Segment::Arc(_) => return intersect_curve_pair(Segment::Line(line), segment, tolerance),
     };
 
     dedup_sorted(&mut roots, tolerance);
@@ -210,15 +202,62 @@ fn line_curve(
                 point,
                 parameter_a: u,
                 parameter_b: t,
-                kind: if t == 0.0 || t == 1.0 || u == 0.0 || u == 1.0 {
-                    IntersectionKind::Endpoint
-                } else {
-                    IntersectionKind::Crossing
-                },
+                kind: classify_line_curve(direction, segment_derivative(segment, t), u, t, tolerance),
             }));
     }
 
+    result.intersections.sort_by(|left, right| {
+        let left = point_parameters(left);
+        let right = point_parameters(right);
+        left.0
+            .total_cmp(&right.0)
+            .then_with(|| left.1.total_cmp(&right.1))
+    });
+
     Ok(result)
+}
+
+fn classify_line_curve(
+    line_derivative: Vector2,
+    curve_derivative: Vector2,
+    line_parameter: Scalar,
+    curve_parameter: Scalar,
+    tolerance: Tolerance,
+) -> IntersectionKind {
+    if is_endpoint(line_parameter) || is_endpoint(curve_parameter) {
+        return IntersectionKind::Endpoint;
+    }
+
+    let scale = line_derivative.length() * curve_derivative.length();
+    let angular_tolerance = tolerance.angular.max(1.0e-7);
+
+    if scale == 0.0
+        || line_derivative.cross(curve_derivative).abs() <= angular_tolerance * scale
+    {
+        IntersectionKind::Tangent
+    } else {
+        IntersectionKind::Crossing
+    }
+}
+
+fn segment_derivative(segment: Segment, t: Scalar) -> Vector2 {
+    match segment {
+        Segment::Line(line) => line.direction(),
+        Segment::Quadratic(curve) => curve.derivative_at(t),
+        Segment::Cubic(curve) => curve.derivative_at(t),
+        Segment::Arc(arc) => arc.derivative_at(t),
+    }
+}
+
+fn is_endpoint(parameter: Scalar) -> bool {
+    parameter <= 1.0e-8 || parameter >= 1.0 - 1.0e-8
+}
+
+fn point_parameters(intersection: &Intersection) -> (Scalar, Scalar) {
+    match intersection {
+        Intersection::Point(point) => (point.parameter_a, point.parameter_b),
+        Intersection::Overlap(overlap) => (overlap.range_a.min, overlap.range_b.min),
+    }
 }
 
 pub fn intersect_segments(
@@ -228,18 +267,33 @@ pub fn intersect_segments(
 ) -> CoreResult<IntersectionResult> {
     match (a, b) {
         (Segment::Line(line_a), Segment::Line(line_b)) => line_line(line_a, line_b, tolerance),
-        (Segment::Line(line), other) => line_curve(line, other, tolerance),
-        (other, Segment::Line(line)) => {
-            let mut result = line_curve(line, other, tolerance)?;
-
-            for intersection in &mut result.intersections {
-                if let Intersection::Point(point) = intersection {
-                    core::mem::swap(&mut point.parameter_a, &mut point.parameter_b);
-                }
-            }
-
-            Ok(result)
+        (Segment::Line(line), Segment::Quadratic(curve)) => {
+            line_curve(line, Segment::Quadratic(curve), tolerance)
         }
-        _ => Err(CoreError::UnsupportedCase),
+        (Segment::Line(line), Segment::Cubic(curve)) => {
+            line_curve(line, Segment::Cubic(curve), tolerance)
+        }
+        (Segment::Quadratic(curve), Segment::Line(line)) => {
+            swap_parameters(line_curve(line, Segment::Quadratic(curve), tolerance)?)
+        }
+        (Segment::Cubic(curve), Segment::Line(line)) => {
+            swap_parameters(line_curve(line, Segment::Cubic(curve), tolerance)?)
+        }
+        _ => intersect_curve_pair(a, b, tolerance),
     }
+}
+
+fn swap_parameters(mut result: IntersectionResult) -> CoreResult<IntersectionResult> {
+    for intersection in &mut result.intersections {
+        match intersection {
+            Intersection::Point(point) => {
+                core::mem::swap(&mut point.parameter_a, &mut point.parameter_b);
+            }
+            Intersection::Overlap(overlap) => {
+                core::mem::swap(&mut overlap.range_a, &mut overlap.range_b);
+            }
+        }
+    }
+
+    Ok(result)
 }
