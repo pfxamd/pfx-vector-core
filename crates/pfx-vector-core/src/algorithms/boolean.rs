@@ -75,6 +75,15 @@ pub fn normalize_self_intersections(
     let segments = collect_segments(path, tolerance);
     let mut splits = vec![vec![0.0, 1.0]; segments.len()];
 
+    for (index, working) in segments.iter().enumerate() {
+        if let Segment::Cubic(curve) = working.segment {
+            if let Some((first, second)) = cubic_self_intersection_parameters(curve, tolerance) {
+                add_parameter(&mut splits[index], first, tolerance);
+                add_parameter(&mut splits[index], second, tolerance);
+            }
+        }
+    }
+
     for index_a in 0..segments.len() {
         for index_b in index_a + 1..segments.len() {
             let intersections = intersect_segments(
@@ -130,6 +139,67 @@ pub fn normalize_self_intersections(
 
     deduplicate_fragments(&mut fragments, tolerance);
     stitch_normalized_fragments(fragments, tolerance)
+}
+
+
+fn cubic_self_intersection_parameters(
+    curve: CubicBezier,
+    tolerance: Tolerance,
+) -> Option<(Scalar, Scalar)> {
+    let a = Vector2::new(
+        -curve.p0.x + 3.0 * curve.p1.x - 3.0 * curve.p2.x + curve.p3.x,
+        -curve.p0.y + 3.0 * curve.p1.y - 3.0 * curve.p2.y + curve.p3.y,
+    );
+    let b = Vector2::new(
+        3.0 * curve.p0.x - 6.0 * curve.p1.x + 3.0 * curve.p2.x,
+        3.0 * curve.p0.y - 6.0 * curve.p1.y + 3.0 * curve.p2.y,
+    );
+    let c = Vector2::new(
+        -3.0 * curve.p0.x + 3.0 * curve.p1.x,
+        -3.0 * curve.p0.y + 3.0 * curve.p1.y,
+    );
+
+    let determinant = a.cross(b);
+    let coefficient_scale = a.length().max(b.length()).max(c.length()).max(1.0);
+    let determinant_tolerance =
+        (tolerance.absolute + tolerance.relative * coefficient_scale) * coefficient_scale * 32.0;
+
+    if !determinant.is_finite() || determinant.abs() <= determinant_tolerance {
+        return None;
+    }
+
+    let w = b.cross(c) / determinant;
+    let sum = c.cross(a) / determinant;
+    let discriminant = 4.0 * w - 3.0 * sum * sum;
+    let parameter_epsilon = parameter_tolerance(tolerance);
+
+    if !w.is_finite()
+        || !sum.is_finite()
+        || !discriminant.is_finite()
+        || discriminant <= parameter_epsilon * parameter_epsilon
+    {
+        return None;
+    }
+
+    let root = discriminant.sqrt();
+    let first = (sum - root) * 0.5;
+    let second = (sum + root) * 0.5;
+
+    if first < -parameter_epsilon
+        || second > 1.0 + parameter_epsilon
+        || second - first <= parameter_epsilon
+    {
+        return None;
+    }
+
+    let first = snap_parameter(first.clamp(0.0, 1.0), tolerance);
+    let second = snap_parameter(second.clamp(0.0, 1.0), tolerance);
+
+    if first == second || (first == 0.0 && second == 1.0) {
+        None
+    } else {
+        Some((first, second))
+    }
 }
 
 fn classify_single_path_boundary(
