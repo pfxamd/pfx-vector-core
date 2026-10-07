@@ -228,19 +228,13 @@ fn crossing_side_before(
     }
 
     if segment_index > 0 {
-        return sample_side(
-            segments[segment_index - 1],
-            1.0,
-            -1.0,
-            ray_y,
-            tolerance,
-        );
+        return sample_side(segments[segment_index - 1], 1.0, -1.0, ray_y, tolerance);
     }
 
     if closed {
-        return segments.last().and_then(|segment| {
-            sample_side(*segment, 1.0, -1.0, ray_y, tolerance)
-        });
+        return segments
+            .last()
+            .and_then(|segment| sample_side(*segment, 1.0, -1.0, ray_y, tolerance));
     }
 
     None
@@ -259,13 +253,7 @@ fn crossing_side_after(
     }
 
     if segment_index + 1 < segments.len() {
-        return sample_side(
-            segments[segment_index + 1],
-            0.0,
-            1.0,
-            ray_y,
-            tolerance,
-        );
+        return sample_side(segments[segment_index + 1], 0.0, 1.0, ray_y, tolerance);
     }
 
     if closed {

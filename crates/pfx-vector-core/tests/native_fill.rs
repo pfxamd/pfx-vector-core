@@ -200,7 +200,6 @@ fn non_finite_fill_query_is_rejected() {
     );
 }
 
-
 #[test]
 fn full_circle_near_endpoint_ray_keeps_correct_winding() {
     let circle = circle_to_path(Circle::new(Point2::new(0.0, 0.0), 10.0).unwrap()).unwrap();
