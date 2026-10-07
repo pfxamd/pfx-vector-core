@@ -2,7 +2,51 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.12.0`.
+**Status:** `v0.13.0`.
+
+## v0.13 open path offset engine
+
+`offset_path` now supports both closed filled contours and open centerlines through the same API.
+
+For an open path, the signed offset is relative to path direction:
+
+- positive distance offsets to the left
+- negative distance offsets to the right
+
+```rust
+let left = offset_path(
+    &open_path,
+    8.0,
+    OffsetStyle {
+        join: StrokeJoin::Round,
+        miter_limit: 4.0,
+    },
+    tolerance,
+)?;
+
+let right = offset_path(&open_path, -8.0, OffsetStyle::default(), tolerance)?;
+```
+
+Open offsets remain open. Line segments are offset exactly, circular arcs stay native arcs when possible, and quadratic/cubic/elliptical geometry uses the existing bounded adaptive cubic offset fitting.
+
+At polyline corners, exact line-line intersections are used where appropriate. Outer corners honor `Miter`, `Bevel`, and `Round` joins, including miter-limit fallback. Round outer joins remain native circular arcs.
+
+The engine also accepts paths produced by `slice_contour`, so trimming and one-sided offsetting compose directly. Mixed paths containing both closed and open subpaths are supported: closed contours retain filled-area offset semantics while open contours use one-sided centerline semantics.
+
+### Web API
+
+No new WebAssembly or TypeScript call is required. The existing API now accepts open geometry:
+
+```text
+offsetPath(data, distance, { join, miterLimit })
+```
+
+Current open-offset limits:
+
+- open offsets do not perform Boolean cleanup of self-intersections in the resulting centerline
+- exact line-line corner intersections are preserved; nonlinear joins may use explicit connector geometry between fitted offset pieces
+- exact 180-degree reversals are treated as a direct deterministic connector rather than an inferred side-changing loop
+- severe cusps or degenerate source tangents may return a defined geometry/tolerance failure
 
 ## v0.12 path trim and slice engine
 
@@ -519,12 +563,13 @@ Current tessellation limits:
 
 ## Validated offset/outline scope
 
-Validated cases include outward/inward rectangle offsets, circular offsets, closed outline rings, holes, `EvenOdd` holes, cubic and elliptical outlines, all cap types, all join modes, miter fallback, crossing open centerlines, large translated coordinates, and complete inward collapse.
+Validated cases include outward/inward rectangle offsets, circular offsets, open signed line offsets, exact line-corner miter joins on both sides, bevel and round outer joins, miter fallback, open cubic and circular-arc offsets, trimmed-contour offsets, mixed open/closed paths, closed outline rings, holes, `EvenOdd` holes, cubic and elliptical outlines, all cap types, crossing open centerlines, large translated coordinates, and complete inward collapse.
 
 Current limits:
 
-- offset inputs must be closed
-- self-intersecting filled contours are normalized before offset construction
+- closed filled contours use area-offset semantics; open contours use signed one-sided centerline semantics
+- self-intersecting closed filled contours are normalized before offset construction; open offset centerlines are not Boolean-normalized after offsetting
+- nonlinear offset joins may include explicit connector segments between adaptive offset pieces
 - dashed outlines are supported through curve-preserving dash expansion; pathological ultra-dense patterns may return `IterationLimit`
 - severe cusp/degenerate tangent cases may return a defined failure
 

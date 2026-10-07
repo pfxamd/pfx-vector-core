@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.13.0 - 2026-10-07
+
+### Added
+
+- One-sided offset support for open paths through the existing `offset_path` API.
+- Signed open-offset semantics: positive distances offset left of path direction and negative distances offset right.
+- Exact line-line miter intersections for compatible inner and outer corners.
+- Open-path `Miter`, `Bevel`, and `Round` outer joins with miter-limit fallback.
+- Native circular-arc round joins for open offsets.
+- Native circular-arc preservation for circular source arcs and adaptive cubic offsets for curved source geometry.
+- Mixed open/closed path handling while retaining filled-area semantics for closed contours.
+- Direct compatibility with open paths produced by the v0.12 contour trim/slice engine.
+- Robustness tests for signed sides, inner/outer miter joins, bevel joins, round joins, miter fallback, cubic offsets, circular arcs, trimmed contours, mixed paths, zero distance, and large translated coordinates.
+- Criterion benchmark coverage for open cubic path offsets.
+
+### Changed
+
+- `offset_path` and the existing WebAssembly/TypeScript `offsetPath` API no longer reject open paths.
+- Closed-path offset behavior and fill-rule handling remain unchanged.
+- Offset/outline documentation now distinguishes closed filled-area offsets from open one-sided centerline offsets.
+
+### Scope limits
+
+- Open offset centerlines are not Boolean-normalized after construction.
+- Exact line-line joins are retained where possible; nonlinear corners may use connector geometry between adaptive offset pieces.
+- Exact 180-degree reversals use a deterministic direct connector.
+- Severe cusps or degenerate tangents may return a defined failure rather than unstable geometry.
+
 ## 0.12.0 - 2026-10-07
 
 ### Added
