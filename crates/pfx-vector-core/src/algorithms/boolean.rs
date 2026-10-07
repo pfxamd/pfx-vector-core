@@ -551,7 +551,6 @@ fn classify_fragment_boundary(
         midpoint,
         normal,
         probe,
-        tolerance,
     )?
     else {
         return Err(CoreError::ToleranceNotMet);
@@ -562,7 +561,6 @@ fn classify_fragment_boundary(
         midpoint,
         normal,
         probe,
-        tolerance,
     )?
     else {
         return Err(CoreError::ToleranceNotMet);
@@ -586,7 +584,6 @@ fn classify_sides(
     midpoint: Point2,
     normal: Vector2,
     base_probe: Scalar,
-    tolerance: Tolerance,
 ) -> CoreResult<Option<(bool, bool)>> {
     let mut distance = base_probe;
 
