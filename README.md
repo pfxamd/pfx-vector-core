@@ -2,7 +2,29 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.9.0`.
+**Status:** `v0.10.0`.
+
+## v0.10 incremental path spatial engine
+
+For paths that are edited repeatedly, build one reusable index and synchronize new immutable path snapshots into it:
+
+```rust
+let mut index = IncrementalPathSpatialIndex::build(&path, tolerance)?;
+
+let sync = index.sync_path(&edited_path)?;
+
+let inside = index.contains_point(point, FillRule::NonZero)?;
+let stroke_hit = index.stroke_contains_point(&stroke_style, point)?;
+let nearest = index.closest_point(point)?;
+```
+
+`sync_path` compares the new path with the previous snapshot. Unchanged geometry is retained. Changed segments are re-flattened and re-indexed individually when possible; local topology changes rebuild only the affected subpath. A full index rebuild is reserved for path-level topology changes such as adding or removing subpaths.
+
+`PathSpatialSync` reports whether a full rebuild occurred and how much indexed geometry changed.
+
+The incremental index also retains the original source-segment parameter range for every flattened edge. Nearest-point results therefore report the original `subpath_index`, `segment_index`, source `t`, and path distance rather than flatten-edge coordinates.
+
+Closed-path semantics remain split intentionally: fill and stroke queries include the implicit closing edge, while nearest-point location follows the explicit source segments used by `closest_point` and `path_length`.
 
 ## v0.9 dynamic spatial indexing
 

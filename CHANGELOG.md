@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.10.0 - 2026-10-07
+
+### Added
+
+- Public `IncrementalPathSpatialIndex` for repeated spatial queries on paths that change over time.
+- `sync_path` diffing against the previous path snapshot, with segment-level updates when topology stays compatible.
+- Subpath-local rebuilds when a subpath changes segment count, start point, or closure state.
+- Automatic full rebuild only when the path's subpath count changes.
+- `PathSpatialSync` reports for rebuild scope, changed subpaths/segments, and inserted/removed flattened edges.
+- Source-segment parameter tracking during adaptive flattening so indexed nearest-point results retain the original `subpath_index`, `segment_index`, and source `t`.
+- Incremental length metadata for correct `PathLocation.distance` after path edits.
+- Differential tests against full fill, stroke, nearest-point, and path-length algorithms before and after incremental synchronization.
+- Robustness coverage for repeated edit cycles, local topology changes, full rebuild fallback, and large translated coordinates.
+- Criterion benchmark targets comparing one-segment incremental synchronization with a full path spatial rebuild on a 2000-segment workload.
+- `IncrementalPathSpatialIndex` in the core prelude.
+
+### Changed
+
+- Segment flattening now has an internal parameter-preserving edge representation used by the incremental path index.
+- Incremental nearest-point queries ignore implicit closing edges for path-location reporting, matching the explicit-segment semantics of `closest_point` and `path_length`.
+- Fill and stroke queries still include implicit closing edges for closed subpaths.
+
+### Scope limits
+
+- `sync_path` compares immutable `Path` snapshots; it does not introduce mutable editor state into the geometry model.
+- Segment-local reuse applies while the number of subpaths is unchanged. Adding or removing subpaths currently falls back to a full rebuild.
+- A changed subpath with different local topology is rebuilt as one unit, while unchanged subpaths remain indexed.
+- The index remains a CPU geometry acceleration structure and is not a scene graph, renderer cache, or concurrent editing model.
+
 ## 0.9.0 - 2026-10-07
 
 ### Added
