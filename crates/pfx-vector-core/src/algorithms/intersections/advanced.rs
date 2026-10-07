@@ -337,11 +337,19 @@ fn push_unique(
             return false;
         };
 
-        existing_point.point.distance_to(candidate_point.point) <= spatial_tolerance * 4.0
+        let point_distance = existing_point.point.distance_to(candidate_point.point);
+        let same_parameterized_event = point_distance <= spatial_tolerance * 4.0
             && (existing_point.parameter_a - candidate_point.parameter_a).abs()
                 <= PARAMETER_EPSILON * 8.0
             && (existing_point.parameter_b - candidate_point.parameter_b).abs()
-                <= PARAMETER_EPSILON * 8.0
+                <= PARAMETER_EPSILON * 8.0;
+        let tangent_merge_distance =
+            spatial_tolerance.max(tolerance.flatness * 0.25);
+        let same_tangent_event = existing_point.kind == IntersectionKind::Tangent
+            && candidate_point.kind == IntersectionKind::Tangent
+            && point_distance <= tangent_merge_distance;
+
+        same_parameterized_event || same_tangent_event
     });
 
     if !duplicate {
