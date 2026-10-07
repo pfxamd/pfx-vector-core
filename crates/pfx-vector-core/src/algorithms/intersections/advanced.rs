@@ -575,14 +575,15 @@ fn push_endpoint_anchor(
         return Ok(());
     }
 
+    let nearest_parameter = snap_parameter(nearest.t, tolerance);
     anchors.push(if endpoint_belongs_to_a {
         OverlapAnchor {
             parameter_a: endpoint_parameter,
-            parameter_b: nearest.t,
+            parameter_b: nearest_parameter,
         }
     } else {
         OverlapAnchor {
-            parameter_a: nearest.t,
+            parameter_a: nearest_parameter,
             parameter_b: endpoint_parameter,
         }
     });
