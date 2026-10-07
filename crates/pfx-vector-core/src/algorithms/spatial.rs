@@ -1,8 +1,8 @@
 use super::measure::segment_length_to_t;
 use crate::{
     Bounds, CoreError, CoreResult, FillRule, Path, PathLocation, Point2, PointClassification,
-    Scalar, SegmentClosestPoint, StrokeStyle, Tolerance, closest_point_on_segment,
-    flatten_path, segment_length,
+    Scalar, SegmentClosestPoint, StrokeStyle, Tolerance, closest_point_on_segment, flatten_path,
+    segment_length,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -364,8 +364,11 @@ impl PathSpatialIndex {
         if let Some(candidate) = self.closest_from_segment_candidates(&candidates, point)? {
             if candidate.0.distance_squared < best.0.distance_squared
                 || (candidate.0.distance_squared == best.0.distance_squared
-                    && (candidate.1.subpath_index, candidate.1.segment_index, candidate.0.t)
-                        < (best.1.subpath_index, best.1.segment_index, best.0.t))
+                    && (
+                        candidate.1.subpath_index,
+                        candidate.1.segment_index,
+                        candidate.0.t,
+                    ) < (best.1.subpath_index, best.1.segment_index, best.0.t))
             {
                 best = candidate;
             }
@@ -373,8 +376,8 @@ impl PathSpatialIndex {
 
         let (candidate, source) = best;
         let segment = self.path.subpaths()[source.subpath_index].segments()[source.segment_index];
-        let distance = source.distance_start
-            + segment_length_to_t(segment, candidate.t, self.tolerance)?;
+        let distance =
+            source.distance_start + segment_length_to_t(segment, candidate.t, self.tolerance)?;
 
         Ok(crate::ClosestPointResult {
             point: candidate.point,
@@ -398,19 +401,22 @@ impl PathSpatialIndex {
 
         for &index in candidates {
             let source = self.segments[index];
-            let segment = self.path.subpaths()[source.subpath_index].segments()[source.segment_index];
+            let segment =
+                self.path.subpaths()[source.subpath_index].segments()[source.segment_index];
             let candidate = closest_point_on_segment(segment, point, self.tolerance)?;
 
-            if best.is_none_or(|(current, current_source): (SegmentClosestPoint, IndexedSegment)| {
-                candidate.distance_squared < current.distance_squared
-                    || (candidate.distance_squared == current.distance_squared
-                        && (source.subpath_index, source.segment_index, candidate.t)
-                            < (
-                                current_source.subpath_index,
-                                current_source.segment_index,
-                                current.t,
-                            ))
-            }) {
+            if best.is_none_or(
+                |(current, current_source): (SegmentClosestPoint, IndexedSegment)| {
+                    candidate.distance_squared < current.distance_squared
+                        || (candidate.distance_squared == current.distance_squared
+                            && (source.subpath_index, source.segment_index, candidate.t)
+                                < (
+                                    current_source.subpath_index,
+                                    current_source.segment_index,
+                                    current.t,
+                                ))
+                },
+            ) {
                 best = Some((candidate, source));
             }
         }
