@@ -1,7 +1,7 @@
-use super::measure::segment_parameter_at_length_with_total;
+use super::trim::{contour_trace_with_lengths, slice_trace_interval};
 use crate::{
-    Angle, Bounds, CoreError, CoreResult, EllipticalArc, LineSegment, Path, PathBuilder, Point2,
-    Scalar, Segment, Subpath, Tolerance, flatten_path, segment_length,
+    Bounds, CoreError, CoreResult, Path, PathBuilder, Point2, Scalar, Segment, Subpath, Tolerance,
+    flatten_path,
 };
 
 const MAX_DASH_STEPS: usize = 262_144;
@@ -120,24 +120,10 @@ fn dash_subpath(
     dash_offset: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Vec<DashFragment>> {
-    let mut trace = subpath.segments().to_vec();
-    if subpath.is_closed() && !subpath.end().almost_eq(subpath.start(), tolerance) {
-        trace.push(Segment::Line(LineSegment::new(
-            subpath.end(),
-            subpath.start(),
-        )));
-    }
+    let (trace, lengths, total) = contour_trace_with_lengths(subpath, tolerance)?;
 
     if trace.is_empty() {
         return Ok(Vec::new());
-    }
-
-    let mut lengths = Vec::with_capacity(trace.len());
-    let mut total = 0.0;
-    for &segment in &trace {
-        let length = segment_length(segment, tolerance)?;
-        lengths.push(length);
-        total += length;
     }
 
     if total == 0.0 {
@@ -255,91 +241,6 @@ fn dash_intervals(
     }
 
     Ok(intervals)
-}
-
-fn slice_trace_interval(
-    trace: &[Segment],
-    lengths: &[Scalar],
-    start: Scalar,
-    end: Scalar,
-    tolerance: Tolerance,
-) -> CoreResult<Vec<Segment>> {
-    let mut output = Vec::new();
-    let mut accumulated = 0.0;
-
-    for (&segment, &length) in trace.iter().zip(lengths) {
-        let segment_start = accumulated;
-        let segment_end = accumulated + length;
-        accumulated = segment_end;
-
-        if length == 0.0 || end <= segment_start {
-            if end <= segment_start {
-                break;
-            }
-            continue;
-        }
-        if start >= segment_end {
-            continue;
-        }
-
-        let local_start = (start - segment_start).clamp(0.0, length);
-        let local_end = (end - segment_start).clamp(0.0, length);
-        if local_end <= local_start {
-            continue;
-        }
-
-        let t0 = if local_start == 0.0 {
-            0.0
-        } else {
-            segment_parameter_at_length_with_total(segment, local_start, length, tolerance)?
-        };
-        let t1 = if local_end == length {
-            1.0
-        } else {
-            segment_parameter_at_length_with_total(segment, local_end, length, tolerance)?
-        };
-
-        if t1 > t0 {
-            output.push(slice_segment(segment, t0, t1));
-        }
-    }
-
-    Ok(output)
-}
-
-fn slice_segment(segment: Segment, t0: Scalar, t1: Scalar) -> Segment {
-    let t0 = t0.clamp(0.0, 1.0);
-    let t1 = t1.clamp(t0, 1.0);
-
-    match segment {
-        Segment::Line(line) => {
-            Segment::Line(LineSegment::new(line.point_at(t0), line.point_at(t1)))
-        }
-        Segment::Quadratic(curve) => Segment::Quadratic(curve.subcurve(t0, t1)),
-        Segment::Cubic(curve) => {
-            if t0 == 0.0 && t1 == 1.0 {
-                return Segment::Cubic(curve);
-            }
-            let (_, right) = curve.split(t0);
-            let local = if t0 == 1.0 {
-                0.0
-            } else {
-                ((t1 - t0) / (1.0 - t0)).clamp(0.0, 1.0)
-            };
-            Segment::Cubic(right.split(local).0)
-        }
-        Segment::Arc(arc) => {
-            let sweep = arc.sweep_angle.as_radians();
-            Segment::Arc(EllipticalArc::new(
-                arc.center,
-                arc.radius_x,
-                arc.radius_y,
-                arc.rotation,
-                Angle::radians(arc.start_angle.as_radians() + sweep * t0),
-                Angle::radians(sweep * (t1 - t0)),
-            ))
-        }
-    }
 }
 
 fn append_segment(builder: &mut PathBuilder, segment: Segment) -> CoreResult<()> {
