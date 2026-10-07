@@ -4,7 +4,10 @@ use crate::{Point2, Scalar};
 pub enum Bounds {
     #[default]
     Empty,
-    Finite { min: Point2, max: Point2 },
+    Finite {
+        min: Point2,
+        max: Point2,
+    },
 }
 
 impl Bounds {
