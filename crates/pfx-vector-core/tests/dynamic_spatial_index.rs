@@ -30,7 +30,11 @@ fn brute_self_pairs(items: &BTreeMap<usize, Bounds>, padding: f64) -> Vec<(usize
 
     for left in 0..entries.len() {
         for right in left + 1..entries.len() {
-            if entries[left].1.expanded(padding).intersects(entries[right].1) {
+            if entries[left]
+                .1
+                .expanded(padding)
+                .intersects(entries[right].1)
+            {
                 pairs.push((entries[left].0, entries[right].0));
             }
         }
@@ -63,29 +67,19 @@ fn dynamic_index_insert_update_remove_and_stable_queries() {
 
     index.insert(7, bounds(0.0, 0.0, 4.0, 4.0)).unwrap();
     index.insert(2, bounds(3.0, 2.0, 8.0, 6.0)).unwrap();
-    index
-        .insert(19, bounds(30.0, 30.0, 31.0, 31.0))
-        .unwrap();
+    index.insert(19, bounds(30.0, 30.0, 31.0, 31.0)).unwrap();
 
     let query = bounds(1.0, 1.0, 5.0, 5.0);
     assert_eq!(index.query_bounds(query, 0.0).unwrap(), vec![2, 7]);
     assert_eq!(index.query_bounds(query, 0.0).unwrap(), vec![2, 7]);
     assert_eq!(index.len(), 3);
     assert!(index.contains_item(19));
-    assert_eq!(
-        index.item_bounds(7),
-        Some(bounds(0.0, 0.0, 4.0, 4.0))
-    );
+    assert_eq!(index.item_bounds(7), Some(bounds(0.0, 0.0, 4.0, 4.0)));
 
-    index
-        .update(7, bounds(50.0, 50.0, 55.0, 55.0))
-        .unwrap();
+    index.update(7, bounds(50.0, 50.0, 55.0, 55.0)).unwrap();
     assert_eq!(index.query_bounds(query, 0.0).unwrap(), vec![2]);
 
-    assert_eq!(
-        index.remove(2).unwrap(),
-        bounds(3.0, 2.0, 8.0, 6.0)
-    );
+    assert_eq!(index.remove(2).unwrap(), bounds(3.0, 2.0, 8.0, 6.0));
     assert!(index.query_bounds(query, 0.0).unwrap().is_empty());
     assert!(!index.contains_item(2));
 }
@@ -102,9 +96,7 @@ fn dynamic_index_from_bounds_preserves_original_item_indices() {
 
     assert_eq!(index.len(), 3);
     assert_eq!(
-        index
-            .query_bounds(bounds(0.5, 0.5, 2.5, 2.5), 0.0)
-            .unwrap(),
+        index.query_bounds(bounds(0.5, 0.5, 2.5, 2.5), 0.0).unwrap(),
         vec![0, 2]
     );
 }
@@ -207,9 +199,7 @@ fn repeated_updates_of_one_item_do_not_duplicate_results() {
 
     for step in 0..100 {
         let x = step as f64 * 0.1;
-        index
-            .update(11, bounds(x, 0.0, x + 1.0, 1.0))
-            .unwrap();
+        index.update(11, bounds(x, 0.0, x + 1.0, 1.0)).unwrap();
         assert_eq!(
             index
                 .query_bounds(bounds(x, -1.0, x + 1.0, 2.0), 0.0)
@@ -229,24 +219,14 @@ fn dynamic_index_remains_stable_at_large_coordinates() {
     index
         .insert(
             2,
-            bounds(
-                offset + 100.0,
-                offset,
-                offset + 110.0,
-                offset + 10.0,
-            ),
+            bounds(offset + 100.0, offset, offset + 110.0, offset + 10.0),
         )
         .unwrap();
 
     assert_eq!(
         index
             .query_bounds(
-                bounds(
-                    offset + 5.0,
-                    offset + 5.0,
-                    offset + 6.0,
-                    offset + 6.0,
-                ),
+                bounds(offset + 5.0, offset + 5.0, offset + 6.0, offset + 6.0,),
                 0.0,
             )
             .unwrap(),
@@ -256,12 +236,7 @@ fn dynamic_index_remains_stable_at_large_coordinates() {
     index
         .update(
             2,
-            bounds(
-                offset + 8.0,
-                offset + 8.0,
-                offset + 12.0,
-                offset + 12.0,
-            ),
+            bounds(offset + 8.0, offset + 8.0, offset + 12.0, offset + 12.0),
         )
         .unwrap();
     assert_eq!(index.self_candidate_pairs(0.0).unwrap(), vec![(2, 8)]);
