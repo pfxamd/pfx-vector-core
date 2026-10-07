@@ -348,7 +348,7 @@ pub fn closest_point_svg(data: &str, x: f64, y: f64) -> Result<String, JsValue> 
     let result =
         closest_point(&path, Point2::new(x, y), Tolerance::default()).map_err(js_err)?;
     Ok(format!(
-        "{\"x\":{},\"y\":{},\"distance\":{},\"distanceSquared\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}",
+        "{{\"x\":{},\"y\":{},\"distance\":{},\"distanceSquared\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}}",
         result.point.x,
         result.point.y,
         result.distance,
