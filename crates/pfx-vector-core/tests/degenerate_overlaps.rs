@@ -99,8 +99,10 @@ fn nearly_collinear_quadratic_is_not_promoted_to_overlap() {
 
     let result = intersect_segments(line, curve, tolerance()).unwrap();
 
-    assert!(result
-        .intersections
-        .iter()
-        .all(|intersection| !matches!(intersection, Intersection::Overlap(_))));
+    assert!(
+        result
+            .intersections
+            .iter()
+            .all(|intersection| !matches!(intersection, Intersection::Overlap(_)))
+    );
 }

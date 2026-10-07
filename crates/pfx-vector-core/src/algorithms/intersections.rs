@@ -252,9 +252,7 @@ impl ProjectedCurve {
     fn derivative_roots(self) -> Vec<Scalar> {
         match self {
             Self::Quadratic([_, c1, c2]) => solve_quadratic(0.0, 2.0 * c2, c1),
-            Self::Cubic([_, c1, c2, c3]) => {
-                solve_quadratic(3.0 * c3, 2.0 * c2, c1)
-            }
+            Self::Cubic([_, c1, c2, c3]) => solve_quadratic(3.0 * c3, 2.0 * c2, c1),
         }
     }
 }
@@ -277,17 +275,16 @@ fn coincident_line_curve(
     };
 
     let line_length = length_squared.sqrt();
-    let coordinate_scale = controls
-        .iter()
-        .fold(line.start.x.abs().max(line.start.y.abs()).max(1.0), |scale, point| {
-            scale.max(point.x.abs()).max(point.y.abs())
-        });
-    let geometric_tolerance =
-        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+    let coordinate_scale = controls.iter().fold(
+        line.start.x.abs().max(line.start.y.abs()).max(1.0),
+        |scale, point| scale.max(point.x.abs()).max(point.y.abs()),
+    );
+    let geometric_tolerance = (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
 
-    if controls.iter().any(|point| {
-        direction.cross(*point - line.start).abs() / line_length > geometric_tolerance
-    }) {
+    if controls
+        .iter()
+        .any(|point| direction.cross(*point - line.start).abs() / line_length > geometric_tolerance)
+    {
         return Ok(None);
     }
 
@@ -318,9 +315,7 @@ fn coincident_line_curve(
 
         let midpoint = (t0 + t1) * 0.5;
         let middle_projection = projected.evaluate(midpoint);
-        if middle_projection < -projection_epsilon
-            || middle_projection > 1.0 + projection_epsilon
-        {
+        if middle_projection < -projection_epsilon || middle_projection > 1.0 + projection_epsilon {
             continue;
         }
 
@@ -476,8 +471,7 @@ fn intrinsic_line_like_curve_parameters(
     let coordinate_scale = controls.iter().fold(1.0_f64, |scale, point| {
         scale.max(point.x.abs()).max(point.y.abs())
     });
-    let geometric_tolerance =
-        (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
+    let geometric_tolerance = (tolerance.absolute + tolerance.relative * coordinate_scale) * 16.0;
 
     if controls
         .iter()
@@ -507,10 +501,7 @@ fn intrinsic_line_like_curve_parameters(
 
     for value in values {
         for root in projected.roots_at(value) {
-            if root.is_finite()
-                && root > parameter_epsilon
-                && root < 1.0 - parameter_epsilon
-            {
+            if root.is_finite() && root > parameter_epsilon && root < 1.0 - parameter_epsilon {
                 parameters.push(root);
             }
         }
