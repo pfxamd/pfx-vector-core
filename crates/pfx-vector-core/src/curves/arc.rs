@@ -54,4 +54,26 @@ impl EllipticalArc {
             (-self.radius_x * sa * sr + self.radius_y * ca * cr) * sweep,
         )
     }
+    pub fn tangent_at(
+        self,
+        t: Scalar,
+        tolerance: crate::Tolerance,
+    ) -> CoreResult<crate::Vector2> {
+        self.derivative_at(t).normalized(tolerance)
+    }
+
+    #[must_use]
+    pub fn split(self, t: Scalar) -> (Self, Self) {
+        let t = t.clamp(0.0, 1.0);
+        let sweep = self.sweep_angle.as_radians();
+        let middle = self.start_angle.as_radians() + sweep * t;
+        (
+            Self { sweep_angle: Angle::radians(sweep * t), ..self },
+            Self {
+                start_angle: Angle::radians(middle),
+                sweep_angle: Angle::radians(sweep * (1.0 - t)),
+                ..self
+            },
+        )
+    }
 }
