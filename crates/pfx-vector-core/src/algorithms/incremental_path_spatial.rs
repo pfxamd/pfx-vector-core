@@ -136,6 +136,10 @@ impl IncrementalPathSpatialIndex {
         &self.snapshot
     }
 
+    pub fn sync_edit(&mut self, edit: &crate::PathEditResult) -> CoreResult<PathSpatialSync> {
+        self.sync_path(edit.path())
+    }
+
     pub fn sync_path(&mut self, path: &Path) -> CoreResult<PathSpatialSync> {
         if self.snapshot == *path {
             return Ok(PathSpatialSync::default());

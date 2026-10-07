@@ -18,10 +18,13 @@ pub use path::*;
 pub mod prelude {
     pub use crate::{
         Angle, Bounds, ContourSliceMode, CubicBezier, DynamicSpatialIndex, EllipticalArc,
-        IncrementalPathSpatialIndex, LineSegment, Path, PathBuilder, PathSpatialIndex, Point2,
-        QuadraticBezier, SpatialIndex, StrokeCap, StrokeHitIndex, StrokeJoin, StrokeStyle,
-        Tolerance, Transform2D, Vector2, contour_length, dash_path, segment_parameter_at_length,
-        slice_contour, split_contour_at_length,
+        IncrementalPathSpatialIndex, LineSegment, Path, PathBuilder, PathEditResult,
+        PathSpatialIndex, Point2, QuadraticBezier, SegmentAddress, SpatialIndex, StrokeCap,
+        StrokeHitIndex, StrokeJoin, StrokeStyle, SubpathEndpoint, Tolerance, Transform2D, Vector2,
+        contour_length, dash_path, insert_anchor, join_open_subpaths, remove_segment,
+        remove_subpath, replace_segment, reverse_subpath, segment_parameter_at_length,
+        set_subpath_closed, slice_contour, split_contour_at_length, split_segment,
+        split_segment_at_length,
     };
 }
 #[cfg(test)]
