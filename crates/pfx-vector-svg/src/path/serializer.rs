@@ -93,7 +93,7 @@ pub fn serialize_path(path: &Path, options: SerializeOptions) -> String {
     }
 
     if options.compact {
-        parts.join(" ")
+        parts.join("")
     } else {
         parts.join(" ")
     }
