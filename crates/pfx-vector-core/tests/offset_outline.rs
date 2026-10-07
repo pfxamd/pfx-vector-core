@@ -238,7 +238,7 @@ fn cubic_outline_uses_cubic_offset_approximation() {
 }
 
 #[test]
-fn dashed_outline_is_explicitly_deferred() {
+fn dashed_outline_is_supported() {
     let path = rect_path(0.0, 0.0, 10.0, 10.0);
     let style = StrokeStyle {
         width: 2.0,
@@ -246,10 +246,8 @@ fn dashed_outline_is_explicitly_deferred() {
         ..StrokeStyle::default()
     };
 
-    assert_eq!(
-        outline_path(&path, &style, Tolerance::default()),
-        Err(CoreError::UnsupportedCase)
-    );
+    let outline = outline_path(&path, &style, Tolerance::default()).unwrap();
+    assert!(!outline.is_empty());
 }
 
 #[test]

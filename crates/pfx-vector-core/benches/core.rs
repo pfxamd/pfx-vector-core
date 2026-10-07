@@ -133,6 +133,34 @@ fn bench_core(c: &mut Criterion) {
         })
     });
 
+    let dashed_outline_style = StrokeStyle {
+        dash_array: vec![12.0, 8.0, 2.0, 4.0],
+        dash_offset: 3.0,
+        ..outline_style.clone()
+    };
+
+    c.bench_function("dash cubic path", |b| {
+        b.iter(|| {
+            dash_path(
+                black_box(&outline_source),
+                black_box(&dashed_outline_style),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("outline dashed cubic path", |b| {
+        b.iter(|| {
+            outline_path(
+                black_box(&outline_source),
+                black_box(&dashed_outline_style),
+                black_box(tolerance),
+            )
+            .unwrap()
+        })
+    });
+
     c.bench_function("tessellate rectangle fill", |b| {
         b.iter(|| {
             tessellate_fill(
