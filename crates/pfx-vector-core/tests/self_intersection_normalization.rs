@@ -235,7 +235,6 @@ fn nested_same_direction_contour_is_normalized_by_fill_semantics() {
     assert!(!inside(&evenodd, 10.0, 10.0));
 }
 
-
 #[test]
 fn intrinsic_cubic_self_intersection_is_split_without_flattening() {
     let curve = CubicBezier::new(
@@ -263,11 +262,13 @@ fn intrinsic_cubic_self_intersection_is_split_without_flattening() {
 
     assert!(normalized.segment_count() > 2);
     assert!(normalized.subpaths().iter().all(Subpath::is_closed));
-    assert!(normalized
-        .subpaths()
-        .iter()
-        .flat_map(|subpath| subpath.segments())
-        .any(|segment| matches!(segment, Segment::Cubic(_))));
+    assert!(
+        normalized
+            .subpaths()
+            .iter()
+            .flat_map(|subpath| subpath.segments())
+            .any(|segment| matches!(segment, Segment::Cubic(_)))
+    );
 }
 
 #[test]

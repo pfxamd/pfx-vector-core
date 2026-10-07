@@ -141,7 +141,6 @@ pub fn normalize_self_intersections(
     stitch_normalized_fragments(fragments, tolerance)
 }
 
-
 fn cubic_self_intersection_parameters(
     curve: CubicBezier,
     tolerance: Tolerance,
