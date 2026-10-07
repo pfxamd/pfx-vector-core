@@ -143,11 +143,7 @@ impl IncrementalPathSpatialIndex {
 
         if self.snapshot.subpaths().len() != path.subpaths().len() {
             let previous_edges = self.edge_count();
-            let changed_subpaths = self
-                .snapshot
-                .subpaths()
-                .len()
-                .max(path.subpaths().len());
+            let changed_subpaths = self.snapshot.subpaths().len().max(path.subpaths().len());
             let changed_segments = self.snapshot.segment_count().max(path.segment_count());
             let rebuilt = Self::build(path, self.tolerance)?;
             let inserted_edges = rebuilt.edge_count();
@@ -417,9 +413,9 @@ impl IncrementalPathSpatialIndex {
             let (candidate, t) = closest_line(edge.start, edge.end, point);
             let distance_squared = candidate.distance_squared_to(point);
 
-            if best.is_none_or(
-                |value: (Scalar, Point2, IncrementalPathEdge, Scalar)| distance_squared < value.0,
-            ) {
+            if best.is_none_or(|value: (Scalar, Point2, IncrementalPathEdge, Scalar)| {
+                distance_squared < value.0
+            }) {
                 best = Some((distance_squared, candidate, edge, t));
             }
         }
@@ -467,11 +463,7 @@ impl IncrementalPathSpatialIndex {
         Ok(())
     }
 
-    fn insert_edge(
-        &mut self,
-        subpath_index: usize,
-        prepared: PreparedEdge,
-    ) -> CoreResult<usize> {
+    fn insert_edge(&mut self, subpath_index: usize, prepared: PreparedEdge) -> CoreResult<usize> {
         let next = self
             .next_edge_id
             .checked_add(1)
@@ -536,8 +528,7 @@ impl IncrementalPathSpatialIndex {
 
     fn recompute_metrics(&mut self) {
         self.segment_offsets.clear();
-        self.segment_offsets
-            .reserve(self.segment_lengths.len());
+        self.segment_offsets.reserve(self.segment_lengths.len());
         self.subpath_offsets.clear();
         self.subpath_offsets.reserve(self.segment_lengths.len());
 
@@ -733,11 +724,7 @@ fn subpath_bounds(subpath: &Subpath) -> Bounds {
     bounds
 }
 
-fn segment_length_to_t(
-    segment: Segment,
-    t: Scalar,
-    tolerance: Tolerance,
-) -> CoreResult<Scalar> {
+fn segment_length_to_t(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult<Scalar> {
     let t = t.clamp(0.0, 1.0);
     if t == 0.0 {
         return Ok(0.0);
