@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.19.0 - 2026-10-07
+
+### Added
+
+- Source-native fill and winding classification for line, quadratic Bézier, cubic Bézier, and elliptical-arc segments.
+- Native boundary refinement through `closest_point_on_segment` instead of flattened-edge boundary checks.
+- Direct quadratic and cubic y-root solving for horizontal-ray crossings.
+- Native elliptical-arc ray solving over the actual source sweep.
+- Tolerance-scaled ray perturbation for stable vertex and horizontal-tangency handling.
+- Strict source-parameter root ownership that prevents near-endpoint numerical roots outside `[0, 1]` from creating false crossings.
+- Conservative native-fill broad phases in `PathSpatialIndex` and `IncrementalPathSpatialIndex`.
+- Regression coverage for coarse flatness, curve boundaries, tangencies, full-circle seams, vertex-aligned rays, large coordinates, indexed refinement, incremental synchronization, curved Booleans, and offset/outline cleanup.
+- Criterion benchmark coverage for direct and indexed native elliptical-arc fill classification.
+
+### Changed
+
+- `classify_point` and `contains_point` no longer flatten source curves for final fill classification.
+- `NonZero` and `EvenOdd` winding decisions are now independent of `Tolerance.flatness`.
+- Spatial fill indexes use bounds only as a broad phase and share the same final native classifier as direct queries.
+- Boolean side probes, contour normalization, filled offset cleanup, and stroke-component fill tests inherit source-native fill semantics without an API migration.
+
+### Scope limits
+
+- Native curve crossings remain bounded floating-point numerical geometry rather than symbolic exact arithmetic.
+- `Tolerance` still controls boundary proximity and numerical robustness.
+- Open subpaths retain their existing open-fill semantics; only closed contours receive an implicit closing edge.
+- Pathological retraces and self-intersection topology remain governed by the existing normalization/intersection scope limits.
+
 ## 0.18.0 - 2026-10-07
 
 ### Added

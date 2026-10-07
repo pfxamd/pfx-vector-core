@@ -2,7 +2,34 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.18.0`.
+**Status:** `v0.19.0`.
+
+## v0.19 native fill & winding engine
+
+Point-in-fill classification now evaluates the original vector primitives instead of flattening curves into line edges before the final fill decision.
+
+`classify_point` and `contains_point` use a native horizontal-ray winding solver:
+
+- lines solve the ray crossing directly
+- quadratic Béziers solve their native quadratic y-polynomial
+- cubic Béziers solve their native cubic y-polynomial
+- elliptical arcs solve ray crossings on the source ellipse over the actual arc sweep
+- boundary detection refines against the original segment through `closest_point_on_segment`
+
+Both `NonZero` and `EvenOdd` retain their existing semantics. Tangencies, contour vertices, full-circle seams, and near-endpoint roots are handled without converting source curves to polylines. A tolerance-scaled ray perturbation avoids vertex degeneracy after boundary classification, while strict source-parameter bounds prevent numerically out-of-range roots from becoming false endpoint crossings.
+
+`PathSpatialIndex` and `IncrementalPathSpatialIndex` remain conservative broad phases. They prune clearly irrelevant queries using source-segment and edge bounds, then delegate the final classification to the same native fill engine as direct queries.
+
+`Tolerance.flatness` therefore no longer controls final fill membership or boundary geometry. Existing Boolean normalization, offset cleanup, tessellation topology probes, and stroke-component classification inherit the improved fill semantics automatically.
+
+No Web API migration is required.
+
+Current fill limits:
+
+- curve root solving is bounded floating-point numerical geometry rather than symbolic exact arithmetic
+- tolerance still controls boundary proximity and numerical robustness
+- open subpaths retain their existing open-fill behavior; only closed subpaths receive an implicit closing edge
+- pathological retraces and self-intersection topology remain subject to the existing contour-normalization limits
 
 ## v0.18 precision offset engine
 
@@ -49,7 +76,7 @@ let segment_nearest = closest_point_on_segment(
 
 The returned path result identifies the original `subpath_index`, `segment_index`, source parameter `t`, geometric distance, and path-distance coordinate. Lines use direct projection, quadratic and cubic Béziers solve stationary distance candidates on their native polynomial form, and elliptical arcs solve candidates on the native ellipse over the actual arc sweep.
 
-`PathSpatialIndex` and `IncrementalPathSpatialIndex` now maintain source-segment bounds for nearest-query broad-phase pruning. Candidate segments are then refined with the same native nearest solver, so indexed and direct queries share the same final geometry semantics. Adaptive flattening remains in the indexes for fill/stroke workloads but is no longer the final nearest-point representation.
+`PathSpatialIndex` and `IncrementalPathSpatialIndex` now maintain source-segment bounds for nearest-query broad-phase pruning. Candidate segments are then refined with the same native nearest solver, so indexed and direct queries share the same final geometry semantics. Adaptive edge data remains in the indexes as a conservative broad phase for fill/stroke workloads. Starting in v0.19, final fill classification is source-native as well; nearest-point refinement remains source-native from v0.17.
 
 ### Web API
 
@@ -206,7 +233,7 @@ The TypeScript wrapper composes dash expansion with the new WebAssembly stroke-h
 
 Current hit-testing limits:
 
-- curved component point classification inherits the configured `Tolerance` and adaptive flattening used by fill classification
+- curved component point classification uses the v0.19 source-native fill engine; `Tolerance` still controls boundary and numerical decisions
 - constructing stroke components inherits the offset/outline failure behavior for severe cusps or degenerate source tangents
 - `PathSpatialIndex` and `IncrementalPathSpatialIndex` do not cache a style-specific stroke index; repeated pointer queries should build and reuse `StrokeHitIndex`
 - pathological stroke widths and miter limits whose combined reach overflows finite coordinates are rejected as `InvalidGeometry`
