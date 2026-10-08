@@ -58,6 +58,30 @@ try {
   assert.ok(Math.abs(kernel.translated.minY - 35) < 0.01);
   assert.ok(JSON.parse(kernel.crossed).length >= 1);
 
+  // Browser-side large geometry workload with actual WASM, not simulated shapes.
+  const stress = await page.evaluate(async () => {
+    const wasm = await import("/crates/pfx-vector-wasm/pkg/pfx_vector_wasm.js");
+    let d = "M0 0";
+    for (let i = 0; i < 160; i++) {
+      const x = i * 3;
+      d += ` C${x + 1} 70 ${x + 2} -70 ${x + 3} 0`;
+    }
+    const t0 = performance.now();
+    const length = wasm.path_length_svg(d);
+    const measuredMs = performance.now() - t0;
+    const flat = wasm.flatten_path_svg(d, 1);
+    return {
+      length,
+      measuredMs,
+      valid: wasm.validate_path(flat),
+      size: d.length
+    };
+  });
+  assert.ok(stress.size > 3000);
+  assert.ok(Number.isFinite(stress.length) && stress.length > 0);
+  assert.equal(stress.valid, true);
+  assert.ok(stress.measuredMs < 10000, `160-segment browser workload took ${stress.measuredMs}ms`);
+
   // Repeated editing exercises browser-to-WASM calls without hiding exceptions.
   for (let i = 0; i < 60; i++) {
     await page.locator("#distance").evaluate((element, step) => {
