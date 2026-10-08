@@ -32,7 +32,6 @@ proptest! {
     }
 }
 
-
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
