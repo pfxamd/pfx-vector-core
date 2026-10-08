@@ -21,9 +21,12 @@ Open `http://127.0.0.1:8787/demo/`. Do not open `index.html` via `file://` becau
 - Generate the flattened geometry from Rust.
 - Verify invalid-input error handling and curve/arc/mixed paths.
 - Responsive interaction at narrow screen widths.
+- Geometry operations: Boolean union/intersection/difference/xor, segment intersection, transform, contour slicing.
+- A 160-cubic-segment path stress case and repeated interactive queries.
+- The same browser integration checks on Chromium and Firefox.
 
-The automated browser check is defined in `demo/browser-smoke.mjs` and the GitHub Actions workflow `.github/workflows/browser-demo.yml`. The workflow compiles the WASM browser target and drives actual Chromium.
+The automated browser check is defined in `demo/browser-smoke.mjs` and the GitHub Actions workflow `.github/workflows/browser-demo.yml`. The workflow compiles the WASM browser target and drives actual Chromium and Firefox.
 
 ## Limits
 
-This is deliberately not an editor. It does not test every WASM API, every mobile browser, multi-megabyte inputs, or unbounded interactive performance. Query latency reflects a browser-to-WASM API call that currently reparses path data; it is not a cached-index benchmark.
+This is deliberately not an editor. It does not test every WASM API, every mobile browser, Safari/WebKit, multi-megabyte inputs, or unbounded interactive performance. Query latency reflects a browser-to-WASM API call that currently reparses path data; it is not a cached-index benchmark.
