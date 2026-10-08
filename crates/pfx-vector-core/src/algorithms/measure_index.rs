@@ -380,12 +380,23 @@ fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult
         {
             segment_length_to_t(segment, t, tolerance)?
         }
-        _ => crate::numeric::adaptive_simpson(
-            |parameter| segment.derivative_at(parameter).length(),
-            0.0,
-            t,
-            tolerance,
-        )?,
+        _ => {
+            // The table validator must use a more accurate reference than
+            // the table's acceptance threshold; otherwise quadrature noise
+            // can force endless refinement of already smooth intervals.
+            let integration_tolerance = Tolerance::new(
+                tolerance.absolute * 0.01,
+                tolerance.relative * 0.01,
+                tolerance.angular,
+                tolerance.flatness,
+            );
+            crate::numeric::adaptive_simpson(
+                |parameter| segment.derivative_at(parameter).length(),
+                0.0,
+                t,
+                integration_tolerance,
+            )?
+        }
     };
     let speed = segment.derivative_at(t).length();
     if !distance.is_finite() || !speed.is_finite() {
