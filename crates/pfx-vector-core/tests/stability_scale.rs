@@ -10,7 +10,9 @@ fn tiny_and_large_valid_line_segments_remain_finite() {
         let index = PathMeasureIndex::build(&path, Tolerance::default()).unwrap();
         assert!(index.total_length().is_finite());
         for fraction in [0.0, 0.25, 0.5, 0.75, 1.0] {
-            let (point, location) = index.point_at_length(index.total_length() * fraction).unwrap();
+            let (point, location) = index
+                .point_at_length(index.total_length() * fraction)
+                .unwrap();
             assert!(point.x.is_finite() && point.y.is_finite());
             assert!(location.t.is_finite());
         }
