@@ -36,8 +36,7 @@ fn quadratic_frame_uses_analytic_second_derivative() {
         Point2::new(2.0, 0.0),
     );
 
-    let frame =
-        segment_frame_at_t(Segment::Quadratic(curve), 0.5, Tolerance::default()).unwrap();
+    let frame = segment_frame_at_t(Segment::Quadratic(curve), 0.5, Tolerance::default()).unwrap();
 
     assert!(frame.point.distance_to(Point2::new(1.0, 0.5)) <= 1.0e-12);
     assert_vector_close(frame.tangent, Vector2::new(1.0, 0.0), 1.0e-12);

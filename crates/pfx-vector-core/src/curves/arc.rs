@@ -65,11 +65,9 @@ impl EllipticalArc {
         let sweep_squared = self.sweep_angle.as_radians().powi(2);
 
         Vector2::new(
-            (-self.radius_x * cos_theta * cos_rotation
-                + self.radius_y * sin_theta * sin_rotation)
+            (-self.radius_x * cos_theta * cos_rotation + self.radius_y * sin_theta * sin_rotation)
                 * sweep_squared,
-            (-self.radius_x * cos_theta * sin_rotation
-                - self.radius_y * sin_theta * cos_rotation)
+            (-self.radius_x * cos_theta * sin_rotation - self.radius_y * sin_theta * cos_rotation)
                 * sweep_squared,
         )
     }
