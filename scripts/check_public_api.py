@@ -21,7 +21,7 @@ def baseline_source(path: str) -> str:
 
 def wasm_signatures(source: str) -> dict[str, str]:
     signatures = {}
-    pattern = r"(?m)^pub fn ([A-Za-z_][A-Za-z_0-9]*)\\s*\\("
+    pattern = r"(?m)^pub fn ([A-Za-z_][A-Za-z_0-9]*)\s*\("
     for match in re.finditer(pattern, source):
         start = match.start()
         open_paren = source.index("(", match.start())
@@ -37,11 +37,11 @@ def wasm_signatures(source: str) -> dict[str, str]:
                     break
             end += 1
         remaining = source[end:]
-        tail = re.match(r"\\s*(?:->\\s*[^\\{]+)?\\{", remaining)
+        tail = re.match(r"\s*(?:->\s*[^\{]+)?\{", remaining)
         if tail is None:
             raise ValueError(f"Cannot parse signature for {match.group(1)}")
         value = source[start:end] + remaining[:tail.end() - 1]
-        signatures[match.group(1)] = re.sub(r"\\s+", "", value)
+        signatures[match.group(1)] = re.sub(r"\s+", "", value)
     return signatures
 
 def main() -> None:
