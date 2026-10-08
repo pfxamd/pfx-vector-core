@@ -609,6 +609,40 @@ fn bench_core(c: &mut Criterion) {
         )
     });
 
+    // Explicit bounded scaling workloads for construction and repeated reads.
+    // Run with: cargo bench -p pfx-vector-core --bench core -- "measure index scale"
+    for count in [4096_usize, 16384] {
+        let mut large_builder = PathBuilder::new();
+        large_builder.move_to(Point2::new(0.0, 0.0)).unwrap();
+        for i in 1..=count {
+            large_builder
+                .line_to(Point2::new(i as f64, 0.0))
+                .unwrap();
+        }
+        let large_path = large_builder.finish().unwrap();
+        let indexed = PathMeasureIndex::build(&large_path, tolerance).unwrap();
+        let total = indexed.total_length();
+
+        c.bench_function(&format!("measure index scale build {count} lines"), |b| {
+            b.iter(|| {
+                black_box(
+                    PathMeasureIndex::build(black_box(&large_path), black_box(tolerance)).unwrap(),
+                )
+            })
+        });
+        c.bench_function(&format!("measure index scale query {count} lines"), |b| {
+            b.iter(|| {
+                for i in 0..128 {
+                    black_box(
+                        indexed
+                            .point_at_length(black_box(total * i as f64 / 127.0))
+                            .unwrap(),
+                    );
+                }
+            })
+        });
+    }
+
     let dense_index = PathSpatialIndex::build(&dense_path, tolerance).unwrap();
     c.bench_function("indexed nearest dense path", |b| {
         b.iter(|| {
