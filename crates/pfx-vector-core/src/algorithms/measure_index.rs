@@ -369,7 +369,19 @@ fn append_adaptive_samples(
 }
 
 fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult<ArcLengthSample> {
-    let distance = segment_length_to_t(segment, t, tolerance)?;
+    // Table interpolation is validated against cumulative source-parameter length.
+    // Integrate the original derivative on [0, t] instead of splitting the
+    // geometry at every sample: repeated subdivision perturbs control points
+    // and adds numerical noise that can prevent adaptive convergence.
+    let distance = match segment {
+        Segment::Line(_) => segment_length_to_t(segment, t, tolerance)?,
+        _ => crate::numeric::adaptive_simpson(
+            |parameter| segment.derivative_at(parameter).length(),
+            0.0,
+            t,
+            tolerance,
+        )?,
+    };
     let speed = segment.derivative_at(t).length();
     if !distance.is_finite() || !speed.is_finite() {
         return Err(CoreError::InvalidNumber);
