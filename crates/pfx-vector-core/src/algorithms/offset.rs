@@ -623,7 +623,7 @@ fn offset_derivative(
     distance: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Vector2> {
-    let derivative = segment_derivative(segment, t);
+    let derivative = segment.derivative_at(t);
     let speed = derivative.length();
     let scale = derivative.x.abs().max(derivative.y.abs()).max(1.0);
 
@@ -631,7 +631,7 @@ fn offset_derivative(
         return Ok(Vector2::new(0.0, 0.0));
     }
 
-    let second_derivative = segment_second_derivative(segment, t);
+    let second_derivative = segment.second_derivative_at(t);
     let signed_curvature = derivative.cross(second_derivative) / (speed * speed * speed);
     let offset_scale = 1.0 - distance * signed_curvature;
 
@@ -647,7 +647,7 @@ fn stable_segment_tangent(
     t: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Vector2> {
-    let derivative = segment_derivative(segment, t);
+    let derivative = segment.derivative_at(t);
     if let Ok(tangent) = derivative.normalized(tolerance) {
         return Ok(tangent);
     }
@@ -658,48 +658,13 @@ fn stable_segment_tangent(
     (segment.point_at(t1) - segment.point_at(t0)).normalized(tolerance)
 }
 
-fn segment_derivative(segment: Segment, t: Scalar) -> Vector2 {
-    match segment {
-        Segment::Line(line) => line.direction(),
-        Segment::Quadratic(curve) => curve.derivative_at(t),
-        Segment::Cubic(curve) => curve.derivative_at(t),
-        Segment::Arc(arc) => arc.derivative_at(t),
-    }
-}
-fn segment_second_derivative(segment: Segment, t: Scalar) -> Vector2 {
-    match segment {
-        Segment::Line(_) => Vector2::new(0.0, 0.0),
-        Segment::Quadratic(curve) => ((curve.p2 - curve.p1) - (curve.p1 - curve.p0)) * 2.0,
-        Segment::Cubic(curve) => {
-            let first = (curve.p2 - curve.p1) - (curve.p1 - curve.p0);
-            let second = (curve.p3 - curve.p2) - (curve.p2 - curve.p1);
-            first * (6.0 * (1.0 - t)) + second * (6.0 * t)
-        }
-        Segment::Arc(arc) => {
-            let theta = arc.start_angle.as_radians() + arc.sweep_angle.as_radians() * t;
-            let (sin_theta, cos_theta) = theta.sin_cos();
-            let (sin_rotation, cos_rotation) = arc.rotation.as_radians().sin_cos();
-            let sweep_squared = arc.sweep_angle.as_radians().powi(2);
-
-            Vector2::new(
-                (-arc.radius_x * cos_theta * cos_rotation
-                    + arc.radius_y * sin_theta * sin_rotation)
-                    * sweep_squared,
-                (-arc.radius_x * cos_theta * sin_rotation
-                    - arc.radius_y * sin_theta * cos_rotation)
-                    * sweep_squared,
-            )
-        }
-    }
-}
-
 fn offset_scale_at(
     segment: Segment,
     t: Scalar,
     distance: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Option<Scalar>> {
-    let derivative = segment_derivative(segment, t);
+    let derivative = segment.derivative_at(t);
     let speed = derivative.length();
     let scale = derivative.x.abs().max(derivative.y.abs()).max(1.0);
 
@@ -707,7 +672,7 @@ fn offset_scale_at(
         return Ok(None);
     }
 
-    let second_derivative = segment_second_derivative(segment, t);
+    let second_derivative = segment.second_derivative_at(t);
     let signed_curvature = derivative.cross(second_derivative) / (speed * speed * speed);
     let factor = 1.0 - distance * signed_curvature;
 

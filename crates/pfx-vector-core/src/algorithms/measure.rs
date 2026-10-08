@@ -266,13 +266,5 @@ pub fn tangent_at_length(
     distance: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Vector2> {
-    let (_, location) = point_at_length(path, distance, tolerance)?;
-    let segment = path.subpaths()[location.subpath_index].segments()[location.segment_index];
-
-    match segment {
-        Segment::Line(line) => line.direction().normalized(tolerance),
-        Segment::Quadratic(curve) => curve.tangent_at(location.t, tolerance),
-        Segment::Cubic(curve) => curve.tangent_at(location.t, tolerance),
-        Segment::Arc(arc) => arc.derivative_at(location.t).normalized(tolerance),
-    }
+    Ok(crate::path_frame_at_length(path, distance, tolerance)?.tangent)
 }
