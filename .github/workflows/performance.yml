@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "crates/pfx-vector-core/examples/measure_stress.rs"
+      - "crates/pfx-vector-core/examples/measure_soak.rs"
       - "crates/pfx-vector-core/src/**"
       - ".github/workflows/performance.yml"
   workflow_dispatch:
@@ -23,3 +24,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run timed memory probe
         run: cargo run --release -p pfx-vector-core --example measure_stress
+      - name: Run repeated-build memory probe
+        run: cargo run --release -p pfx-vector-core --example measure_soak
