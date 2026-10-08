@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.0 - 2026-10-08
+
+### Stable API milestone
+
+- Public Rust, WebAssembly and TypeScript API stabilization.
+- Backward-compatibility checks against the v0.24.0 API baseline.
+- Successful Rust, TypeScript, seeded fuzz, Node.js WASM, and desktop Chromium, Firefox and WebKit checks.
+- Security advisory scanning with RustSec and recurring CI verification.
+- Improved handling of degenerate SVG test inputs and documented browser integration.
+
+### Scope
+
+- Verification is bounded, not a proof of universal correctness or security.
+- Default six-digit SVG serialization can round near-degenerate arcs.
+- TypeScript wrapper is not publicly published.
+- A vector editor or rendering UI is outside the core scope.
+
 ## 0.24.0 - 2026-10-08
 
 ### Stabilization and verification
