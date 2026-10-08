@@ -1,0 +1,30 @@
+name: Fuzz smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "fuzz/**"
+      - "crates/pfx-vector-core/src/**"
+      - "crates/pfx-vector-svg/src/**"
+      - ".github/workflows/fuzz.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Bounded fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+      - name: Run SVG smoke fuzz
+        run: cargo run --release --manifest-path fuzz/Cargo.toml --bin smoke -- -runs=1000 -max_len=4096
+      - name: Run measure-index fuzz
+        run: cargo run --release --manifest-path fuzz/Cargo.toml --bin measure_index -- -runs=1000 -max_len=4096
