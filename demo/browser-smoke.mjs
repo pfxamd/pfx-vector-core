@@ -1,7 +1,8 @@
-import { chromium } from "playwright";
+import { chromium, firefox } from "playwright";
 import assert from "node:assert/strict";
 
-const browser = await chromium.launch({ headless: true });
+for (const [browserName, browserType] of [["chromium", chromium], ["firefox", firefox]]) {
+const browser = await browserType.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
@@ -93,7 +94,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.locator("#view").isVisible());
   assert.deepEqual(errors, []);
-  console.log("Browser geometry integration: PASS");
+  console.log(`Browser geometry integration (${browserName}): PASS`);
 } finally {
   await browser.close();
+}
 }
