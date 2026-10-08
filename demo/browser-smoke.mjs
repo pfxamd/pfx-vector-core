@@ -11,7 +11,10 @@ try {
   await page.locator("#status.ready").waitFor({ timeout: 30000 });
   const firstLength = Number((await page.locator("#length").textContent()).trim());
   assert.ok(firstLength > 0 && Number.isFinite(firstLength));
-  await page.locator("#distance").fill("875");
+  await page.locator("#distance").evaluate((element) => {
+    element.value = "875";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
   assert.equal((await page.locator("#fraction").textContent()).trim(), "88%");
   assert.match((await page.locator("#coordinates").textContent()).trim(), /^-?\d+\.\d, -?\d+\.\d$/);
 
