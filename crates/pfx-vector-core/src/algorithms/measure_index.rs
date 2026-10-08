@@ -375,11 +375,7 @@ fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult
     Ok(ArcLengthSample { t, distance, speed })
 }
 
-fn length_table_tolerance(
-    segment: Segment,
-    total_length: Scalar,
-    tolerance: Tolerance,
-) -> Scalar {
+fn length_table_tolerance(segment: Segment, total_length: Scalar, tolerance: Tolerance) -> Scalar {
     let model_tolerance = tolerance
         .absolute
         .max(tolerance.relative * total_length.abs())
