@@ -16,7 +16,15 @@ fn svg_to_core_measure_round_trip_is_finite() {
         let total = index.total_length();
         assert!(total.is_finite());
         assert!(total >= 0.0);
-        let svg = serialize_path(&original, SerializeOptions::default());
+        // A near-degenerate SVG arc is sensitive to rounding of corrected radii.
+        // Use high-precision serialization for geometry-preserving round trips.
+        let svg = serialize_path(
+            &original,
+            SerializeOptions {
+                precision: 17,
+                ..SerializeOptions::default()
+            },
+        );
         let restored = parse_path(&svg).unwrap();
         let rebuilt = PathMeasureIndex::build(&restored, Tolerance::default()).unwrap();
         let threshold = 1.0e-6_f64.max(total * 1.0e-7);
