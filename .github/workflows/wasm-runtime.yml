@@ -8,6 +8,7 @@ on:
       - "crates/pfx-vector-core/src/**"
       - "crates/pfx-vector-svg/src/**"
       - ".github/workflows/wasm-runtime.yml"
+      - "packages/pfx-vector-web/**"
   workflow_dispatch:
 
 permissions:
@@ -43,3 +44,12 @@ jobs:
           assert.ok(Number.isFinite(wasm.path_length_svg('M0 0 C15 35 55 -20 80 0')));
           console.log('WebAssembly geometry integration: PASS');
           JS
+      - name: Install consumer TypeScript build dependency
+        run: npm install
+        working-directory: packages/pfx-vector-web
+      - name: Compile consumer adapter
+        run: npm run build:integration
+        working-directory: packages/pfx-vector-web
+      - name: Test consumer adapter with real Node WebAssembly
+        run: npm run test:integration
+        working-directory: packages/pfx-vector-web
