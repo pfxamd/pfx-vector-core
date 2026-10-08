@@ -60,7 +60,15 @@ export interface VectorWasmBindings {
   transform_path_svg(data: string, matrix: string, flatness: number): string;
   path_bounds_svg(data: string): string;
   point_at_length_svg(data: string, distance: number): string;
+  points_at_lengths_svg(data: string, distances: string): string;
   frame_at_length_svg(data: string, distance: number): string;
+  frames_at_lengths_svg(data: string, distances: string): string;
+  path_distance_at_svg(
+    data: string,
+    subpathIndex: number,
+    segmentIndex: number,
+    t: number,
+  ): number;
   inflection_points_svg(data: string): string;
   closest_point_svg(data: string, x: number, y: number): string;
   hit_test_fill_svg(data: string, x: number, y: number, evenOdd: boolean): boolean;
@@ -339,8 +347,20 @@ export function createVectorCore(wasm: VectorWasmBindings) {
       JSON.parse(wasm.path_bounds_svg(data)) as Bounds | null,
     pointAtLength: (data: string, distance: number) =>
       JSON.parse(wasm.point_at_length_svg(data, distance)) as PathPoint,
+    pointsAtLengths: (data: string, distances: number[]) =>
+      JSON.parse(wasm.points_at_lengths_svg(data, distances.join(","))) as PathPoint[],
     frameAtLength: (data: string, distance: number) =>
       JSON.parse(wasm.frame_at_length_svg(data, distance)) as DifferentialPathFrame,
+    framesAtLengths: (data: string, distances: number[]) =>
+      JSON.parse(
+        wasm.frames_at_lengths_svg(data, distances.join(",")),
+      ) as DifferentialPathFrame[],
+    pathDistanceAt: (
+      data: string,
+      subpathIndex: number,
+      segmentIndex: number,
+      t: number,
+    ) => wasm.path_distance_at_svg(data, subpathIndex, segmentIndex, t),
     inflectionPoints: (data: string) =>
       JSON.parse(wasm.inflection_points_svg(data)) as InflectionPoint[],
     closestPoint: (data: string, x: number, y: number) =>

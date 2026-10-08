@@ -1,12 +1,14 @@
 #![forbid(unsafe_code)]
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
-    PathBuilder, Point2, Segment, SegmentAddress, StrokeCap, StrokeJoin, StrokeStyle, Subpath,
+    PathBuilder, PathMeasureIndex, Point2, Segment, SegmentAddress, StrokeCap, StrokeJoin,
+    StrokeStyle, Subpath,
     SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, closest_point,
     contains_point, contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves,
     flatten_path, intersect_segments, join_open_subpaths, normalize_self_intersections,
-    offset_path, outline_path, path_frame_at_length, path_inflections, path_length,
-    point_at_length, remove_segment, remove_subpath, replace_segment, replace_subpath,
+    offset_path, outline_path, path_frame_at_length, path_frame_at_length_indexed,
+    path_inflections, path_length, point_at_length, remove_segment, remove_subpath,
+    replace_segment, replace_subpath,
     reverse_subpath, set_subpath_closed, simplify_path, slice_contour,
     spatial_cross_candidate_pairs, split_segment, split_segment_at_length, stroke_contains_point,
     tessellate_fill, tessellate_stroke, transform_path,
@@ -400,6 +402,89 @@ pub fn inflection_points_svg(data: &str) -> Result<String, JsValue> {
         .collect::<Vec<_>>()
         .join(",");
     Ok(format!("[{body}]"))
+}
+
+fn parse_distance_list(value: &str) -> Result<Vec<f64>, JsValue> {
+    if value.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    value
+        .split(',')
+        .map(|part| {
+            part.trim()
+                .parse::<f64>()
+                .map_err(|_| JsValue::from_str("invalid distance list"))
+        })
+        .collect()
+}
+
+#[wasm_bindgen]
+pub fn points_at_lengths_svg(data: &str, distances: &str) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let index = PathMeasureIndex::build(&path, Tolerance::default()).map_err(js_err)?;
+    let distances = parse_distance_list(distances)?;
+    let body = distances
+        .into_iter()
+        .map(|distance| {
+            let (point, location) = index.point_at_length(distance).map_err(js_err)?;
+            Ok(format!(
+                "{{\"x\":{},\"y\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"distance\":{}}}",
+                point.x,
+                point.y,
+                location.subpath_index,
+                location.segment_index,
+                location.t,
+                location.distance
+            ))
+        })
+        .collect::<Result<Vec<_>, JsValue>>()?
+        .join(",");
+    Ok(format!("[{body}]"))
+}
+
+#[wasm_bindgen]
+pub fn frames_at_lengths_svg(data: &str, distances: &str) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let index = PathMeasureIndex::build(&path, Tolerance::default()).map_err(js_err)?;
+    let distances = parse_distance_list(distances)?;
+    let body = distances
+        .into_iter()
+        .map(|distance| {
+            let frame = path_frame_at_length_indexed(&index, distance).map_err(js_err)?;
+            Ok(format!(
+                "{{\"x\":{},\"y\":{},\"tangentX\":{},\"tangentY\":{},\"normalX\":{},\"normalY\":{},\"curvature\":{},\"speed\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}}",
+                frame.point.x,
+                frame.point.y,
+                frame.tangent.x,
+                frame.tangent.y,
+                frame.normal.x,
+                frame.normal.y,
+                frame.curvature,
+                frame.speed,
+                frame.location.subpath_index,
+                frame.location.segment_index,
+                frame.location.t,
+                frame.location.distance
+            ))
+        })
+        .collect::<Result<Vec<_>, JsValue>>()?
+        .join(",");
+    Ok(format!("[{body}]"))
+}
+
+#[wasm_bindgen]
+pub fn path_distance_at_svg(
+    data: &str,
+    subpath_index: u32,
+    segment_index: u32,
+    t: f64,
+) -> Result<f64, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let index = PathMeasureIndex::build(&path, Tolerance::default()).map_err(js_err)?;
+    index
+        .distance_at_location(subpath_index as usize, segment_index as usize, t)
+        .map_err(js_err)
 }
 
 #[wasm_bindgen]
