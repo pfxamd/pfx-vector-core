@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.23.0 - 2026-10-08
+
+### Added
+
+- Public `SegmentMeasureTable` for reusable per-segment arc-length parameterization.
+- Public `PathMeasureIndex` with cumulative source-segment offsets.
+- Bidirectional `distance → PathLocation` and `(subpath, segment, t) → path distance` queries.
+- Indexed point-at-length and differential-frame queries without repeated adaptive integration after index construction.
+- Adaptive cumulative arc-length tables for quadratic Bézier, cubic Bézier, and elliptical-arc segments.
+- Exact two-sample measurement tables for line segments.
+- Monotone cubic Hermite interpolation and bounded inverse solving within adaptive table intervals.
+- WebAssembly batch point/frame queries and reverse path-distance lookup.
+- TypeScript `pointsAtLengths`, `framesAtLengths`, and `pathDistanceAt` APIs.
+- Regression coverage for curve round-trips, elliptical arcs, retraced collinear curves, large translated coordinates, invalid locations, empty paths, and indexed/direct agreement.
+- Criterion benchmark coverage comparing repeated direct and indexed point-at-length queries.
+
+### Changed
+
+- Line-like Bézier measurement classification now uses local geometry scale instead of absolute world-coordinate magnitude, making it translation-invariant.
+- Adaptive measurement-table accuracy now respects both the core arc-length tolerance and the meaningful `f64` precision at large coordinate magnitudes.
+- One-shot measurement APIs remain unchanged for inexpensive single-query use; reusable indexing is explicit.
+
+### Scope limits
+
+- `PathMeasureIndex` is an immutable geometry snapshot and must be rebuilt after path changes.
+- Curve arc-length inversion is bounded numerical interpolation rather than a symbolic closed-form inverse.
+- Table accuracy inherits the core numerical arc-length model and floating-point coordinate precision.
+- Incremental editor cache ownership and synchronization remain outside the geometry core for this milestone.
+
 ## 0.22.0 - 2026-10-08
 
 ### Added

@@ -2,7 +2,45 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.22.0`.
+**Status:** `v0.23.0`.
+
+## v0.23 arc-length parameterization engine
+
+Repeated path-distance queries can now reuse a source-native measurement index instead of rerunning adaptive integration for every lookup.
+
+```rust
+let index = PathMeasureIndex::build(&path, tolerance)?;
+
+let location = index.location_at_distance(distance)?;
+let distance = index.distance_at_location(subpath_index, segment_index, t)?;
+let (point, location) = index.point_at_length(distance)?;
+let frame = path_frame_at_length_indexed(&index, distance)?;
+```
+
+Each source segment receives a `SegmentMeasureTable`. Lines use an exact two-sample table. Quadratic Béziers, cubic Béziers, and elliptical arcs use adaptive cumulative arc-length samples validated against the existing source-native length engine. Lookup uses binary search plus monotone cubic Hermite interpolation, while inverse distance-to-parameter queries use a bounded solve inside the selected table interval.
+
+`PathMeasureIndex` stores cumulative source-segment offsets, so repeated queries can resolve path distance to the original subpath, segment, and native `t` without recomputing the whole path length. The reverse mapping from source location back to path distance is exposed as well.
+
+The existing one-shot `point_at_length` and `path_frame_at_length` APIs remain available. They are intentionally not forced through a temporary index when only one query is needed.
+
+Measurement robustness was also tightened: line-like Bézier detection is now translation-invariant, and adaptive tables apply a floating-point precision floor for very large world coordinates rather than subdividing beyond meaningful `f64` resolution.
+
+### Web API
+
+Batch queries build one measure index internally and reuse it across all requested distances:
+
+```text
+pointsAtLengths(data, distances)
+framesAtLengths(data, distances)
+pathDistanceAt(data, subpath, segment, t)
+```
+
+Current arc-length parameterization limits:
+
+- `PathMeasureIndex` is an immutable snapshot; callers rebuild it after path geometry changes
+- curve arc-length inversion is bounded numerical interpolation, not a symbolic closed-form inverse
+- table precision follows the existing numerical arc-length model and the representable precision of `f64` at the source coordinate scale
+- editor-specific cache ownership and incremental measure-index synchronization remain outside this milestone
 
 ## v0.22 differential geometry engine
 
