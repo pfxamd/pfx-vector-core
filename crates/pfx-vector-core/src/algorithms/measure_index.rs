@@ -328,9 +328,9 @@ fn append_adaptive_samples(
     let mid_t = left.t + span * 0.5;
     let q3_t = left.t + span * 0.75;
 
-    let q1 = exact_sample(segment, q1_t, tolerance)?;
-    let mid = exact_sample(segment, mid_t, tolerance)?;
-    let q3 = exact_sample(segment, q3_t, tolerance)?;
+    let q1 = exact_sample(segment, left, q1_t, tolerance)?;
+    let mid = exact_sample(segment, left, mid_t, tolerance)?;
+    let q3 = exact_sample(segment, left, q3_t, tolerance)?;
 
     let maximum_error = [
         (q1.distance - monotone_hermite_distance(left, right, q1_t)).abs(),
@@ -368,11 +368,14 @@ fn append_adaptive_samples(
     )
 }
 
-fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult<ArcLengthSample> {
-    // Table interpolation is validated against cumulative source-parameter length.
-    // Integrate the original derivative on [0, t] instead of splitting the
-    // geometry at every sample: repeated subdivision perturbs control points
-    // and adds numerical noise that can prevent adaptive convergence.
+fn exact_sample(
+    segment: Segment,
+    left: ArcLengthSample,
+    t: Scalar,
+    tolerance: Tolerance,
+) -> CoreResult<ArcLengthSample> {
+    // Integrate only the local interval; avoid recomputing the entire prefix
+    // for each table sample while retaining original-curve derivatives.
     let distance = match segment {
         Segment::Line(_) => segment_length_to_t(segment, t, tolerance)?,
         Segment::Quadratic(_) | Segment::Cubic(_)
@@ -392,11 +395,17 @@ fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult
             );
             crate::numeric::adaptive_simpson(
                 |parameter| segment.derivative_at(parameter).length(),
-                0.0,
+                left.t,
                 t,
                 integration_tolerance,
             )?
         }
+    };
+    let distance = match segment {
+        Segment::Line(_) => distance,
+        Segment::Quadratic(_) | Segment::Cubic(_)
+            if super::measure::line_like_bezier_length(segment, tolerance).is_some() => distance,
+        _ => left.distance + distance,
     };
     let speed = segment.derivative_at(t).length();
     if !distance.is_finite() || !speed.is_finite() {
