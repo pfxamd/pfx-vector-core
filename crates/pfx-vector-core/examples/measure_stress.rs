@@ -38,4 +38,38 @@ fn main() {
             index.sample_count()
         );
     }
+
+    // Curved workloads use bounded sizes because numerical integration is
+    // considerably more expensive than line indexing.
+    for count in [32_usize, 128, 512] {
+        let mut builder = PathBuilder::new();
+        builder.move_to(Point2::new(0.0, 0.0)).unwrap();
+        for i in 0..count {
+            let x = i as f64 * 10.0;
+            builder
+                .cubic_to(
+                    Point2::new(x + 2.0, 5.0),
+                    Point2::new(x + 8.0, -5.0),
+                    Point2::new(x + 10.0, 0.0),
+                )
+                .unwrap();
+        }
+        let path = builder.finish().unwrap();
+        let started = Instant::now();
+        let index = PathMeasureIndex::build(&path, Tolerance::default()).unwrap();
+        let build_ms = started.elapsed().as_secs_f64() * 1000.0;
+        const QUERIES: usize = 10_000;
+        let started = Instant::now();
+        for i in 0..QUERIES {
+            let distance = index.total_length() * i as f64 / (QUERIES - 1) as f64;
+            black_box(index.point_at_length(black_box(distance)).unwrap());
+        }
+        let query_ms = started.elapsed().as_secs_f64() * 1000.0;
+        let memory =
+            peak_rss_kib().map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
+        println!(
+            "cubic_index,{count},{QUERIES},{build_ms:.3},{query_ms:.3},{memory},{}",
+            index.sample_count()
+        );
+    }
 }
