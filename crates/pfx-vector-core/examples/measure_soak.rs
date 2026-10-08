@@ -41,8 +41,8 @@ fn main() {
         let query_ms = started.elapsed().as_secs_f64() * 1000.0;
         let samples = index.sample_count();
         drop(index);
-        let rss = resident_kib()
-            .map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
+        let rss =
+            resident_kib().map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
         println!("{round},{COUNT},{build_ms:.3},{query_ms:.3},{rss},{samples}");
     }
 }
