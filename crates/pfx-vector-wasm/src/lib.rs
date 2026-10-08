@@ -7,9 +7,9 @@ use pfx_vector_core::{
     flatten_path, intersect_segments, join_open_subpaths, normalize_self_intersections,
     offset_path, outline_path, path_frame_at_length, path_inflections, path_length,
     point_at_length, remove_segment, remove_subpath, replace_segment, replace_subpath,
-    reverse_subpath, set_subpath_closed, simplify_path,
-    slice_contour, spatial_cross_candidate_pairs, split_segment, split_segment_at_length,
-    stroke_contains_point, tessellate_fill, tessellate_stroke, transform_path,
+    reverse_subpath, set_subpath_closed, simplify_path, slice_contour,
+    spatial_cross_candidate_pairs, split_segment, split_segment_at_length, stroke_contains_point,
+    tessellate_fill, tessellate_stroke, transform_path,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
