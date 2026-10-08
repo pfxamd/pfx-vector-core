@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:integration": "tsc -p tsconfig.json --outDir dist",
+    "test:integration": "node tests/runtime-integration.mjs"
   },
   "devDependencies": {
     "typescript": "5.8.3"
