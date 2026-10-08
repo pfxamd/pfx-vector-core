@@ -9,6 +9,7 @@ on:
       - "crates/pfx-vector-core/src/**"
       - "crates/pfx-vector-svg/src/**"
       - ".github/workflows/browser-demo.yml"
+      - "packages/pfx-vector-web/**"
   workflow_dispatch:
 
 permissions:
@@ -36,6 +37,10 @@ jobs:
         run: |
           npm install --no-save --prefix demo playwright
           npx --prefix demo playwright install --with-deps chromium firefox webkit
+      - name: Build TypeScript consumer adapter
+        run: |
+          npm install --prefix packages/pfx-vector-web
+          npm run build:integration --prefix packages/pfx-vector-web
       - name: Browser smoke
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 &
