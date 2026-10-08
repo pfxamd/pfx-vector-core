@@ -31,8 +31,8 @@ fn main() {
             black_box(index.point_at_length(black_box(distance)).unwrap());
         }
         let query_ms = start.elapsed().as_secs_f64() * 1000.0;
-        let memory = peak_rss_kib()
-            .map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
+        let memory =
+            peak_rss_kib().map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
         println!(
             "line_index,{count},{QUERIES},{build_ms:.3},{query_ms:.3},{memory},{}",
             index.sample_count()
