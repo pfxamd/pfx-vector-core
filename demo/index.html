@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10141c">
+  <title>PFx Vector Core · Geometry Lab</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell">
+    <header><div class="brand"><span class="symbol">◈</span><div><strong>PFx Vector Core</strong><small>Geometry Lab / Browser integration</small></div></div><div id="status" role="status">Loading engine…</div></header>
+    <section class="workspace" aria-label="Interactive geometry test">
+      <div class="stage">
+        <div class="stagehead"><span>LIVE GEOMETRY</span><span id="engine">WebAssembly</span></div>
+        <svg id="view" viewBox="0 0 640 420" aria-label="Interactive vector geometry" role="img">
+          <defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#ffffff" stroke-opacity=".055"/></pattern></defs>
+          <rect width="640" height="420" fill="url(#grid)"/>
+          <path id="original" fill="none" stroke="#66c6ff" stroke-width="3.5" stroke-linecap="round"/>
+          <path id="flattened" fill="none" stroke="#fbbf77" stroke-width="1.5" stroke-dasharray="5 5" opacity=".65"/>
+          <circle id="position" r="7" fill="#ffffff" stroke="#0d1420" stroke-width="3"/>
+          <line id="normal" stroke="#b4ffcc" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <div class="legend"><span><i class="blue"></i>Source path</span><span><i class="orange"></i>Flattened geometry</span><span><i class="green"></i>Normal vector</span></div>
+      </div>
+      <aside class="panel">
+        <div class="eyebrow">ENGINE OPERATIONS</div>
+        <h1>Geometry under real interaction.</h1>
+        <p>Edit the SVG path and query the actual Rust engine running as WebAssembly in your browser.</p>
+        <label for="path">SVG path data</label>
+        <textarea id="path" spellcheck="false" rows="5">M 40 260 C 145 50 275 390 385 185 S 530 90 600 260</textarea>
+        <div class="presets" aria-label="Path presets"><button type="button" data-path="M 40 260 C 145 50 275 390 385 185 S 530 90 600 260">Curve</button><button type="button" data-path="M 70 210 A 160 105 0 1 1 390 210 A 160 105 0 1 1 70 210">Arcs</button><button type="button" data-path="M 40 320 L 125 80 L 220 290 Q 340 60 470 260 L 600 100">Mixed</button></div>
+        <div class="rangehead"><label for="distance">Position along path</label><output id="fraction">50%</output></div>
+        <input id="distance" type="range" min="0" max="1000" value="500">
+        <div class="metrics"><div><small>ARC LENGTH</small><strong id="length">—</strong></div><div><small>SEGMENT</small><strong id="segment">—</strong></div><div><small>COORDINATES</small><strong id="coordinates">—</strong></div><div><small>QUERY LATENCY</small><strong id="latency">—</strong></div></div>
+        <div id="error" role="alert"></div>
+        <p class="note">No geometry calculations are simulated. Results come directly from the compiled kernel.</p>
+      </aside>
+    </section>
+    <footer><span>PFx / VECTOR CORE</span><a href="https://github.com/pfxamd/pfx-vector-core">SOURCE REPOSITORY ↗</a></footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
