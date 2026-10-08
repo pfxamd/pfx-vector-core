@@ -404,7 +404,10 @@ fn exact_sample(
     let distance = match segment {
         Segment::Line(_) => distance,
         Segment::Quadratic(_) | Segment::Cubic(_)
-            if super::measure::line_like_bezier_length(segment, tolerance).is_some() => distance,
+            if super::measure::line_like_bezier_length(segment, tolerance).is_some() =>
+        {
+            distance
+        }
         _ => left.distance + distance,
     };
     let speed = segment.derivative_at(t).length();
