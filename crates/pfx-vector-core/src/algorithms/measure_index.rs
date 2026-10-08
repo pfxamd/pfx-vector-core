@@ -313,7 +313,7 @@ fn append_adaptive_samples(
     output: &mut Vec<ArcLengthSample>,
 ) -> CoreResult<()> {
     let interval_length = right.distance - left.distance;
-    let allowed_error = length_table_tolerance(total_length, tolerance);
+    let allowed_error = length_table_tolerance(segment, total_length, tolerance);
 
     if interval_length <= allowed_error {
         output.push(right);
@@ -375,12 +375,38 @@ fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult
     Ok(ArcLengthSample { t, distance, speed })
 }
 
-fn length_table_tolerance(total_length: Scalar, tolerance: Tolerance) -> Scalar {
-    tolerance
+fn length_table_tolerance(
+    segment: Segment,
+    total_length: Scalar,
+    tolerance: Tolerance,
+) -> Scalar {
+    let model_tolerance = tolerance
         .absolute
         .max(tolerance.relative * total_length.abs())
         .max(1.0e-12)
-        * 16.0
+        * 16.0;
+    let numeric_floor = f64::EPSILON * segment_coordinate_scale(segment) * 32.0;
+    model_tolerance.max(numeric_floor)
+}
+
+fn segment_coordinate_scale(segment: Segment) -> Scalar {
+    let point_scale = |point: Point2| point.x.abs().max(point.y.abs());
+    match segment {
+        Segment::Line(line) => point_scale(line.start).max(point_scale(line.end)).max(1.0),
+        Segment::Quadratic(curve) => point_scale(curve.p0)
+            .max(point_scale(curve.p1))
+            .max(point_scale(curve.p2))
+            .max(1.0),
+        Segment::Cubic(curve) => point_scale(curve.p0)
+            .max(point_scale(curve.p1))
+            .max(point_scale(curve.p2))
+            .max(point_scale(curve.p3))
+            .max(1.0),
+        Segment::Arc(arc) => point_scale(arc.center)
+            .max(arc.radius_x.abs())
+            .max(arc.radius_y.abs())
+            .max(1.0),
+    }
 }
 
 fn monotone_hermite_distance(left: ArcLengthSample, right: ArcLengthSample, t: Scalar) -> Scalar {

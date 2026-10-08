@@ -164,6 +164,15 @@ fn measure_index_is_stable_under_large_translation() {
     let distance = table.length_at_parameter(0.63).unwrap();
     let recovered = table.parameter_at_length(distance).unwrap();
     assert_close(recovered, 0.63, 2.0e-7);
+
+    for fraction in [0.2, 0.5, 0.8] {
+        let wanted = table.total_length() * fraction;
+        let indexed = table.point_at_length(wanted).unwrap();
+        let exact_t =
+            segment_parameter_at_length(segment, wanted, Tolerance::default()).unwrap();
+        let exact = segment.point_at(exact_t);
+        assert!(indexed.distance_to(exact) <= 0.01);
+    }
 }
 
 #[test]
