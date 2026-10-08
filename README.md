@@ -2,7 +2,7 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.24.0` (stabilization release).
+**Status:** `v1.0.0` (stable geometry API, bounded verification scope).
 
 ## v0.24 stability and performance
 
