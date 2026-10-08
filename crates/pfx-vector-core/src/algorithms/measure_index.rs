@@ -380,6 +380,7 @@ fn length_table_tolerance(total_length: Scalar, tolerance: Tolerance) -> Scalar 
         .absolute
         .max(tolerance.relative * total_length.abs())
         .max(1.0e-12)
+        * 16.0
 }
 
 fn monotone_hermite_distance(left: ArcLengthSample, right: ArcLengthSample, t: Scalar) -> Scalar {
