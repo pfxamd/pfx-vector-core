@@ -1,4 +1,4 @@
-import { createVectorCore } from "./src/index.js";
+import { createVectorCore } from "./index.js";
 
 // Compile-time public API contract: if a wrapper name or argument changes,
 // this file fails the strict TypeScript typecheck before release.
