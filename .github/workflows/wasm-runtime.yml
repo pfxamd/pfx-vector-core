@@ -1,0 +1,45 @@
+name: WebAssembly runtime smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/pfx-vector-wasm/**"
+      - "crates/pfx-vector-core/src/**"
+      - "crates/pfx-vector-svg/src/**"
+      - ".github/workflows/wasm-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node WebAssembly integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build Node.js WebAssembly package
+        run: wasm-pack build crates/pfx-vector-wasm --release --target nodejs --out-dir pkg
+      - name: Execute WebAssembly integration
+        run: |
+          node - <<'JS'
+          const assert = require('node:assert/strict');
+          const wasm = require('./crates/pfx-vector-wasm/pkg/pfx_vector_wasm.js');
+          assert.equal(typeof wasm.core_version(), 'string');
+          assert.equal(wasm.validate_path('M0 0 L3 4'), true);
+          assert.equal(wasm.validate_path('M0 0 L'), false);
+          assert.ok(Math.abs(wasm.path_length_svg('M0 0 L3 4') - 5) < 1e-9);
+          assert.ok(Number.isFinite(wasm.path_length_svg('M0 0 C15 35 55 -20 80 0')));
+          console.log('WebAssembly geometry integration: PASS');
+          JS
