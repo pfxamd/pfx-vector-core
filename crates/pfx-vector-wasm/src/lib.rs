@@ -5,8 +5,9 @@ use pfx_vector_core::{
     SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, closest_point,
     contains_point, contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves,
     flatten_path, intersect_segments, join_open_subpaths, normalize_self_intersections,
-    offset_path, outline_path, path_length, point_at_length, remove_segment, remove_subpath,
-    replace_segment, replace_subpath, reverse_subpath, set_subpath_closed, simplify_path,
+    offset_path, outline_path, path_frame_at_length, path_inflections, path_length,
+    point_at_length, remove_segment, remove_subpath, replace_segment, replace_subpath,
+    reverse_subpath, set_subpath_closed, simplify_path,
     slice_contour, spatial_cross_candidate_pairs, split_segment, split_segment_at_length,
     stroke_contains_point, tessellate_fill, tessellate_stroke, transform_path,
 };
@@ -356,6 +357,49 @@ pub fn closest_point_svg(data: &str, x: f64, y: f64) -> Result<String, JsValue> 
         result.location.t,
         result.location.distance
     ))
+}
+
+#[wasm_bindgen]
+pub fn frame_at_length_svg(data: &str, distance: f64) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let frame = path_frame_at_length(&path, distance, Tolerance::default()).map_err(js_err)?;
+    Ok(format!(
+        "{{\"x\":{},\"y\":{},\"tangentX\":{},\"tangentY\":{},\"normalX\":{},\"normalY\":{},\"curvature\":{},\"speed\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}}",
+        frame.point.x,
+        frame.point.y,
+        frame.tangent.x,
+        frame.tangent.y,
+        frame.normal.x,
+        frame.normal.y,
+        frame.curvature,
+        frame.speed,
+        frame.location.subpath_index,
+        frame.location.segment_index,
+        frame.location.t,
+        frame.location.distance
+    ))
+}
+
+#[wasm_bindgen]
+pub fn inflection_points_svg(data: &str) -> Result<String, JsValue> {
+    let path = parse_path(data).map_err(js_err)?;
+    let points = path_inflections(&path, Tolerance::default()).map_err(js_err)?;
+    let body = points
+        .iter()
+        .map(|value| {
+            format!(
+                "{{\"x\":{},\"y\":{},\"subpath\":{},\"segment\":{},\"t\":{},\"pathDistance\":{}}}",
+                value.point.x,
+                value.point.y,
+                value.location.subpath_index,
+                value.location.segment_index,
+                value.location.t,
+                value.location.distance
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    Ok(format!("[{body}]"))
 }
 
 #[wasm_bindgen]

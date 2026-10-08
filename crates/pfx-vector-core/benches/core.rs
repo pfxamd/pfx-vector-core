@@ -51,6 +51,27 @@ fn bench_core(c: &mut Criterion) {
         b.iter(|| path_length(black_box(&path), Tolerance::default()).unwrap())
     });
 
+    c.bench_function("differential frame cubic segment", |b| {
+        b.iter(|| {
+            segment_frame_at_t(
+                black_box(Segment::Cubic(curve)),
+                black_box(0.37),
+                black_box(Tolerance::default()),
+            )
+            .unwrap()
+        })
+    });
+
+    c.bench_function("cubic inflection parameters", |b| {
+        b.iter(|| {
+            segment_inflection_parameters(
+                black_box(Segment::Cubic(curve)),
+                black_box(Tolerance::default()),
+            )
+            .unwrap()
+        })
+    });
+
     let nearest_query = Point2::new(160.0, 45.0);
     c.bench_function("precise nearest cubic segment", |b| {
         b.iter(|| {
