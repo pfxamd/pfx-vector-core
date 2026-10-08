@@ -35,7 +35,7 @@ jobs:
       - name: Install Playwright
         run: |
           npm install --no-save --prefix demo playwright
-          npx --prefix demo playwright install --with-deps chromium firefox
+          npx --prefix demo playwright install --with-deps chromium firefox webkit
       - name: Browser smoke
         run: |
           python3 -m http.server 8787 --bind 127.0.0.1 &
