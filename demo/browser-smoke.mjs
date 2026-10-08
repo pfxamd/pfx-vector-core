@@ -59,6 +59,34 @@ try {
   assert.ok(Math.abs(kernel.translated.minY - 35) < 0.01);
   assert.ok(JSON.parse(kernel.crossed).length >= 1);
 
+  // Verify the real consumer-facing TypeScript adapter in each browser.
+  const consumer = await page.evaluate(async () => {
+    const wasm = await import("/crates/pfx-vector-wasm/pkg/pfx_vector_wasm.js");
+    const { createVectorCore } = await import("/packages/pfx-vector-web/dist/index.js");
+    const core = createVectorCore(wasm);
+    const path = "M0 0 L100 0 L100 100 L0 100 Z";
+    let invalidInputRejected = false;
+    try {
+      core.pathLength("M0 0 L");
+    } catch {
+      invalidInputRejected = true;
+    }
+    return {
+      length: core.pathLength("M0 0 L3 4"),
+      bounds: core.pathBounds(path),
+      inside: core.containsPoint(path, 50, 50),
+      outside: core.containsPoint(path, 200, 200),
+      midpoint: core.pointAtLength("M0 0 L3 4", 2.5),
+      invalidInputRejected,
+    };
+  });
+  assert.ok(Math.abs(consumer.length - 5) < 1e-9);
+  assert.ok(Math.abs(consumer.bounds.maxX - 100) < 1e-6);
+  assert.equal(consumer.inside, true);
+  assert.equal(consumer.outside, false);
+  assert.ok(Math.abs(consumer.midpoint.x - 1.5) < 1e-6);
+  assert.equal(consumer.invalidInputRejected, true);
+
   // Browser-side large geometry workload with actual WASM, not simulated shapes.
   const stress = await page.evaluate(async () => {
     const wasm = await import("/crates/pfx-vector-wasm/pkg/pfx_vector_wasm.js");
