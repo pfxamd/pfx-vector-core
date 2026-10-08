@@ -278,12 +278,15 @@ impl PathMeasureIndex {
     }
 
     fn flat_segment_index(&self, subpath_index: usize, segment_index: usize) -> CoreResult<usize> {
-        if subpath_index + 1 >= self.subpath_offsets.len() {
+        let Some(next_subpath) = subpath_index.checked_add(1) else {
+            return Err(CoreError::InvalidGeometry);
+        };
+        if next_subpath >= self.subpath_offsets.len() {
             return Err(CoreError::InvalidGeometry);
         }
 
         let start = self.subpath_offsets[subpath_index];
-        let end = self.subpath_offsets[subpath_index + 1];
+        let end = self.subpath_offsets[next_subpath];
         if segment_index >= end - start {
             return Err(CoreError::InvalidGeometry);
         }
