@@ -615,9 +615,7 @@ fn bench_core(c: &mut Criterion) {
         let mut large_builder = PathBuilder::new();
         large_builder.move_to(Point2::new(0.0, 0.0)).unwrap();
         for i in 1..=count {
-            large_builder
-                .line_to(Point2::new(i as f64, 0.0))
-                .unwrap();
+            large_builder.line_to(Point2::new(i as f64, 0.0)).unwrap();
         }
         let large_path = large_builder.finish().unwrap();
         let indexed = PathMeasureIndex::build(&large_path, tolerance).unwrap();
