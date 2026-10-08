@@ -26,7 +26,7 @@ pub fn segment_length(segment: Segment, tolerance: Tolerance) -> CoreResult<Scal
     }
 }
 
-fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Scalar> {
+pub(crate) fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Scalar> {
     let controls = match segment {
         Segment::Quadratic(curve) => vec![curve.p0, curve.p1, curve.p2],
         Segment::Cubic(curve) => vec![curve.p0, curve.p1, curve.p2, curve.p3],
