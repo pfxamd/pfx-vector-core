@@ -22,6 +22,10 @@ impl QuadraticBezier {
     pub fn derivative_at(self, t: Scalar) -> Vector2 {
         (self.p1 - self.p0) * (2.0 * (1.0 - t)) + (self.p2 - self.p1) * (2.0 * t)
     }
+    #[must_use]
+    pub fn second_derivative_at(self, _t: Scalar) -> Vector2 {
+        ((self.p2 - self.p1) - (self.p1 - self.p0)) * 2.0
+    }
     pub fn tangent_at(self, t: Scalar, tol: Tolerance) -> crate::CoreResult<Vector2> {
         self.derivative_at(t).normalized(tol)
     }

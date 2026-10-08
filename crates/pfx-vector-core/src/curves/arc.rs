@@ -58,6 +58,23 @@ impl EllipticalArc {
     }
 
     #[must_use]
+    pub fn second_derivative_at(self, t: Scalar) -> Vector2 {
+        let theta = self.start_angle.as_radians() + self.sweep_angle.as_radians() * t;
+        let (sin_theta, cos_theta) = theta.sin_cos();
+        let (sin_rotation, cos_rotation) = self.rotation.as_radians().sin_cos();
+        let sweep_squared = self.sweep_angle.as_radians().powi(2);
+
+        Vector2::new(
+            (-self.radius_x * cos_theta * cos_rotation
+                + self.radius_y * sin_theta * sin_rotation)
+                * sweep_squared,
+            (-self.radius_x * cos_theta * sin_rotation
+                - self.radius_y * sin_theta * cos_rotation)
+                * sweep_squared,
+        )
+    }
+
+    #[must_use]
     pub fn bounds(self) -> Bounds {
         let mut bounds = Bounds::from_points(&[self.point_at(0.0), self.point_at(1.0)]);
         let rotation = self.rotation.as_radians();

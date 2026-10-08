@@ -38,6 +38,13 @@ impl CubicBezier {
             + (self.p3 - self.p2) * (3.0 * t * t)
     }
 
+    #[must_use]
+    pub fn second_derivative_at(self, t: Scalar) -> Vector2 {
+        let first = (self.p2 - self.p1) - (self.p1 - self.p0);
+        let second = (self.p3 - self.p2) - (self.p2 - self.p1);
+        first * (6.0 * (1.0 - t)) + second * (6.0 * t)
+    }
+
     pub fn tangent_at(self, t: Scalar, tolerance: Tolerance) -> crate::CoreResult<Vector2> {
         self.derivative_at(t).normalized(tolerance)
     }

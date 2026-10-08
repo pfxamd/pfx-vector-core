@@ -1,4 +1,6 @@
-use crate::{Bounds, CubicBezier, EllipticalArc, LineSegment, Point2, QuadraticBezier, Scalar};
+use crate::{
+    Bounds, CubicBezier, EllipticalArc, LineSegment, Point2, QuadraticBezier, Scalar, Vector2,
+};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Segment {
     Line(LineSegment),
@@ -32,6 +34,24 @@ impl Segment {
             Self::Quadratic(v) => v.point_at(t),
             Self::Cubic(v) => v.point_at(t),
             Self::Arc(v) => v.point_at(t),
+        }
+    }
+    #[must_use]
+    pub fn derivative_at(self, t: Scalar) -> Vector2 {
+        match self {
+            Self::Line(v) => v.direction(),
+            Self::Quadratic(v) => v.derivative_at(t),
+            Self::Cubic(v) => v.derivative_at(t),
+            Self::Arc(v) => v.derivative_at(t),
+        }
+    }
+    #[must_use]
+    pub fn second_derivative_at(self, t: Scalar) -> Vector2 {
+        match self {
+            Self::Line(_) => Vector2::new(0.0, 0.0),
+            Self::Quadratic(v) => v.second_derivative_at(t),
+            Self::Cubic(v) => v.second_derivative_at(t),
+            Self::Arc(v) => v.second_derivative_at(t),
         }
     }
     #[must_use]
