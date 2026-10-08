@@ -18,3 +18,10 @@ path = "fuzz_targets/smoke.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "measure_index"
+path = "fuzz_targets/measure_index.rs"
+test = false
+doc = false
+bench = false
