@@ -15,8 +15,14 @@ fn line_index() -> PathMeasureIndex {
 fn measurement_rejects_non_finite_distance_queries() {
     let index = line_index();
     for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
-        assert_eq!(index.location_at_distance(invalid), Err(CoreError::InvalidNumber));
-        assert_eq!(index.point_at_length(invalid), Err(CoreError::InvalidNumber));
+        assert_eq!(
+            index.location_at_distance(invalid),
+            Err(CoreError::InvalidNumber)
+        );
+        assert_eq!(
+            index.point_at_length(invalid),
+            Err(CoreError::InvalidNumber)
+        );
     }
 }
 
@@ -51,7 +57,13 @@ fn measurement_rejects_out_of_range_source_addresses() {
 #[test]
 fn line_distance_queries_are_clamped_and_finite() {
     let index = line_index();
-    for (distance, expected) in [(-100.0, 0.0), (0.0, 0.0), (2.5, 2.5), (5.0, 5.0), (100.0, 5.0)] {
+    for (distance, expected) in [
+        (-100.0, 0.0),
+        (0.0, 0.0),
+        (2.5, 2.5),
+        (5.0, 5.0),
+        (100.0, 5.0),
+    ] {
         let (point, location) = index.point_at_length(distance).unwrap();
         assert_eq!(location.distance, expected);
         assert!(point.x.is_finite() && point.y.is_finite());
