@@ -26,5 +26,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
+      - name: Resolve workspace dependencies
+        run: cargo generate-lockfile
       - name: Check workspace dependency advisories
         run: cargo audit
