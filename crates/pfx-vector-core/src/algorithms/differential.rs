@@ -1,8 +1,8 @@
 use super::measure::{point_at_length, segment_length_to_t};
 use crate::numeric::solve_quadratic;
 use crate::{
-    CoreError, CoreResult, Path, PathLocation, Point2, Scalar, Segment, Tolerance, Vector2,
-    segment_length,
+    CoreError, CoreResult, Path, PathLocation, PathMeasureIndex, Point2, Scalar, Segment,
+    Tolerance, Vector2, segment_length,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -86,6 +86,27 @@ pub fn path_frame_at_length(
     let (_, location) = point_at_length(path, distance, tolerance)?;
     let segment = path.subpaths()[location.subpath_index].segments()[location.segment_index];
     let frame = segment_frame_at_t(segment, location.t, tolerance)?;
+
+    Ok(PathFrame {
+        point: frame.point,
+        tangent: frame.tangent,
+        normal: frame.normal,
+        curvature: frame.curvature,
+        speed: frame.speed,
+        location,
+    })
+}
+
+
+pub fn path_frame_at_length_indexed(
+    index: &PathMeasureIndex,
+    distance: Scalar,
+) -> CoreResult<PathFrame> {
+    let location = index.location_at_distance(distance)?;
+    let segment = index
+        .segment_table(location.subpath_index, location.segment_index)?
+        .segment();
+    let frame = segment_frame_at_t(segment, location.t, index.tolerance())?;
 
     Ok(PathFrame {
         point: frame.point,

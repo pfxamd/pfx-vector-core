@@ -51,6 +51,39 @@ fn bench_core(c: &mut Criterion) {
         b.iter(|| path_length(black_box(&path), Tolerance::default()).unwrap())
     });
 
+    let measure_index = PathMeasureIndex::build(&path, Tolerance::default()).unwrap();
+    let measure_total = measure_index.total_length();
+    let measure_distances: Vec<_> = (0..100)
+        .map(|index| measure_total * index as f64 / 99.0)
+        .collect();
+
+    c.bench_function("point at length repeated direct", |b| {
+        b.iter(|| {
+            for &distance in &measure_distances {
+                black_box(
+                    point_at_length(
+                        black_box(&path),
+                        black_box(distance),
+                        black_box(Tolerance::default()),
+                    )
+                    .unwrap(),
+                );
+            }
+        })
+    });
+
+    c.bench_function("point at length repeated indexed", |b| {
+        b.iter(|| {
+            for &distance in &measure_distances {
+                black_box(
+                    measure_index
+                        .point_at_length(black_box(distance))
+                        .unwrap(),
+                );
+            }
+        })
+    });
+
     c.bench_function("differential frame cubic segment", |b| {
         b.iter(|| {
             segment_frame_at_t(
