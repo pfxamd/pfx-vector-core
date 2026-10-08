@@ -25,6 +25,6 @@ jobs:
         with:
           workspaces: fuzz
       - name: Run SVG smoke fuzz
-        run: cargo run --release --manifest-path fuzz/Cargo.toml --bin smoke -- -runs=1000 -max_len=4096
+        run: cargo run --release --manifest-path fuzz/Cargo.toml --bin smoke -- -runs=10000 -max_total_time=120 -timeout=5 -max_len=4096
       - name: Run measure-index fuzz
         run: cargo run --release --manifest-path fuzz/Cargo.toml --bin measure_index -- -runs=1000 -max_len=4096
