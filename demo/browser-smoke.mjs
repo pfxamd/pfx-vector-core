@@ -1,7 +1,7 @@
-import { chromium, firefox } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
 import assert from "node:assert/strict";
 
-for (const [browserName, browserType] of [["chromium", chromium], ["firefox", firefox]]) {
+for (const [browserName, browserType] of [["chromium", chromium], ["firefox", firefox], ["webkit", webkit]]) {
 const browser = await browserType.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
