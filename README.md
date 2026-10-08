@@ -2,7 +2,42 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.21.0`.
+**Status:** `v0.22.0`.
+
+## v0.22 differential geometry engine
+
+The core now exposes one source-native differential geometry layer for path analysis, editor geometry, and downstream algorithms.
+
+```rust
+let frame = segment_frame_at_t(segment, 0.5, tolerance)?;
+let path_frame = path_frame_at_length(&path, distance, tolerance)?;
+let inflections = path_inflections(&path, tolerance)?;
+```
+
+`SegmentFrame` reports the source point, unit tangent, left-hand unit normal, signed curvature, parameter speed, and source parameter `t`. `PathFrame` adds the original `PathLocation`, including the source subpath, source segment, parameter, and path-distance coordinate.
+
+Line, quadratic Bézier, cubic Bézier, and elliptical-arc segments now share `Segment::derivative_at` and `Segment::second_derivative_at`. Quadratic, cubic, and elliptical-arc primitives expose analytic second derivatives directly. The offset engine uses these shared primitives instead of maintaining a separate derivative implementation.
+
+Cubic inflection detection solves the native signed-curvature numerator and returns only regular interior roots where curvature changes sign. Path-level inflection results include both the source point and exact source location metadata.
+
+Arc-length endpoint inversion is also canonicalized: zero distance returns `t = 0` and the exact segment total returns `t = 1`.
+
+### Web API
+
+```text
+frameAtLength(data, distance)
+inflectionPoints(data)
+```
+
+`frameAtLength` returns point, tangent, normal, signed curvature, parameter speed, source subpath/segment, `t`, and path distance.
+
+Current differential-geometry limits:
+
+- a zero or tolerance-degenerate tangent returns `DegenerateOperation` instead of inventing a frame
+- inflection reporting currently targets regular interior sign-changing curvature roots of cubic Bézier segments
+- lines, quadratic Béziers, and regular elliptical arcs have no reported interior inflection points
+- the normal is the left-hand perpendicular of the oriented tangent, so normal and signed curvature both reverse when path direction is reversed
+- path-distance coordinates continue to use the existing tolerance-controlled numerical arc-length model
 
 ## v0.21 self-overlap & degenerate geometry engine
 

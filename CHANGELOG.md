@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.22.0 - 2026-10-08
+
+### Added
+
+- Public `SegmentFrame`, `PathFrame`, and `PathInflection` geometry result types.
+- Public `segment_frame_at_t` and `path_frame_at_length` APIs.
+- Unified `Segment::derivative_at` and `Segment::second_derivative_at` primitives.
+- Analytic second derivatives for quadratic Bézier, cubic Bézier, and elliptical-arc primitives.
+- Signed curvature, unit tangent, left-hand normal, and parameter-speed reporting for regular segment points.
+- `segment_inflection_parameters` for regular interior cubic Bézier inflections.
+- `path_inflections` with original source location and path-distance coordinates.
+- WebAssembly `frame_at_length_svg` and `inflection_points_svg`.
+- TypeScript `frameAtLength` and `inflectionPoints`.
+- Regression coverage for lines, quadratic curvature, circular-arc curvature, reversal semantics, cubic inflections, degenerate tangents, endpoints, path locations, and large translated coordinates.
+- Criterion benchmark coverage for differential frames and cubic inflection solving.
+
+### Changed
+
+- The offset engine now consumes the shared segment derivative and second-derivative primitives instead of maintaining duplicate differential formulas.
+- `tangent_at_length` delegates to the unified path-frame engine.
+- Arc-length inversion now canonicalizes exact endpoints so zero distance returns `t = 0` and the segment total returns `t = 1`.
+
+### Scope limits
+
+- Frames require a regular non-degenerate tangent; zero or tolerance-degenerate speed returns `DegenerateOperation`.
+- Inflection reporting currently covers regular interior sign-changing curvature roots of cubic Bézier segments.
+- The reported normal is the left-hand perpendicular of the oriented tangent; signed curvature follows the same path orientation convention.
+- Path-distance coordinates retain the existing tolerance-controlled numerical arc-length model.
+
 ## 0.21.0 - 2026-10-07
 
 ### Added
