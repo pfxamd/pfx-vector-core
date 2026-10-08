@@ -2,7 +2,15 @@
 
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v0.23.0`.
+**Status:** `v0.24.0` (stabilization release).
+
+## v0.24 stability and performance
+
+This version fixes measure-index convergence failures, optimizes curve and elliptical-arc indexing, and adds numerical, fuzz, SVG integration, Node.js WebAssembly runtime, and repeated-memory-soak checks.
+
+Verification is bounded: the 1,000-cycle soak and seeded 10,000-run-per-target fuzz campaign cannot establish the absence of every numerical bug, leak, or malicious-input issue. Browser/editor end-to-end behavior is outside the core's CI. Default SVG serialization uses six decimal places; choose increased serialization precision when nearly degenerate arcs require accurate round trips. The TypeScript package remains private.
+
+See `CHANGELOG.md` for the tested scope.
 
 ## v0.23 arc-length parameterization engine
 
