@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.24.0 - 2026-10-08
+
+### Stabilization and verification
+
+- Fixed measure-index nonconvergence on valid cubic Bézier and elliptical arc inputs, and preserved exact handling of retraced collinear Béziers.
+- Replaced repeated prefix integration with local adaptive interval integration, significantly reducing curve and arc index build times without weakening the regression suite.
+- Added bounded deterministic load, invalid-input, extreme-coordinate, randomized geometry, minimized-convergence, and SVG-to-core integration tests.
+- Added seeded libFuzzer smoke targets for SVG and measure-index behavior, with 10,000 executions per target in CI.
+- Added native WebAssembly execution tests in Node.js, in addition to the existing target build and TypeScript type checks.
+- Added reproducible Linux release benchmarks recording index construction, queries, peak RSS, and a 1,000-cycle repeated-build soak test.
+
+### Verified scope and limitations
+
+- CI and performance validation cover specified representative workloads, not all possible hostile inputs.
+- Fuzz testing is bounded; extended multi-hour campaigns remain appropriate before embedding in high-risk untrusted-file pipelines.
+- SVG serialization with the default six decimal places can alter geometry of nearly degenerate arcs. Use a larger `SerializeOptions.precision` where geometric round-trip accuracy is required.
+- WebAssembly runtime validation currently targets Node.js; interactive browser/editor validation remains a downstream integration responsibility.
+- The TypeScript package remains private and is not published to a package registry.
+
 ## 0.23.0 - 2026-10-08
 
 ### Added
