@@ -375,6 +375,11 @@ fn exact_sample(segment: Segment, t: Scalar, tolerance: Tolerance) -> CoreResult
     // and adds numerical noise that can prevent adaptive convergence.
     let distance = match segment {
         Segment::Line(_) => segment_length_to_t(segment, t, tolerance)?,
+        Segment::Quadratic(_) | Segment::Cubic(_)
+            if super::measure::line_like_bezier_length(segment, tolerance).is_some() =>
+        {
+            segment_length_to_t(segment, t, tolerance)?
+        }
         _ => crate::numeric::adaptive_simpson(
             |parameter| segment.derivative_at(parameter).length(),
             0.0,
