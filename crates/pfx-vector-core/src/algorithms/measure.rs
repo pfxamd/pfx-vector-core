@@ -123,8 +123,11 @@ pub(crate) fn segment_parameter_at_length_with_total(
     total: Scalar,
     tolerance: Tolerance,
 ) -> CoreResult<Scalar> {
-    if total == 0.0 {
+    if total == 0.0 || target <= 0.0 {
         return Ok(0.0);
+    }
+    if target >= total {
+        return Ok(1.0);
     }
 
     let mut low = 0.0;
