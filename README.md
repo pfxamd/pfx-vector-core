@@ -848,6 +848,10 @@ outlinePath(data, width, { cap, join, miterLimit })
 - transform and `viewBox` handling
 - WebAssembly bridge and TypeScript wrapper
 
+## Application integration
+
+For an actual browser or Node consumer, see [Integration guide](docs/integration.md) for pinned sources, the WebAssembly build, TypeScript adapter compilation, initialization, and current distribution limitations. CI now checks the consumer adapter with real WebAssembly rather than only compile-time types.
+
 ## Workspace
 
 ```text
