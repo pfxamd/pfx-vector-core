@@ -97,7 +97,6 @@ pub fn path_frame_at_length(
     })
 }
 
-
 pub fn path_frame_at_length_indexed(
     index: &PathMeasureIndex,
     distance: Scalar,

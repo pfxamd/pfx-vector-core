@@ -89,8 +89,14 @@ fn path_measure_index_matches_one_shot_queries() {
         let (actual_point, actual_location) = index.point_at_length(distance).unwrap();
 
         assert!(expected_point.distance_to(actual_point) <= 2.0e-6);
-        assert_eq!(actual_location.subpath_index, expected_location.subpath_index);
-        assert_eq!(actual_location.segment_index, expected_location.segment_index);
+        assert_eq!(
+            actual_location.subpath_index,
+            expected_location.subpath_index
+        );
+        assert_eq!(
+            actual_location.segment_index,
+            expected_location.segment_index
+        );
         assert_close(actual_location.distance, expected_location.distance, 1.0e-8);
     }
 }

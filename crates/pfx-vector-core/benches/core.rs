@@ -75,11 +75,7 @@ fn bench_core(c: &mut Criterion) {
     c.bench_function("point at length repeated indexed", |b| {
         b.iter(|| {
             for &distance in &measure_distances {
-                black_box(
-                    measure_index
-                        .point_at_length(black_box(distance))
-                        .unwrap(),
-                );
+                black_box(measure_index.point_at_length(black_box(distance)).unwrap());
             }
         })
     });

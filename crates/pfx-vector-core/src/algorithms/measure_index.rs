@@ -1,7 +1,5 @@
 use super::measure::{segment_length, segment_length_to_t};
-use crate::{
-    CoreError, CoreResult, Path, PathLocation, Point2, Scalar, Segment, Tolerance,
-};
+use crate::{CoreError, CoreResult, Path, PathLocation, Point2, Scalar, Segment, Tolerance};
 
 const MAX_TABLE_DEPTH: u32 = 18;
 const INVERSE_ITERATIONS: usize = 32;
@@ -240,9 +238,9 @@ impl PathMeasureIndex {
         }
 
         let wanted = distance.clamp(0.0, self.total_length);
-        let mut index = self.segments.partition_point(|entry| {
-            entry.start_distance + entry.table.total_length() < wanted
-        });
+        let mut index = self
+            .segments
+            .partition_point(|entry| entry.start_distance + entry.table.total_length() < wanted);
         if index == self.segments.len() {
             index -= 1;
         }
@@ -279,11 +277,7 @@ impl PathMeasureIndex {
         Ok((segment.point_at(location.t), location))
     }
 
-    fn flat_segment_index(
-        &self,
-        subpath_index: usize,
-        segment_index: usize,
-    ) -> CoreResult<usize> {
+    fn flat_segment_index(&self, subpath_index: usize, segment_index: usize) -> CoreResult<usize> {
         if subpath_index + 1 >= self.subpath_offsets.len() {
             return Err(CoreError::InvalidGeometry);
         }
@@ -388,11 +382,7 @@ fn length_table_tolerance(total_length: Scalar, tolerance: Tolerance) -> Scalar 
         .max(1.0e-12)
 }
 
-fn monotone_hermite_distance(
-    left: ArcLengthSample,
-    right: ArcLengthSample,
-    t: Scalar,
-) -> Scalar {
+fn monotone_hermite_distance(left: ArcLengthSample, right: ArcLengthSample, t: Scalar) -> Scalar {
     if t <= left.t {
         return left.distance;
     }
