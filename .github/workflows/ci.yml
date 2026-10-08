@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Check public API against v0.24.0
+        run: python3 scripts/check_public_api.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
