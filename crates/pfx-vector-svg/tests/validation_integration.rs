@@ -20,7 +20,11 @@ fn svg_to_core_measure_round_trip_is_finite() {
         let restored = parse_path(&svg).unwrap();
         let rebuilt = PathMeasureIndex::build(&restored, Tolerance::default()).unwrap();
         let threshold = 1.0e-6_f64.max(total * 1.0e-7);
-        assert!((total - rebuilt.total_length()).abs() <= threshold);
+        assert!(
+            (total - rebuilt.total_length()).abs() <= threshold,
+            "source={source}, serialized={svg}, original={total}, restored={}",
+            rebuilt.total_length()
+        );
         for fraction in [0.0, 0.25, 0.5, 0.75, 1.0] {
             if index.segment_count() > 0 {
                 let (_, location) = index.point_at_length(total * fraction).unwrap();
