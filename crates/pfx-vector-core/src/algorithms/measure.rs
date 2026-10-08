@@ -55,9 +55,9 @@ fn line_like_bezier_length(segment: Segment, tolerance: Tolerance) -> Option<Sca
 
     let axis_length = axis_length_squared.sqrt();
     let unit = axis / axis_length;
-    let geometric_scale = controls
-        .iter()
-        .fold(1.0_f64, |scale, point| scale.max((*point - origin).length()));
+    let geometric_scale = controls.iter().fold(1.0_f64, |scale, point| {
+        scale.max((*point - origin).length())
+    });
     let geometric_tolerance = (tolerance.absolute + tolerance.relative * geometric_scale) * 16.0;
 
     if controls
