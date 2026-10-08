@@ -2,16 +2,15 @@
 use pfx_vector_core::{
     BooleanOperation, Bounds, CleanupOptions, ContourSliceMode, FillRule, Mesh2D, OffsetStyle,
     PathBuilder, PathMeasureIndex, Point2, Segment, SegmentAddress, StrokeCap, StrokeJoin,
-    StrokeStyle, Subpath,
-    SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path, closest_point,
-    contains_point, contour_length, dash_path, extract_segment, extract_subpath, fit_path_curves,
-    flatten_path, intersect_segments, join_open_subpaths, normalize_self_intersections,
-    offset_path, outline_path, path_frame_at_length, path_frame_at_length_indexed,
-    path_inflections, path_length, point_at_length, remove_segment, remove_subpath,
-    replace_segment, replace_subpath,
-    reverse_subpath, set_subpath_closed, simplify_path, slice_contour,
-    spatial_cross_candidate_pairs, split_segment, split_segment_at_length, stroke_contains_point,
-    tessellate_fill, tessellate_stroke, transform_path,
+    StrokeStyle, Subpath, SubpathEndpoint, Tolerance, Transform2D, boolean_paths, cleanup_path,
+    closest_point, contains_point, contour_length, dash_path, extract_segment, extract_subpath,
+    fit_path_curves, flatten_path, intersect_segments, join_open_subpaths,
+    normalize_self_intersections, offset_path, outline_path, path_frame_at_length,
+    path_frame_at_length_indexed, path_inflections, path_length, point_at_length, remove_segment,
+    remove_subpath, replace_segment, replace_subpath, reverse_subpath, set_subpath_closed,
+    simplify_path, slice_contour, spatial_cross_candidate_pairs, split_segment,
+    split_segment_at_length, stroke_contains_point, tessellate_fill, tessellate_stroke,
+    transform_path,
 };
 use pfx_vector_svg::{SerializeOptions, parse_path, serialize_path};
 use wasm_bindgen::prelude::*;
