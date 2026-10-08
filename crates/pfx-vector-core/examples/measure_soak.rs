@@ -26,7 +26,8 @@ fn main() {
     }
     let path = builder.finish().unwrap();
     println!("round,segments,build_ms,query_ms,resident_kib,samples");
-    for round in 1..=12 {
+    // Exercise repeated allocation, indexing and release over 1,000 cycles.
+    for round in 1..=1000 {
         let started = Instant::now();
         let index = PathMeasureIndex::build(&path, Tolerance::default()).unwrap();
         let build_ms = started.elapsed().as_secs_f64() * 1000.0;
@@ -43,6 +44,8 @@ fn main() {
         drop(index);
         let rss =
             resident_kib().map_or_else(|| "unavailable".to_owned(), |value| value.to_string());
-        println!("{round},{COUNT},{build_ms:.3},{query_ms:.3},{rss},{samples}");
+        if round == 1 || round % 100 == 0 || round == 1000 {
+            println!("{round},{COUNT},{build_ms:.3},{query_ms:.3},{rss},{samples}");
+        }
     }
 }
