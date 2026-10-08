@@ -1,0 +1,44 @@
+name: Browser geometry demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "demo/**"
+      - "crates/pfx-vector-wasm/**"
+      - "crates/pfx-vector-core/src/**"
+      - "crates/pfx-vector-svg/src/**"
+      - ".github/workflows/browser-demo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: Real browser integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build browser WebAssembly
+        run: wasm-pack build crates/pfx-vector-wasm --release --target web --out-dir pkg
+      - name: Install Playwright
+        run: |
+          npm install --no-save --prefix demo playwright
+          npx --prefix demo playwright install --with-deps chromium
+      - name: Browser smoke
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          node demo/browser-smoke.mjs
