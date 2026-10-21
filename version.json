@@ -3,8 +3,8 @@
   "kind": "core",
   "product": "PFx Vector Core",
   "channel": "Stable",
-  "version": "1.0.2",
-  "label": "Stable 1.0.2",
-  "commit": "7579f84ffd2dec1ef32ebc344a01306e2261bea4",
-  "sourceDate": "2026-10-21T18:19:48+01:00"
+  "version": "1.0.3",
+  "label": "Stable 1.0.3",
+  "commit": "cf7d3b7409211ce825e79db546de554c8de2fa00",
+  "sourceDate": "2026-10-21T21:50:07+01:00"
 }
