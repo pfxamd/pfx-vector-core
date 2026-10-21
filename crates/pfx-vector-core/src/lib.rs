@@ -1,3 +1,19 @@
+/*
+ * ┌──────────────────────────────────────────────┐
+ * │                                              │
+ * │  PFxamd                                      │
+ * │  Ahmed                                       │
+ * │                                              │
+ * └──────────────────────────────────────────────┘
+ *
+ * @project     PFx Vector Core
+ * @author      Ahmed
+ * @brand       PFxamd
+ * @website     https://www.pfxamd.com
+ * @repository  https://github.com/pfxamd/pfx-vector-core
+ * @license     Apache-2.0
+ */
+
 #![forbid(unsafe_code)]
 //! PFx Vector Core: deterministic 2D vector geometry primitives and algorithms.
 //! The crate is independent of SVG syntax, DOM, rendering, and UI concerns.
