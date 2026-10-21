@@ -1,8 +1,10 @@
 # PFx Vector Core
 
+[![Core version](./version-badge.svg)](./version.json)
+
 `PFx Vector Core` is a Rust vector-geometry kernel for deterministic 2D geometry, SVG geometry, spatial acceleration, intersections, contour normalization, Boolean operations, offsets, tessellation, path trimming/slicing, path simplification, and curve fitting. Rendering, DOM, UI, scene graphs, and editor state are outside the core.
 
-**Status:** `v1.0.0` (stable geometry API, bounded verification scope).
+**Status:** stable (current version above) (stable geometry API, bounded verification scope).
 
 ## v0.24 stability and performance
 
@@ -984,3 +986,7 @@ Rust `1.85` is the declared minimum version because the workspace uses Edition 2
 ## License
 
 Apache-2.0.
+
+## Automatic source versions
+
+The badge, `version.json`, and package manifests share one Git-derived version. Run `node .pfx/release.mjs --sync` before a local build. Full Git history is required. Rebuilding the same source keeps the same number; metadata-only bot commits do not advance it. See [.pfx/RELEASE.md](.pfx/RELEASE.md).

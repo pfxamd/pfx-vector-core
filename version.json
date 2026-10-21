@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "core",
+  "product": "PFx Vector Core",
+  "channel": "Stable",
+  "version": "1.0.0",
+  "label": "Stable 1.0.0",
+  "commit": "c96ffe263ddb7fc58f4660693b3962b2fe39c0eb",
+  "sourceDate": "2026-10-08T08:18:58+01:00"
+}

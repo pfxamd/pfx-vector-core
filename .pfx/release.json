@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "product": "PFx Vector Core",
+  "channel": "Stable",
+  "baseVersion": "1.0.0",
+  "baseline": "c96ffe263ddb7fc58f4660693b3962b2fe39c0eb",
+  "sourcePaths": [
+    "src",
+    "packages",
+    "crates",
+    "bindings",
+    "tokens",
+    "config",
+    "schema",
+    "scripts",
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "Cargo.toml",
+    "Cargo.lock",
+    ".pfx",
+    ".github/workflows"
+  ],
+  "jsonVersions": [
+    "packages/pfx-vector-web/package.json"
+  ],
+  "cargoVersions": [
+    "Cargo.toml"
+  ],
+  "cargoNames": [
+    "pfx-vector-core",
+    "pfx-vector-svg",
+    "pfx-vector-wasm"
+  ],
+  "npmLocks": [],
+  "cargoLocks": []
+}
