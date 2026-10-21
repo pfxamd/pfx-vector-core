@@ -17,3 +17,5 @@ packages/*/*.tsbuildinfo
 # Local tooling caches
 .pytest_cache/
 __pycache__/
+
+/.pfx-release-tools/

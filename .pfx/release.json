@@ -33,5 +33,7 @@
     "pfx-vector-wasm"
   ],
   "npmLocks": [],
-  "cargoLocks": []
+  "cargoLocks": [],
+  "allowGeneratedSourcePaths": true,
+  "changelogPath": false
 }
